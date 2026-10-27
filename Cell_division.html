@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>細胞分裂的過程｜國中生物</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", "Helvetica Neue", sans-serif;
+    background: radial-gradient(circle at 50% 0%, #16273a 0%, #0b131b 55%, #06090d 100%);
+    color: #e2e8f0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 960px;
+    background: rgba(17, 28, 40, 0.75);
+    border: 1px solid rgba(56, 189, 248, 0.18);
+    border-radius: 22px;
+    padding: 20px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255,255,255,0.05);
+    backdrop-filter: blur(10px);
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+    padding: 0 4px;
+  }
+
+  h1 {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    background: linear-gradient(90deg, #38bdf8, #a78bfa, #f472b6);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  header .sub {
+    font-size: 12px;
+    color: #64748b;
+    letter-spacing: 0.5px;
+  }
+
+  /* ---------- 畫布 ---------- */
+  .canvas-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 16px;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 46%, #132130 0%, #0a1118 72%);
+    border: 1px solid rgba(56, 189, 248, 0.1);
+  }
+
+  canvas { display: block; width: 100%; height: 100%; }
+
+  /* ---------- 階段說明 ---------- */
+  .info {
+    position: absolute;
+    top: 14px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    pointer-events: none;
+  }
+
+  .badge {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.12);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    color: #38bdf8;
+    transition: all 0.35s ease;
+    white-space: nowrap;
+  }
+
+  .desc {
+    font-size: 13px;
+    color: #94a3b8;
+    transition: opacity 0.3s;
+    line-height: 1.4;
+  }
+
+  /* ---------- 進度條 ---------- */
+  .progress-track {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+  }
+
+  .progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #38bdf8, #a78bfa, #f472b6);
+    transition: width 0.08s linear;
+    box-shadow: 0 0 12px rgba(56,189,248,0.8);
+  }
+
+  /* ---------- 步驟按鈕 ---------- */
+  .steps {
+    display: flex;
+    gap: 6px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .step {
+    flex: 1 1 0;
+    min-width: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 9px 4px;
+    border-radius: 11px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    font-size: 12px;
+    font-weight: 600;
+    color: #7b8b9e;
+    cursor: pointer;
+    transition: all 0.28s ease;
+    user-select: none;
+  }
+
+  .step:hover {
+    background: rgba(56, 189, 248, 0.08);
+    border-color: rgba(56, 189, 248, 0.3);
+    color: #cbd5e1;
+    transform: translateY(-1px);
+  }
+
+  .step .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #334155;
+    transition: all 0.28s ease;
+    flex: none;
+  }
+
+  .step.active {
+    background: rgba(56, 189, 248, 0.14);
+    border-color: rgba(56, 189, 248, 0.55);
+    color: #e0f2fe;
+    box-shadow: 0 0 18px rgba(56, 189, 248, 0.22);
+  }
+
+  .step.active .dot {
+    background: #38bdf8;
+    box-shadow: 0 0 10px #38bdf8;
+    transform: scale(1.25);
+  }
+
+  .step.done { color: #64748b; }
+  .step.done .dot { background: #22d3ee; opacity: 0.5; }
+
+  /* ---------- 控制列 ---------- */
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 11px 22px;
+    border-radius: 11px;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    background: rgba(56, 189, 248, 0.1);
+    color: #7dd3fc;
+    cursor: pointer;
+    transition: all 0.22s ease;
+  }
+
+  button:hover {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: rgba(56, 189, 248, 0.7);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.25);
+    transform: translateY(-1px);
+  }
+
+  button:active { transform: translateY(0) scale(0.98); }
+
+  button.ghost {
+    border-color: rgba(148, 163, 184, 0.25);
+    background: rgba(148, 163, 184, 0.06);
+    color: #94a3b8;
+  }
+
+  button.ghost:hover {
+    border-color: rgba(148, 163, 184, 0.5);
+    color: #cbd5e1;
+    box-shadow: none;
+  }
+
+  .speed-group {
+    margin-left: auto;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .speed-group span {
+    font-size: 12px;
+    color: #64748b;
+    margin-right: 2px;
+  }
+
+  .speed-btn {
+    padding: 8px 13px;
+    font-size: 12px;
+    border-radius: 9px;
+    border-color: rgba(148,163,184,0.2);
+    background: rgba(148,163,184,0.05);
+    color: #7b8b9e;
+  }
+
+  .speed-btn.on {
+    border-color: rgba(167, 139, 250, 0.65);
+    background: rgba(167, 139, 250, 0.16);
+    color: #c4b5fd;
+    box-shadow: 0 0 16px rgba(167, 139, 250, 0.2);
+  }
+
+  @media (max-width: 620px) {
+    .app { padding: 14px; border-radius: 16px; }
+    h1 { font-size: 16px; }
+    header .sub { display: none; }
+    .desc { font-size: 11px; }
+    .badge { font-size: 11px; padding: 4px 11px; }
+    .step { font-size: 10px; min-width: 52px; padding: 8px 2px; }
+    .step .dot { display: none; }
+    button { padding: 9px 16px; font-size: 13px; }
+    .speed-group { margin-left: 0; width: 100%; justify-content: flex-end; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <h1>細胞分裂的過程</h1>
+    <div class="sub">國中生物 · 細胞分裂（有絲分裂）動畫</div>
+  </header>
+
+  <div class="canvas-wrap">
+    <canvas id="cv"></canvas>
+    <div class="info">
+      <div class="badge" id="badge">間期(前)</div>
+      <div class="desc" id="desc">染色體呈單條狀，尚未複製</div>
+    </div>
+    <div class="progress-track"><div class="progress-bar" id="bar"></div></div>
+  </div>
+
+  <div class="steps" id="steps"></div>
+
+  <div class="controls">
+    <button id="playBtn">⏸ 暫停</button>
+    <button class="ghost" id="resetBtn">↺ 重新開始</button>
+    <div class="speed-group">
+      <span>速度</span>
+      <button class="speed-btn" data-speed="0.5">0.5×</button>
+      <button class="speed-btn on" data-speed="1">1×</button>
+      <button class="speed-btn" data-speed="1.6">1.6×</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ======================= 基本設定 ======================= */
+  const cv  = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+
+  let W = 800, H = 450, dpr = 1;
+
+  function resize() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const rect = cv.getBoundingClientRect();
+    W = Math.max(1, rect.width);
+    H = Math.max(1, rect.height);
+    cv.width  = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+  }
+
+  /* ======================= 階段資料 ======================= */
+  const PHASES = [
+    { name: '間期(前)', desc: '染色體呈單條狀，尚未複製',        dur: 2.0, color: '#38bdf8' },
+    { name: '間期(後)', desc: '染色體完成複製，呈X形，細胞準備分裂', dur: 2.0, color: '#22d3ee' },
+    { name: '前期', desc: '染色體濃縮變粗，核膜逐漸消失',        dur: 2.1, color: '#818cf8' },
+    { name: '中期', desc: '染色體排列在細胞中央的赤道板上',      dur: 1.8, color: '#a78bfa' },
+    { name: '後期', desc: '著絲點分裂，染色體分向細胞兩端',      dur: 1.9, color: '#f472b6' },
+    { name: '末期', desc: '核膜重新形成，細胞質開始向內縊裂',    dur: 2.2, color: '#fb923c' },
+    { name: '完成', desc: '形成兩個子細胞，染色體數目與母細胞相同', dur: 2.6, color: '#34d399' },
+  ];
+
+  const TOTAL = PHASES.reduce((a, ph) => a + ph.dur, 0);
+
+  function phaseStart(i) {
+    let acc = 0;
+    for (let k = 0; k < i; k++) acc += PHASES[k].dur;
+    return acc;
+  }
+
+  function getTimeline(t) {
+    let acc = 0;
+    for (let i = 0; i < PHASES.length; i++) {
+      const d = PHASES[i].dur;
+      if (t < acc + d || i === PHASES.length - 1) {
+        return { index: i, p: Math.min(1, Math.max(0, (t - acc) / d)) };
+      }
+      acc += d;
+    }
+    return { index: PHASES.length - 1, p: 1 };
+  }
+
+  /* ======================= 工具函式 ======================= */
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  function easeInOut(t) {
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  }
+
+  function smoothstep(a, b, x) {
+    const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+    return t * t * (3 - 2 * t);
+  }
+
+  /* ======================= 染色體初始散布位置 ======================= */
+  const N = 4;
+  const SCATTER = [];
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2 + 0.7;
+    const r = 26 + (i % 2) * 12;
+    SCATTER.push({
+      x: Math.cos(a) * r,
+      y: Math.sin(a) * r,
+      ang: (i - 1.5) * 0.42,
+    });
+  }
+
+  /* ======================= 繪製：細胞 ======================= */
+  function drawCell(r, d) {
+    if (d >= r) {
+      // 完全分離的兩個圓形細胞
+      for (const side of [-1, 1]) {
+        const cx = side * d;
+        ctx.beginPath();
+        ctx.arc(cx, 0, r, 0, Math.PI * 2);
+        
+        const g = ctx.createRadialGradient(cx, -r * 0.25, r * 0.15, cx, 0, r + 30);
+        g.addColorStop(0, 'rgba(56, 189, 248, 0.17)');
+        g.addColorStop(0.7, 'rgba(56, 189, 248, 0.07)');
+        g.addColorStop(1, 'rgba(56, 189, 248, 0.02)');
+        ctx.fillStyle = g;
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(56, 189, 248, 0.95)';
+        ctx.lineWidth = 2.6;
+        ctx.shadowColor = 'rgba(56, 189, 248, 0.75)';
+        ctx.shadowBlur = 20;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+    } else {
+      // 正在分裂（相連的狀態）
+      const n = 180;
+      ctx.beginPath();
+      for (let k = 0; k <= n; k++) {
+        const th = (k / n) * Math.PI * 2;
+        const si = Math.sin(th), co = Math.cos(th);
+        const inner = r * r - d * d * si * si;
+        const rad = Math.abs(d * co) + Math.sqrt(Math.max(0, inner));
+        const x = co * rad, y = si * rad;
+        if (k === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+
+      const g = ctx.createRadialGradient(0, -r * 0.25, r * 0.15, 0, 0, r + d + 30);
+      g.addColorStop(0, 'rgba(56, 189, 248, 0.17)');
+      g.addColorStop(0.7, 'rgba(56, 189, 248, 0.07)');
+      g.addColorStop(1, 'rgba(56, 189, 248, 0.02)');
+      ctx.fillStyle = g;
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.95)';
+      ctx.lineWidth = 2.6;
+      ctx.shadowColor = 'rgba(56, 189, 248, 0.75)';
+      ctx.shadowBlur = 20;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  /* ======================= 繪製：紡錘絲 ======================= */
+  function drawSpindle(cellR, alpha) {
+    if (alpha <= 0.01) return;
+    const poleX = cellR * 0.80;
+    const ys = [-88, -44, 0, 44, 88];
+
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.30;
+    ctx.strokeStyle = '#7dd3fc';
+    ctx.lineWidth = 1.1;
+    for (const pole of [-1, 1]) {
+      for (const y of ys) {
+        ctx.beginPath();
+        ctx.moveTo(pole * poleX, 0);
+        ctx.quadraticCurveTo(pole * poleX * 0.45, y * 0.55, 0, y);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  /* ======================= 繪製：細胞核 ======================= */
+  function drawNuclei(index, p, splitD) {
+    const list = [];
+
+    if (index === 0 || index === 1) {
+      list.push({ x: 0, y: 0, r: 66, a: 1 });
+    } else if (index === 2) {
+      const a = 1 - smoothstep(0.18, 0.72, p);
+      if (a > 0.01) list.push({ x: 0, y: 0, r: lerp(66, 58, p), a });
+    } else if (index === 5) {
+      const k = smoothstep(0.08, 0.90, p);
+      const r = lerp(24, 56, k);
+      list.push({ x: -splitD, y: 0, r, a: k });
+      list.push({ x:  splitD, y: 0, r, a: k });
+    } else if (index === 6) {
+      // 完成：兩個細胞核已完全成形
+      list.push({ x: -splitD, y: 0, r: 56, a: 1 });
+      list.push({ x:  splitD, y: 0, r: 56, a: 1 });
+    }
+
+    for (const nu of list) {
+      ctx.save();
+      ctx.globalAlpha = nu.a;
+      ctx.beginPath();
+      ctx.arc(nu.x, nu.y, nu.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(139, 92, 246, 0.10)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(167, 139, 250, 0.85)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([7, 5]);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  /* ======================= 繪製：單條染色體 ======================= */
+  function drawSingleChromatid(x, y, ang, h, thick, alpha) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(x, y);
+    ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.moveTo(0, -h);
+    ctx.quadraticCurveTo(1.5, 0, 0, h);
+    ctx.lineWidth = thick;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#fbbf24';
+    ctx.shadowColor = 'rgba(251, 191, 36, 0.55)';
+    ctx.shadowBlur = 12;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ======================= 繪製：染色單體 ======================= */
+  function drawChromatid(c) {
+    ctx.save();
+    ctx.globalAlpha = c.alpha;
+    ctx.translate(c.x, c.y);
+    ctx.rotate(c.ang);
+    ctx.beginPath();
+    ctx.moveTo(0, -c.h);
+    ctx.bezierCurveTo(
+      -c.dir * c.w * 0.85, -c.h * 0.45,
+      -c.dir * c.w * 0.85,  c.h * 0.45,
+       0, c.h
+    );
+    ctx.lineWidth = c.thick;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = c.color || '#fbbf24';
+    ctx.shadowColor = 'rgba(251, 191, 36, 0.55)';
+    ctx.shadowBlur = 12;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /* ======================= 計算並繪製染色體 ======================= */
+  function drawChromosomes(index, p, e, splitD, time) {
+    const items = [];
+
+    for (let i = 0; i < N; i++) {
+      const sc = SCATTER[i];
+      const eqY = (i - 1.5) * 56;
+
+      if (index === 0) {
+        /* 間期(前) */
+        const bx = sc.x + Math.sin(time * 1.1 + i * 2.1) * 5;
+        const by = sc.y + Math.cos(time * 1.4 + i * 1.7) * 5;
+        const ang = sc.ang + Math.sin(time * 0.8 + i) * 0.15;
+        drawSingleChromatid(bx, by, ang, 22, 6, 0.9);
+
+      } else if (index === 1) {
+        /* 間期(後) */
+        const bx = sc.x + Math.sin(time * 1.1 + i * 2.1) * 5;
+        const by = sc.y + Math.cos(time * 1.4 + i * 1.7) * 5;
+        const ang = sc.ang + Math.sin(time * 0.8 + i) * 0.15;
+        const h = 23, w = 7.5, thick = 8, alpha = 1;
+
+        for (const dir of [-1, 1]) {
+          items.push({
+            x: bx + dir * w * Math.cos(ang),
+            y: by + dir * w * Math.sin(ang),
+            ang, h, w, thick, alpha, dir,
+          });
+        }
+
+      } else if (index === 2) {
+        /* 前期 */
+        const x = lerp(sc.x, 0, e);
+        const y = lerp(sc.y, eqY, e);
+        const ang = lerp(sc.ang, 0, e);
+        const h = lerp(23, 25, e);
+        const w = lerp(7.5, 8, e);
+        const thick = lerp(8, 10, e);
+        const alpha = 1;
+
+        for (const dir of [-1, 1]) {
+          items.push({
+            x: x + dir * w * Math.cos(ang),
+            y: y + dir * w * Math.sin(ang),
+            ang, h, w, thick, alpha, dir,
+          });
+        }
+
+      } else if (index === 3) {
+        /* 中期 */
+        const h = 25, w = 8, thick = 10, alpha = 1;
+        const wob = Math.sin(time * 3 + i) * 0.6;
+
+        for (const dir of [-1, 1]) {
+          items.push({
+            x: dir * w + wob * dir * 0.3,
+            y: eqY,
+            ang: 0, h, w, thick, alpha, dir,
+          });
+        }
+
+      } else if (index === 4) {
+        /* 後期 */
+        const h = lerp(25, 18, e);
+        const w = lerp(8, 6, e);
+        const thick = lerp(10, 8, e);
+
+        for (const dir of [-1, 1]) {
+          items.push({
+            x: lerp(dir * 8, dir * 118, e), // 終點距離加大，對齊分開的細胞
+            y: lerp(eqY, (i - 1.5) * 30, e),
+            ang: 0, h, w, thick, alpha: 1, dir,
+          });
+        }
+
+      } else {
+        /* 末期(5) / 完成(6) */
+        const ee = index === 5 ? e : 1;
+        const h = lerp(18, 14, ee);
+        const w = lerp(6, 4.2, ee);
+        const thick = lerp(8, 6, ee);
+
+        for (const dir of [-1, 1]) {
+          const theta = (i / N) * Math.PI * 2 + 0.6 + (dir === 1 ? 0.4 : 0);
+          const ncx = dir * splitD; // 這裡會使用最新的 splitD
+          const tx = ncx + Math.cos(theta) * 22;
+          const ty = Math.sin(theta) * 22;
+
+          items.push({
+            x: lerp(dir * 118, tx, ee),
+            y: lerp((i - 1.5) * 30, ty, ee),
+            ang: lerp(0, theta * 0.15, ee),
+            h, w, thick, alpha: 1, dir,
+          });
+        }
+      }
+    }
+
+    items.forEach(drawChromatid);
+  }
+
+  /* ======================= 主繪製 ======================= */
+  function draw(time) {
+    const s = Math.min(W / 880, H / 520);
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(s, s);
+
+    const { index, p } = getTimeline(time);
+    const e = easeInOut(p);
+
+    /* --- 細胞分裂進度 --- */
+    let sp = 0;
+    if (index === 4)      sp = e * 0.42;             // 後期
+    else if (index === 5) sp = 0.42 + e * 0.58;      // 末期
+    else if (index === 6) sp = 1;                    // 完成
+
+    // 調整最終半徑與分離距離，確保完全分開
+    const cellR  = lerp(152, 105, sp);
+    const splitD = lerp(0, 118, sp);
+
+    /* --- 細胞本體 --- */
+    drawCell(cellR, splitD);
+
+    /* --- 紡錘絲 --- */
+    let spindleA = 0;
+    if (index === 3)      spindleA = smoothstep(0, 0.55, p);      // 中期
+    else if (index === 4) spindleA = 1;                           // 後期
+    else if (index === 5) spindleA = 1 - smoothstep(0, 0.45, p);  // 末期
+    drawSpindle(cellR, spindleA);
+
+    /* --- 細胞核 --- */
+    drawNuclei(index, p, splitD);
+
+    /* --- 染色體 --- */
+    drawChromosomes(index, p, e, splitD, time);
+
+    ctx.restore();
+
+    /* --- UI 同步 --- */
+    updateUI(index, time);
+  }
+
+  /* ======================= UI 更新 ======================= */
+  const badgeEl = document.getElementById('badge');
+  const descEl  = document.getElementById('desc');
+  const barEl   = document.getElementById('bar');
+  const stepsEl = document.getElementById('steps');
+  const playBtn = document.getElementById('playBtn');
+
+  let stepEls = [];
+  let prevIndex = -1;
+
+  PHASES.forEach((ph, i) => {
+    const el = document.createElement('div');
+    el.className = 'step';
+    el.innerHTML = `<span class="dot"></span><span class="nm">${ph.name}</span>`;
+    el.addEventListener('click', () => {
+      t = phaseStart(i) + 0.001;
+      playing = true;
+      updatePlayBtn();
+    });
+    stepsEl.appendChild(el);
+    stepEls.push(el);
+  });
+
+  function updateUI(index, time) {
+    barEl.style.width = (Math.min(1, time / TOTAL) * 100).toFixed(2) + '%';
+
+    if (index === prevIndex) return;
+    prevIndex = index;
+
+    const ph = PHASES[index];
+    badgeEl.textContent = ph.name;
+    badgeEl.style.color = ph.color;
+    badgeEl.style.borderColor = ph.color + '66';
+    badgeEl.style.background = ph.color + '1f';
+    descEl.textContent = ph.desc;
+
+    stepEls.forEach((el, i) => {
+      el.classList.toggle('active', i === index);
+      el.classList.toggle('done', i < index);
+    });
+  }
+
+  /* ======================= 動畫迴圈 ======================= */
+  let t = 0;
+  let playing = true;
+  let speed = 1;
+  let lastNow = 0;
+
+  function updatePlayBtn() {
+    if (playing) {
+      playBtn.textContent = '⏸ 暫停';
+    } else {
+      playBtn.textContent = (t >= TOTAL - 0.01) ? '▶ 重播' : '▶ 播放';
+    }
+  }
+
+  function loop(now) {
+    if (!lastNow) lastNow = now;
+    const dt = Math.min(0.06, (now - lastNow) / 1000);
+    lastNow = now;
+
+    if (playing) {
+      t += dt * speed;
+      if (t >= TOTAL) {
+        t = TOTAL;
+        playing = false;
+        updatePlayBtn();
+      }
+    }
+
+    draw(t);
+    requestAnimationFrame(loop);
+  }
+
+  /* ======================= 控制項 ======================= */
+  playBtn.addEventListener('click', () => {
+    if (t >= TOTAL - 0.001) t = 0;
+    playing = !playing;
+    updatePlayBtn();
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    t = 0;
+    playing = true;
+    prevIndex = -1;
+    updatePlayBtn();
+  });
+
+  document.querySelectorAll('.speed-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      speed = parseFloat(btn.dataset.speed);
+      document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+    });
+  });
+
+  /* ======================= 啟動 ======================= */
+  resize();
+  window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', () => setTimeout(resize, 120));
+
+  updatePlayBtn();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

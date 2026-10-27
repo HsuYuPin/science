@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>串並聯綜合電路演示</title>
+<style>
+  :root{
+    --bg:#070b16;
+    --card:#131c2e;
+    --border:#24314d;
+    --text:#e2e8f0;
+    --muted:#8b9bb4;
+    --amber:#fbbf24;
+    --sky:#38bdf8;
+    --green:#4ade80;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;padding:16px;
+    background:radial-gradient(1600px 900px at 50% -10%, #152238 0%, var(--bg) 60%);
+    color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+    min-height:100vh;
+  }
+  h1{
+    font-size:24px;margin:0 0 16px;letter-spacing:1px;
+    display:flex;align-items:center;gap:12px;font-weight:600;
+  }
+  h1::before{
+    content:"";width:8px;height:28px;border-radius:4px;
+    background:linear-gradient(180deg,var(--amber),#f97316);
+  }
+  .wrap{
+    max-width:1920px;
+    margin:0 auto;
+    display:grid;grid-template-columns:minmax(0, 1fr) 360px;gap:20px;
+    align-items:start;
+  }
+  @media (max-width:1150px){
+    .wrap{grid-template-columns:1fr;}
+  }
+  .stage{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:12px;
+    box-shadow:0 12px 48px rgba(0,0,0,.45);
+    overflow:hidden;
+  }
+  canvas{display:block;width:100%;height:auto;border-radius:12px;}
+  .side{display:flex;flex-direction:column;gap:16px;}
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:18px 20px;
+    box-shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  .card h2{
+    font-size:14px;margin:0 0 14px;color:var(--muted);
+    font-weight:600;letter-spacing:1.5px;
+  }
+  
+  .seg-group { display: flex; flex-direction: column; gap: 8px; }
+  .seg{display:flex;gap:6px;background:#0d1524;padding:6px;border-radius:12px;}
+  .seg button{
+    flex:1;padding:10px 0;border:0;border-radius:8px;cursor:pointer;
+    background:transparent;color:var(--muted);
+    font-size:14px;font-weight:600;font-family:inherit;
+    transition:.18s;
+  }
+  .seg button:hover{color:var(--text);background:#16223a;}
+  .seg button.active{
+    background:linear-gradient(180deg,#fbbf24,#f59e0b);
+    color:#1a1205;
+    box-shadow:0 4px 14px rgba(251,191,36,.35);
+  }
+
+  .ctrl{margin-bottom:16px; transition: opacity 0.3s;}
+  .ctrl.hidden{display: none;}
+  .ctrl-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-size:15px;margin-bottom:8px;color:#c3cfe2;
+  }
+  .ctrl-head b{color:var(--amber);font-variant-numeric:tabular-nums;font-size:16px;}
+  input[type=range]{
+    width:100%;height:24px;accent-color:var(--amber);cursor:pointer;
+    background:transparent;
+  }
+  .kv{
+    display:flex;justify-content:space-between;align-items:baseline;
+    padding:8px 0;font-size:15px;color:#c3cfe2;
+  }
+  .kv b{
+    font-variant-numeric:tabular-nums;font-family:ui-monospace,"Consolas",monospace;
+    color:#e2e8f0;font-size:16px;
+  }
+  .kv b.hi{color:var(--amber);font-size:18px;}
+  .kv b.sky{color:var(--sky);}
+  hr{border:0;border-top:1px dashed #2c3a58;margin:10px 0;}
+</style>
+</head>
+<body>
+
+<h1>串並聯電路演示</h1>
+
+<div class="wrap">
+  <div class="stage">
+    <canvas id="circuit"></canvas>
+  </div>
+
+  <aside class="side">
+
+    <div class="card">
+      <h2>電路模式</h2>
+      <div class="seg-group">
+        <div class="seg">
+          <button class="active" data-mode="series">串聯</button>
+          <button data-mode="parallel">並聯</button>
+        </div>
+        <div class="seg">
+          <button data-mode="mix1">綜合 1 (先串後並)</button>
+          <button data-mode="mix2">綜合 2 (先並後串)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>參數調整</h2>
+      <div class="ctrl">
+        <div class="ctrl-head"><span>電池電壓</span><b id="vV">6.0 V</b></div>
+        <input id="sV" type="range" min="1" max="30" step="0.5" value="6">
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-head"><span>電阻 R₁</span><b id="vR1">6 Ω</b></div>
+        <input id="sR1" type="range" min="1" max="20" step="1" value="6">
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-head"><span>電阻 R₂</span><b id="vR2">6 Ω</b></div>
+        <input id="sR2" type="range" min="1" max="20" step="1" value="6">
+      </div>
+      <div class="ctrl" id="ctrl-R3">
+        <div class="ctrl-head"><span>電阻 R₃</span><b id="vR3">6 Ω</b></div>
+        <input id="sR3" type="range" min="1" max="20" step="1" value="6">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>量測結果</h2>
+      <div class="kv"><span>總電流 I</span><b id="oIt" class="hi">—</b></div>
+      <hr>
+      <div class="kv"><span id="lbl-I1">通過 R₁ 的電流 I₁</span><b id="oI1" class="sky">—</b></div>
+      <div class="kv"><span id="lbl-V1">R₁ 兩端電壓 V₁</span><b id="oV1">—</b></div>
+      <hr>
+      <div class="kv"><span id="lbl-I2">通過 R₂ 的電流 I₂</span><b id="oI2" class="sky">—</b></div>
+      <div class="kv"><span id="lbl-V2">R₂ 兩端電壓 V₂</span><b id="oV2">—</b></div>
+      <div id="box-R3" style="display:none;">
+        <hr>
+        <div class="kv"><span id="lbl-I3">通過 R₃ 的電流 I₃</span><b id="oI3" class="sky">—</b></div>
+        <div class="kv"><span id="lbl-V3">R₃ 兩端電壓 V₃</span><b id="oV3">—</b></div>
+      </div>
+    </div>
+
+  </aside>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ================= 基本設定 =================
+  const cv  = document.getElementById('circuit');
+  const ctx = cv.getContext('2d');
+  const W = 1400, H = 850;
+
+  const COL = {
+    bg:      '#0f172a',
+    wire:    '#94a3b8',
+    res:     '#38bdf8',
+    bat:     '#fb923c',
+    text:    '#cbd5e1',
+    sub:     '#64748b',
+    amber:   '#fbbf24',
+    sky:     '#7dd3fc',
+    green:   '#4ade80',
+    // 定義迴路顏色
+    dot_orange: '#fb923c',
+    dot_blue:   '#38bdf8',
+    dot_amber:  '#fcd34d'
+  };
+
+  const state = { mode:'series', V:6, R1:6, R2:6, R3:6 };
+  let phases = {};
+
+  function setupCanvas(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width  = W * dpr;
+    cv.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  setupCanvas();
+  window.addEventListener('resize', setupCanvas);
+
+  // ================= 計算 =================
+  function compute(){
+    const { V, R1, R2, R3 } = state;
+    
+    if (state.mode === 'series'){
+      const I = V / (R1 + R2);
+      return { Itotal:I, I1:I, I2:I, V1:I*R1, V2:I*R2, I3:0, V3:0 };
+    }
+    if (state.mode === 'parallel'){
+      const I1 = V / R1, I2 = V / R2;
+      return { Itotal:I1+I2, I1, I2, V1:V, V2:V, I3:0, V3:0 };
+    }
+    if (state.mode === 'mix1'){
+      const I1 = V / R1;
+      const I23 = V / (R2 + R3);
+      return { Itotal: I1 + I23, I1, V1: V, I2: I23, V2: I23 * R2, I3: I23, V3: I23 * R3 };
+    }
+    if (state.mode === 'mix2'){
+      const R23 = (R2 * R3) / (R2 + R3);
+      const Itotal = V / (R1 + R23);
+      const V23 = Itotal * R23;
+      return { Itotal, I1: Itotal, V1: Itotal * R1, I2: V23 / R2, V2: V23, I3: V23 / R3, V3: V23 };
+    }
+  }
+
+  // ================= 幾何工具 =================
+  function pathLength(pts){
+    let total = 0;
+    for (let i=1;i<pts.length;i++) total += Math.hypot(pts[i][0]-pts[i-1][0], pts[i][1]-pts[i-1][1]);
+    return total;
+  }
+  function pointAt(pts, dist){
+    let rem = dist;
+    for (let i=1;i<pts.length;i++){
+      const dx = pts[i][0]-pts[i-1][0], dy = pts[i][1]-pts[i-1][1];
+      const seg = Math.hypot(dx, dy);
+      if (seg > 0 && rem <= seg){
+        const t = rem/seg;
+        return { x: pts[i-1][0]+dx*t, y: pts[i-1][1]+dy*t };
+      }
+      rem -= seg;
+    }
+    const last = pts[pts.length-1];
+    return { x:last[0], y:last[1] };
+  }
+  function roundRect(x,y,w,h,r){
+    if (ctx.roundRect){ ctx.roundRect(x,y,w,h,r); return; }
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  // ================= 建立場景 =================
+  function buildScene(){
+    const c = compute();
+    let battery = { x:300, y:430, vertical:true };
+    let paths = [];
+    let resistors = [];
+
+    if (state.mode === 'series'){
+      paths = [
+        { key:'loop', pts:[[300,430],[300,180],[1100,180],[1100,680],[300,680],[300,430]], I:c.Itotal, color: COL.dot_amber }
+      ];
+      resistors = [
+        { x:700, y:180, vertical:false, name:'₁', R:state.R1, I:c.I1, V:c.V1, side:'bottom' },
+        { x:1100, y:430, vertical:true, name:'₂', R:state.R2, I:c.I2, V:c.V2, side:'left'   }
+      ];
+    }
+    else if (state.mode === 'parallel'){
+      paths = [
+        { key:'inner', pts:[[300,430],[300,180],[700,180],[700,680],[300,680],[300,430]], I:c.I1, color: COL.dot_blue, offset: 0 },
+        { key:'outer', pts:[[300,430],[300,180],[1100,180],[1100,680],[300,680],[300,430]], I:c.I2, color: COL.dot_orange, offset: 50 }
+      ];
+      resistors = [
+        { x:700, y:430, vertical:true, name:'₁', R:state.R1, I:c.I1, V:c.V1, side:'left' },
+        { x:1100, y:430, vertical:true, name:'₂', R:state.R2, I:c.I2, V:c.V2, side:'left' }
+      ];
+    }
+    else if (state.mode === 'mix1'){
+      battery = { x:700, y:650, vertical:false };
+      paths = [
+        { key:'inner', pts:[[635,650],[300,650],[300,450],[1100,450],[1100,650],[765,650]], I:c.I1, color: COL.dot_blue, offset: 0 },
+        { key:'outer', pts:[[635,650],[300,650],[300,250],[1100,250],[1100,650],[765,650]], I:c.I2, color: COL.dot_orange, offset: 50 }
+      ];
+      resistors = [
+        { x:500, y:250, vertical:false, name:'₂', R:state.R2, I:c.I2, V:c.V2, side:'top' },
+        { x:900, y:250, vertical:false, name:'₃', R:state.R3, I:c.I3, V:c.V3, side:'top' },
+        { x:700, y:450, vertical:false, name:'₁', R:state.R1, I:c.I1, V:c.V1, side:'bottom' }
+      ];
+    }
+    else if (state.mode === 'mix2'){
+      battery = { x:700, y:650, vertical:false };
+      
+      paths = [
+        { key:'blue_loop', pts:[[635,650],[300,650],[300,200],[700,200],[700,325],[1100,325],[1100,650],[765,650]], I:c.I2, color: COL.dot_blue, offset: 0 },
+        { key:'orange_loop', pts:[[635,650],[300,650],[300,450],[700,450],[700,325],[1100,325],[1100,650],[765,650]], I:c.I3, color: COL.dot_orange, offset: 50 }
+      ];
+      resistors = [
+        { x:500, y:200, vertical:false, name:'₂', R:state.R2, I:c.I2, V:c.V2, side:'bottom' },
+        { x:500, y:450, vertical:false, name:'₃', R:state.R3, I:c.I3, V:c.V3, side:'bottom' },
+        { x:900, y:325, vertical:false, name:'₁', R:state.R1, I:c.I1, V:c.V1, side:'bottom' }
+      ];
+    }
+    return { c, battery, paths, resistors };
+  }
+
+  // ================= 繪圖 =================
+  function drawText(text, x, y, opt){
+    opt = opt || {};
+    ctx.save();
+    ctx.font = (opt.bold ? '600 ' : '') + (opt.size || 20) + 'px system-ui,-apple-system,"Noto Sans TC",sans-serif';
+    ctx.fillStyle = opt.color || COL.text;
+    ctx.textAlign = opt.align || 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+
+  function drawWires(paths){
+    ctx.save();
+    ctx.strokeStyle = COL.wire;
+    ctx.lineWidth = 10;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (const p of paths){
+      ctx.beginPath();
+      ctx.moveTo(p.pts[0][0], p.pts[0][1]);
+      for (let i=1;i<p.pts.length;i++) ctx.lineTo(p.pts[i][0], p.pts[i][1]);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawCurrentDots(paths){
+    ctx.save();
+    for (const p of paths){
+      ctx.fillStyle = p.color || COL.dot_amber;
+      ctx.shadowColor = p.color || COL.dot_amber;
+      ctx.shadowBlur = 16;
+
+      const len = pathLength(p.pts);
+      const spacing = Math.min(200, Math.max(35, 100 / (p.I || 0.1)));
+      const off = ((phases[p.key] || 0) + (p.offset || 0)) % spacing;
+      
+      for (let d = off; d < len - 4; d += spacing){
+        const pt = pointAt(p.pts, d);
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 8, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawBattery(b, c){
+    const { x, y, vertical } = b;
+    ctx.save();
+    ctx.fillStyle = COL.bg;
+    if (vertical) ctx.fillRect(x-60, y-70, 120, 140);
+    else ctx.fillRect(x-70, y-60, 140, 120);
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = COL.bat;
+    ctx.lineWidth = 8;
+    ctx.lineCap = 'round';
+
+    if (vertical) {
+      ctx.beginPath(); ctx.moveTo(x, y-65); ctx.lineTo(x, y-25); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x-45, y-25); ctx.lineTo(x+45, y-25); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x-25, y+25); ctx.lineTo(x+25, y+25); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y+25); ctx.lineTo(x, y+65); ctx.stroke();
+      
+      drawText('+', x+65, y-25, { color:'#fdba74', size:28, bold:true });
+      drawText('−', x+65, y+25, { color:'#fdba74', size:30, bold:true });
+      
+      drawText('電源', x-120, y-25, { color:COL.sub, size:18 });
+      drawText(state.V.toFixed(1)+' V', x-120, y+5, { color:'#fdba74', size:20, bold:true });
+      drawText('I = ' + c.Itotal.toFixed(2) + ' A', x-120, y+35, { color:COL.amber, size:18, bold:true });
+    } else {
+      ctx.beginPath(); ctx.moveTo(x-65, y); ctx.lineTo(x-25, y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x-25, y-45); ctx.lineTo(x-25, y+45); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x+25, y-25); ctx.lineTo(x+25, y+25); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x+25, y); ctx.lineTo(x+65, y); ctx.stroke();
+      
+      drawText('+', x-25, y+65, { color:'#fdba74', size:28, bold:true });
+      drawText('−', x+25, y+65, { color:'#fdba74', size:30, bold:true });
+      
+      drawText('電源', x, y+95, { color:COL.sub, size:18 });
+      drawText(state.V.toFixed(1)+' V', x, y+125, { color:'#fdba74', size:20, bold:true });
+      drawText('I = ' + c.Itotal.toFixed(2) + ' A', x, y+155, { color:COL.amber, size:18, bold:true });
+    }
+    ctx.restore();
+  }
+
+  function drawResistor(r){
+    // 電阻長度隨電阻值等比例縮放
+    // 基準：1Ω 對應 35px，20Ω 對應 140px
+    const minR = 1;
+    const maxR = 20;
+    const minLen = 35;
+    const maxLen = 140;
+    
+    // 確保數值在 1~20 範圍內
+    const currentR = Math.max(minR, Math.min(maxR, r.R));
+    const dynamicLen = minLen + ((currentR - minR) / (maxR - minR)) * (maxLen - minLen);
+
+    const w = r.vertical ? 50 : dynamicLen;
+    const h = r.vertical ? dynamicLen : 50;
+    const x = r.x - w/2;
+    const y = r.y - h/2;
+
+    ctx.save();
+    ctx.beginPath();
+    // 動態計算圓角，防止長度過短時圓角疊加變形
+    const rad = Math.min(14, w/2, h/2);
+    roundRect(x, y, w, h, rad);
+    ctx.fillStyle = COL.bg;
+    ctx.fill();
+    ctx.strokeStyle = COL.res;
+    ctx.lineWidth = 6;
+    ctx.stroke();
+    ctx.restore();
+
+    // 文字標籤維持原本固定偏移量，確保數值變化時文字不會上下跳動
+    let lx, ly1, ly2, ly3;
+    if (r.side === 'bottom'){
+      lx = r.x;
+      ly1 = r.y + 75; ly2 = r.y + 105; ly3 = r.y + 135;
+    } else if (r.side === 'top'){
+      lx = r.x;
+      ly1 = r.y - 135; ly2 = r.y - 105; ly3 = r.y - 75;
+    } else {
+      lx = r.x - 130;
+      ly1 = r.y - 30; ly2 = r.y; ly3 = r.y + 30;
+    }
+
+    drawText('V' + r.name + ' = ' + r.V.toFixed(2) + ' V', lx, ly1, { color:COL.green, size:20, bold:true });
+    drawText('I' + r.name + ' = ' + r.I.toFixed(2) + ' A', lx, ly2, { color:COL.amber, size:20, bold:true });
+    drawText('R' + r.name + ' = ' + r.R + ' Ω', lx, ly3, { color:COL.sky, size:20 });
+  }
+
+  function draw(scene){
+    ctx.fillStyle = COL.bg;
+    ctx.fillRect(0, 0, W, H);
+
+    let title = '串聯電路';
+    if (state.mode === 'parallel') title = '並聯電路';
+    else if (state.mode === 'mix1') title = '綜合電路 1 (先串後並)';
+    else if (state.mode === 'mix2') title = '綜合電路 2 (先並後串)';
+
+    drawText(title, W/2, 70, { color:'#e2e8f0', size:32, bold:true });
+
+    drawWires(scene.paths);
+    drawCurrentDots(scene.paths);
+    drawBattery(scene.battery, scene.c);
+    scene.resistors.forEach(drawResistor);
+  }
+
+  // ================= 面板更新 =================
+  function updatePanel(){
+    const c = compute();
+
+    document.getElementById('vV').textContent  = state.V.toFixed(1) + ' V';
+    document.getElementById('vR1').textContent = state.R1 + ' Ω';
+    document.getElementById('vR2').textContent = state.R2 + ' Ω';
+    document.getElementById('vR3').textContent = state.R3 + ' Ω';
+
+    document.getElementById('oIt').textContent = c.Itotal.toFixed(2) + ' A';
+    document.getElementById('oI1').textContent = c.I1.toFixed(2) + ' A';
+    document.getElementById('oI2').textContent = c.I2.toFixed(2) + ' A';
+    document.getElementById('oV1').textContent = c.V1.toFixed(2) + ' V';
+    document.getElementById('oV2').textContent = c.V2.toFixed(2) + ' V';
+
+    const ctrlR3 = document.getElementById('ctrl-R3');
+    const boxR3 = document.getElementById('box-R3');
+    const lblI1 = document.getElementById('lbl-I1');
+    const lblV1 = document.getElementById('lbl-V1');
+    const lblI2 = document.getElementById('lbl-I2');
+    const lblV2 = document.getElementById('lbl-V2');
+
+    if (state.mode === 'mix1' || state.mode === 'mix2') {
+      ctrlR3.classList.remove('hidden');
+      boxR3.style.display = 'block';
+      
+      lblI1.textContent = '通過 R₁ 的電流 I₁';
+      lblV1.textContent = 'R₁ 兩端電壓 V₁';
+      lblI2.textContent = '通過 R₂ 的電流 I₂';
+      lblV2.textContent = 'R₂ 兩端電壓 V₂';
+      
+      document.getElementById('oI3').textContent = c.I3.toFixed(2) + ' A';
+      document.getElementById('oV3').textContent = c.V3.toFixed(2) + ' V';
+      document.getElementById('lbl-I3').textContent = '通過 R₃ 的電流 I₃';
+      document.getElementById('lbl-V3').textContent = 'R₃ 兩端電壓 V₃';
+    } else {
+      ctrlR3.classList.add('hidden');
+      boxR3.style.display = 'none';
+      
+      lblI1.textContent = '通過 R₁ 的電流 I₁';
+      lblV1.textContent = 'R₁ 兩端電壓 V₁';
+      lblI2.textContent = '通過 R₂ 的電流 I₂';
+      lblV2.textContent = 'R₂ 兩端電壓 V₂';
+    }
+  }
+
+  // ================= 主迴圈 =================
+  let lastT = performance.now();
+
+  function loop(now){
+    const dt = Math.min(0.05, (now - lastT) / 1000);
+    lastT = now;
+
+    const scene = buildScene();
+
+    for (const p of scene.paths){
+      const speed = Math.min(600, 40 + 80 * p.I);
+      phases[p.key] = (phases[p.key] || 0) + speed * dt;
+    }
+
+    draw(scene);
+    requestAnimationFrame(loop);
+  }
+
+  // ================= 事件綁定 =================
+  document.querySelectorAll('.seg button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (state.mode === btn.dataset.mode) return;
+      state.mode = btn.dataset.mode;
+      document.querySelectorAll('.seg button').forEach(b => {
+        b.classList.toggle('active', b === btn);
+      });
+      phases = {};
+      updatePanel();
+    });
+  });
+
+  const sV  = document.getElementById('sV');
+  const sR1 = document.getElementById('sR1');
+  const sR2 = document.getElementById('sR2');
+  const sR3 = document.getElementById('sR3');
+
+  sV.addEventListener('input',  e => { state.V  = parseFloat(e.target.value); updatePanel(); });
+  sR1.addEventListener('input', e => { state.R1 = parseFloat(e.target.value); updatePanel(); });
+  sR2.addEventListener('input', e => { state.R2 = parseFloat(e.target.value); updatePanel(); });
+  sR3.addEventListener('input', e => { state.R3 = parseFloat(e.target.value); updatePanel(); });
+
+  updatePanel();
+  requestAnimationFrame(loop);
+
+})();
+</script>
+</body>
+</html>

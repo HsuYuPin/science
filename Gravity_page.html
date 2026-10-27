@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>萬有引力｜宇宙軌道模擬專頁</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft JhengHei", sans-serif;
+        }
+
+        /* 宇宙星空背景容器 */
+        body {
+            min-height: 100vh;
+            background: radial-gradient(ellipse at center, #0a1028 0%, #000210 100%);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* 一般星星：輕微閃動 */
+        .star {
+            position: absolute;
+            background: #ffffff;
+            border-radius: 50%;
+            animation: twinkle-normal 4s infinite ease-in-out;
+        }
+
+        /* 少數亮星：強烈閃爍 + 發光暈 */
+        .star.star-bright {
+            box-shadow: 0 0 6px 2px rgba(220, 240, 255, 0.7);
+            animation: twinkle-bright 2.5s infinite ease-in-out;
+        }
+
+        /* 普通星星動畫 */
+        @keyframes twinkle-normal {
+            0%, 100% { opacity: 0.2; transform: scale(0.8); }
+            50% { opacity: 0.6; transform: scale(1); }
+        }
+
+        /* 高亮閃爍星星動畫（節奏更快、明暗差更大） */
+        @keyframes twinkle-bright {
+            0%, 100% { opacity: 0.4; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1.4); }
+        }
+
+        /* 主內容卡片 */
+        .space-card {
+            background: rgba(20, 30, 70, 0.35);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(120, 180, 255, 0.25);
+            border-radius: 20px;
+            padding: 60px 45px;
+            text-align: center;
+            z-index: 10;
+            box-shadow: 0 0 40px rgba(80, 150, 255, 0.2);
+            max-width: 620px;
+            width: 92%;
+        }
+
+        .space-card h1 {
+            color: #e6f0ff;
+            font-size: 32px;
+            margin-bottom: 16px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 12px #60a8ff;
+        }
+
+        .space-card p.desc {
+            color: #b8d0f5;
+            font-size: 16px;
+            margin-bottom: 48px;
+            line-height: 1.7;
+        }
+
+        /* 連結按鈕容器 */
+        .link-box {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* 按鈕基礎樣式 + 圖文排版 */
+        .space-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            padding: 20px 16px;
+            border-radius: 14px;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(130, 200, 255, 0.3);
+            background: linear-gradient(90deg, rgba(30, 60, 130, 0.4), rgba(15, 40, 90, 0.4));
+            color: #e0f2ff;
+        }
+
+        /* SVG 圖示大小與過渡 */
+        .space-icon {
+            width: 32px;
+            height: 32px;
+            fill: #94c8ff;
+            transition: all 0.3s ease;
+        }
+
+        .space-link:hover .space-icon {
+            fill: #ffffff;
+            filter: drop-shadow(0 0 8px #73b8ff);
+        }
+
+        .space-link:hover {
+            background: linear-gradient(90deg, rgba(50, 110, 220, 0.6), rgba(25, 65, 140, 0.6));
+            box-shadow: 0 0 22px rgba(90, 170, 255, 0.45);
+            transform: translateY(-4px);
+            border-color: rgba(160, 210, 255, 0.6);
+        }
+
+        /* 底部小字 */
+        .footer-text {
+            margin-top: 40px;
+            color: #7896c2;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 自動生成星空粒子 -->
+    <script>
+        // 隨機產生星星
+        const starCount = 180;
+        const body = document.body;
+        for(let i = 0; i < starCount; i++){
+            const star = document.createElement("div");
+            star.classList.add("star");
+
+            // 隨機 15% 機率變成高亮閃爍星
+            const isBrightStar = Math.random() < 0.15;
+            if(isBrightStar) {
+                star.classList.add("star-bright");
+            }
+
+            // 隨機大小、位置、動畫延遲
+            const size = Math.random() * 3 + 1;
+            star.style.width = size + "px";
+            star.style.height = size + "px";
+            star.style.left = Math.random() * 100 + "%";
+            star.style.top = Math.random() * 100 + "%";
+            star.style.animationDelay = Math.random() * 4 + "s";
+            body.appendChild(star);
+        }
+    </script>
+
+    <div class="space-card">
+        <h1>宇宙萬有引力模擬實驗</h1>
+        <p class="desc">透過動力學模擬觀察天體軌道運行規律，分別查看地球繞日、雙星互繞運動模型</p>
+
+        <div class="link-box">
+            <!-- 地球繞日按鈕：太陽行星SVG -->
+            <a class="space-link" href="Gravity_earth.html" target="_blank">
+                <svg class="space-icon" viewBox="0 0 24 24">
+                    <!-- 太陽 -->
+                    <circle cx="12" cy="12" r="4" fill="#ffdd70"/>
+                    <!-- 軌道圓 -->
+                    <ellipse cx="12" cy="12" rx="9" ry="5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                    <!-- 地球行星 -->
+                    <circle cx="21" cy="12" r="2.2" fill="#60b8ff"/>
+                </svg>
+                萬有引力-地球繞日運動
+            </a>
+
+            <!-- 雙星互繞按鈕：兩顆恆星軌道SVG -->
+            <a class="space-link" href="Gravity_2_bodies_motion.html" target="_blank">
+                <svg class="space-icon" viewBox="0 0 24 24">
+                    <!-- 互繞橢圓軌道 -->
+                    <ellipse cx="12" cy="12" rx="8.5" ry="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                    <!-- 恆星A -->
+                    <circle cx="4.5" cy="12" r="2.4" fill="#ffb870"/>
+                    <!-- 恆星B -->
+                    <circle cx="19.5" cy="12" r="2.4" fill="#ff88aa"/>
+                </svg>
+                萬有引力-雙星互繞運動
+            </a>
+        </div>
+
+        <div class="footer-text">
+            宇宙力學模擬專頁｜製作  by昱成自然
+        </div>
+    </div>
+</body>
+</html>

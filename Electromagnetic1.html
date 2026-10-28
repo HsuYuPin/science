@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>電流磁效應｜長直導線 → 圓導線</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
@@ -28,7 +28,9 @@
   }
 
   #panel {
-    position:fixed; left:50%; bottom:20px; transform:translateX(-50%);
+    position:fixed; left:50%;
+    bottom:calc(20px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
     display:flex; gap:10px; z-index:10; flex-wrap:wrap; justify-content:center;
     width:96%;
   }
@@ -48,9 +50,59 @@
     box-shadow:0 0 14px rgba(80,180,255,.6);
   }
   #panel button.hidden { display:none; }
+
+  /* ─────── 全螢幕按鈕（僅手機 / 觸控裝置顯示） ─────── */
+  #fsBtn {
+    display: none;
+    position: fixed;
+    top: calc(10px + env(safe-area-inset-top));
+    right: calc(10px + env(safe-area-inset-right));
+    z-index: 20;
+    width: 44px; height: 44px;
+    align-items: center; justify-content: center;
+    border-radius: 12px; cursor: pointer;
+    background: rgba(10, 20, 38, .78);
+    border: 1px solid rgba(80, 150, 255, .28);
+    color: #9fc4ee;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    transition: all .18s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #fsBtn:hover { background: rgba(35, 60, 100, .92); color: #dcecff; }
+  #fsBtn:active { transform: scale(.94); }
+  #fsBtn svg {
+    width: 22px; height: 22px;
+    fill: none; stroke: currentColor;
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    display: block;
+  }
+  #fsBtn .ico-exit { display: none; }
+  #fsBtn.fs-active .ico-enter { display: none; }
+  #fsBtn.fs-active .ico-exit { display: block; }
+
+  /* 手機 / 觸控裝置：顯示全螢幕按鈕 */
+  @media (max-width: 820px), (hover: none) and (pointer: coarse) {
+    #fsBtn { display: flex; }
+  }
 </style>
 </head>
 <body>
+
+<!-- 右上角全螢幕按鈕（手機才顯示） -->
+<button id="fsBtn" aria-label="切換全螢幕">
+  <svg class="ico-enter" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M4 9V4h5"/>
+    <path d="M20 9V4h-5"/>
+    <path d="M4 15v5h5"/>
+    <path d="M20 15v5h-5"/>
+  </svg>
+  <svg class="ico-exit" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M9 4v5H4"/>
+    <path d="M15 4v5h5"/>
+    <path d="M9 20v-5H4"/>
+    <path d="M15 20v-5h5"/>
+  </svg>
+</button>
 
 <div id="title">
   <h1>電流磁效應 ── 長直導線 / 圓導線</h1>
@@ -87,6 +139,50 @@ const _lb    = new THREE.Vector3();
 const WIRE_LEN = 18;
 const LIMIT    = WIRE_LEN / 2;
 const LOOP_R   = WIRE_LEN / (2 * Math.PI);   // ≈ 2.8648
+
+/* ============ 全螢幕切換 ============ */
+const fsBtn = document.getElementById('fsBtn');
+
+function fullscreenElement() {
+  return document.fullscreenElement
+      || document.webkitFullscreenElement
+      || document.msFullscreenElement
+      || null;
+}
+
+function updateFsBtnState() {
+  fsBtn.classList.toggle('fs-active', !!fullscreenElement());
+}
+
+fsBtn.addEventListener('click', () => {
+  const el = document.documentElement;
+  try {
+    if (!fullscreenElement()) {
+      const req = el.requestFullscreen
+               || el.webkitRequestFullscreen
+               || el.msRequestFullscreen;
+      if (req) {
+        const p = req.call(el);
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      }
+    } else {
+      const exit = document.exitFullscreen
+                || document.webkitExitFullscreen
+                || document.msExitFullscreen;
+      if (exit) {
+        const p = exit.call(document);
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      }
+    }
+  } catch (e) { /* 不支援則靜默忽略 */ }
+});
+
+['fullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange'].forEach(ev => {
+  document.addEventListener(ev, () => {
+    updateFsBtnState();
+    window.dispatchEvent(new Event('resize'));
+  });
+});
 
 /* ============ 場景 / 相機 / 渲染器 ============ */
 const scene = new THREE.Scene();
@@ -130,9 +226,10 @@ scene.add(grid);
 /* ==========================================================
    狀態
    ========================================================== */
-let isLoop        = false;       // 是否為圓導線
+let isLoop        = false;       // 目標狀態（點擊後立即更新）
 let morph         = 0;           // 0 = 直導線，1 = 圓導線
 let morphTarget   = 0;
+let isMorphing    = false;       // ★ 是否正在切換形狀
 let dirSign       = 1;
 let fieldVisible  = true;
 let centerVisible = false;
@@ -443,9 +540,12 @@ const btnCenter = document.getElementById('btnCenter');
 const btnMorph  = document.getElementById('btnMorph');
 
 function updateVisibility() {
-  straightFieldGroup.visible = fieldVisible && !isLoop;
-  loopFieldGroup.visible     = fieldVisible && isLoop;
-  centerArrowGroup.visible   = centerVisible && isLoop;
+  /* ★ 形變中一律隱藏磁力線，直到形狀完全切換完成才依狀態顯示 */
+  const showFields = fieldVisible && !isMorphing;
+
+  straightFieldGroup.visible = showFields && !isLoop;
+  loopFieldGroup.visible     = showFields && isLoop;
+  centerArrowGroup.visible   = showFields && centerVisible && isLoop;
 
   btnCenter.classList.toggle('hidden', !isLoop);
 }
@@ -491,6 +591,10 @@ btnCenter.addEventListener('click', () => {
 btnMorph.addEventListener('click', () => {
   isLoop = !isLoop;
   morphTarget = isLoop ? 1 : 0;
+
+  /* ★ 若目標與當前一致（極少數連點情況），視為無需形變 */
+  isMorphing = (morph !== morphTarget);
+
   updateVisibility();
   updateButtonText();
 });
@@ -506,15 +610,19 @@ function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t  = clock.elapsedTime;
 
+  /* ── 形變動畫（完成時恢復磁力線顯示） ── */
   if (morph !== morphTarget) {
     const d = Math.sign(morphTarget - morph);
     morph += d * 2.2 * dt;
     if ((d > 0 && morph >= morphTarget) || (d < 0 && morph <= morphTarget)) {
       morph = morphTarget;
+      isMorphing = false;          // ★ 形變完成
+      updateVisibility();          // ★ 依當前狀態顯示對應的磁力線
     }
     rebuildWire();
   }
 
+  /* ── 電流球 ── */
   for (const b of balls) {
     b.t += dirSign * BALL_SPEED * dt;
     b.t = ((b.t % 1) + 1) % 1;
@@ -526,6 +634,7 @@ function animate() {
     b.glow.scale.setScalar(1.5 * s);
   }
 
+  /* ── 直導線磁場箭頭流動 ── */
   if (straightFieldGroup.visible) {
     for (const a of straightRingArrows) {
       a.theta -= dirSign * a.omega * dt;
@@ -536,12 +645,14 @@ function animate() {
     }
   }
 
+  /* ── 圓導線磁場箭頭流動 ── */
   for (const a of loopArrows) {
     a.phi += dirSign * a.omega * dt;
     a.phi = ((a.phi % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
   }
   if (loopFieldGroup.visible) updateLoopArrows();
 
+  /* ── 標籤位置 ── */
   currentLabel.position.set(
     THREE.MathUtils.lerp(3.0, LOOP_R + 2.2, morph),
     THREE.MathUtils.lerp(8.3, LOOP_R + 1.4, morph),

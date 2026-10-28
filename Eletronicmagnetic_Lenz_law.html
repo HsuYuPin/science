@@ -2,15 +2,19 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>電磁感應 — 法拉第與冷次定律</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{width:100%;height:100%;overflow:hidden;background:#06080f;}
   canvas{display:block;touch-action:none;}
 
+  /* ───────── 左上 HUD ───────── */
   #hud{
-    position:fixed;top:16px;left:16px;z-index:10;
+    position:fixed;
+    top:calc(16px + env(safe-area-inset-top));
+    left:calc(16px + env(safe-area-inset-left));
+    z-index:10;
     font-family:-apple-system,"PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
     color:#cfe2ff;
     background:rgba(10,18,34,.78);
@@ -32,6 +36,7 @@
     background:rgba(20,35,60,.85);
     color:#9fb8d8;
     transition:all .18s ease;
+    -webkit-tap-highlight-color:transparent;
   }
   button.tbtn:hover{background:rgba(35,60,100,.92);color:#dcecff;}
   button.tbtn:active{transform:scale(.97);}
@@ -77,8 +82,12 @@
   #status .dot.n{background:#ff6b7d;box-shadow:0 0 8px #ff6b7d;}
   #status .dot.s{background:#4f9bff;box-shadow:0 0 8px #4f9bff;}
 
+  /* ───────── 右下操作提示 ───────── */
   #hint{
-    position:fixed;right:16px;bottom:16px;z-index:10;
+    position:fixed;
+    right:calc(16px + env(safe-area-inset-right));
+    bottom:calc(16px + env(safe-area-inset-bottom));
+    z-index:10;
     font-family:-apple-system,"PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
     font-size:11px;color:#5f7fa5;line-height:1.8;
     background:rgba(10,18,34,.7);
@@ -89,8 +98,12 @@
   }
   #hint b{color:#8fb4dc;font-weight:600;}
 
+  /* ───────── 左下方向 ───────── */
   #compass{
-    position:fixed;bottom:16px;left:16px;z-index:10;
+    position:fixed;
+    bottom:calc(16px + env(safe-area-inset-bottom));
+    left:calc(16px + env(safe-area-inset-left));
+    z-index:10;
     font-family:-apple-system,"PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
     font-size:10.5px;color:#7fa3cc;line-height:1.7;
     background:rgba(10,18,34,.7);
@@ -99,14 +112,112 @@
     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
     user-select:none;
   }
-  #compass .cw{
-    display:flex;align-items:center;gap:5px;
-    color:#a8c8e8;
-  }
+  #compass .cw{display:flex;align-items:center;gap:5px;color:#a8c8e8;}
   #compass .cw span{color:#5f8fbf;font-size:13px;font-weight:700;}
+
+  /* ───────── 右上全螢幕按鈕 ───────── */
+  #fsBtn{
+    position:fixed;
+    top:calc(16px + env(safe-area-inset-top));
+    right:calc(16px + env(safe-area-inset-right));
+    z-index:20;
+    width:44px;height:44px;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:12px;cursor:pointer;
+    background:rgba(10,18,34,.78);
+    border:1px solid rgba(80,150,255,.28);
+    color:#9fc4ee;
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    transition:all .18s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #fsBtn:hover{background:rgba(35,60,100,.92);color:#dcecff;}
+  #fsBtn:active{transform:scale(.94);}
+  #fsBtn svg{
+    width:22px;height:22px;
+    fill:none;stroke:currentColor;
+    stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+    display:block;
+  }
+  #fsBtn .ico-exit{display:none;}
+  #fsBtn.fs-active .ico-enter{display:none;}
+  #fsBtn.fs-active .ico-exit{display:block;}
+
+  /* ═══════════════════════════════════════════
+     手機 / 觸控裝置：精簡 UI
+     ═══════════════════════════════════════════ */
+  @media (max-width: 820px), (hover: none) and (pointer: coarse) {
+
+    /* 1. 隱藏下方兩個文字框 */
+    #compass, #hint{ display:none !important; }
+
+    /* 2. 隱藏 HUD 最下方的狀態列，省出空間 */
+    #status{ display:none !important; }
+
+    /* 3. HUD 整體縮小、更緊湊 */
+    #hud{
+      top:calc(10px + env(safe-area-inset-top));
+      left:calc(10px + env(safe-area-inset-left));
+      /* 讓出右上角全螢幕按鈕的寬度 */
+      width:min(262px, calc(100vw - 76px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+      padding:10px 12px;
+      border-radius:12px;
+    }
+    #hud h1{ font-size:13px; margin-bottom:2px; }
+    #hud .sub{ font-size:10px; margin-bottom:9px; line-height:1.45; }
+
+    .row{ margin-bottom:7px; gap:6px; }
+    button.tbtn{ padding:8px 4px; font-size:11.5px; border-radius:8px; }
+
+    .slider-wrap .srow{ font-size:10px; margin-bottom:5px; }
+    .slider-wrap .srow b{ font-size:11.5px; }
+
+    /* 滑桿放大，方便手指操作 */
+    input[type=range]{ height:8px; border-radius:4px; }
+    input[type=range]::-webkit-slider-thumb{
+      width:22px;height:22px;border-width:2px;
+    }
+    input[type=range]::-moz-range-thumb{
+      width:20px;height:20px;border-width:2px;
+    }
+
+    /* 全螢幕按鈕位置微調 */
+    #fsBtn{
+      top:calc(10px + env(safe-area-inset-top));
+      right:calc(10px + env(safe-area-inset-right));
+      width:42px;height:42px;
+      border-radius:11px;
+    }
+    #fsBtn svg{ width:21px;height:21px; }
+  }
+
+  /* 手機橫向且高度很小的情況，再壓縮一層 */
+  @media (max-height: 480px) and (orientation: landscape){
+    #hud{ padding:8px 10px; }
+    #hud h1{ font-size:12px; }
+    #hud .sub{ display:none; }
+    .row{ margin-bottom:5px; }
+    button.tbtn{ padding:6px 4px; font-size:11px; }
+  }
 </style>
 </head>
 <body>
+
+<!-- 右上全螢幕按鈕 -->
+<button id="fsBtn" aria-label="切換全螢幕">
+  <svg class="ico-enter" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M4 9V4h5"/>
+    <path d="M20 9V4h-5"/>
+    <path d="M4 15v5h5"/>
+    <path d="M20 15v5h-5"/>
+  </svg>
+  <svg class="ico-exit" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M9 4v5H4"/>
+    <path d="M15 4v5h5"/>
+    <path d="M9 20v-5H4"/>
+    <path d="M15 20v-5h5"/>
+  </svg>
+</button>
 
 <div id="hud">
   <h1>電磁感應：法拉第與冷次定律</h1>
@@ -165,16 +276,60 @@ const COIL_RAD   = 1.8;
 const COIL_TURNS = 10;
 const MAG_LEN    = 3.0;
 const MAG_RAD    = 0.6;
-
-/* ★ 磁鐵移動範圍：原本 ±8.5，放大 1.5 倍 → ±12.75 */
 const X_LIMIT    = 12.75;
 
-/* ★ 亮點流速：0.09 */
-const DOT_COUNT  = 72;
 const FLOW_SPEED = 0.09;
+const ARROW_COUNT = 26;
 
 const SEGS  = 24;
 const SIGMA = 2.2;
+
+/* ═══════════════════════════════════════════════
+   全螢幕切換
+   ═══════════════════════════════════════════════ */
+const fsBtn = document.getElementById('fsBtn');
+
+function fullscreenElement() {
+  return document.fullscreenElement
+      || document.webkitFullscreenElement
+      || document.msFullscreenElement
+      || null;
+}
+
+function updateFsBtnState() {
+  fsBtn.classList.toggle('fs-active', !!fullscreenElement());
+}
+
+fsBtn.addEventListener('click', () => {
+  const el = document.documentElement;
+  try {
+    if (!fullscreenElement()) {
+      const req = el.requestFullscreen
+               || el.webkitRequestFullscreen
+               || el.msRequestFullscreen;
+      if (req) {
+        const p = req.call(el);
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      }
+    } else {
+      const exit = document.exitFullscreen
+                || document.webkitExitFullscreen
+                || document.msExitFullscreen;
+      if (exit) {
+        const p = exit.call(document);
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      }
+    }
+  } catch (e) { /* 部分瀏覽器不支援時靜默忽略 */ }
+});
+
+['fullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange'].forEach(ev => {
+  document.addEventListener(ev, () => {
+    updateFsBtnState();
+    // 保險起見再觸發一次 resize，讓畫面正確填滿
+    window.dispatchEvent(new Event('resize'));
+  });
+});
 
 /* ═══════════════════════════════════════════════
    場景 / 相機 / 渲染器
@@ -188,7 +343,6 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x06080f);
 
-/* 相機稍微拉遠，讓 ±12.75 的移動範圍都能看見 */
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 500);
 camera.position.set(8, 18, 32);
 
@@ -222,7 +376,7 @@ grid.material.transparent = true;
 grid.material.opacity = 0.75;
 scene.add(grid);
 
-/* 中心軸參考線（延長至整個移動範圍） */
+/* 中心軸參考線 */
 {
   const g = new THREE.BufferGeometry().setFromPoints([
     new THREE.Vector3(-16.5, 0, 0),
@@ -403,21 +557,44 @@ magSLabel.position.set(-halfLen / 2 + 0.1, MAG_RAD + 0.55, 0);
 magnetGroup.add(magSLabel);
 
 /* ═══════════════════════════════════════════════
-   感應電流亮點
+   感應電流：立體箭頭流
    ═══════════════════════════════════════════════ */
-const dotTex = makeGlowTexture(0xffcc44);
-const dotMat = new THREE.SpriteMaterial({
-  map: dotTex, color: 0xffdd77,
-  transparent: true, blending: THREE.AdditiveBlending,
-  depthWrite: false, opacity: 0
+const flowArrowGeo = new THREE.ConeGeometry(0.19, 0.56, 6);
+flowArrowGeo.translate(0, 0.28, 0);
+
+const flowMatMain = new THREE.MeshBasicMaterial({
+  color: 0xffe066, transparent: true, opacity: 0,
+  blending: THREE.AdditiveBlending, depthWrite: false
 });
 
-const dots = [];
-for (let i = 0; i < DOT_COUNT; i++) {
-  const sp = new THREE.Sprite(dotMat);
-  sp.scale.set(0.48, 0.48, 1);
-  scene.add(sp);
-  dots.push(sp);
+const flowMatTails = [
+  new THREE.MeshBasicMaterial({ color: 0xffd040, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false }),
+  new THREE.MeshBasicMaterial({ color: 0xffa828, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false }),
+  new THREE.MeshBasicMaterial({ color: 0xff7a18, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false })
+];
+
+const TAIL_SCALES = [0.70, 0.50, 0.34];
+const TAIL_ALPHAS = [0.55, 0.30, 0.14];
+const TAIL_DU     = 0.0052;
+
+const flowArrows = [];
+for (let i = 0; i < ARROW_COUNT; i++) {
+  const main = new THREE.Mesh(flowArrowGeo, flowMatMain);
+  main.frustumCulled = false;
+  scene.add(main);
+
+  const tails = [];
+  for (let k = 0; k < 3; k++) {
+    const t = new THREE.Mesh(flowArrowGeo, flowMatTails[k]);
+    t.scale.setScalar(TAIL_SCALES[k]);
+    t.frustumCulled = false;
+    scene.add(t);
+    tails.push(t);
+  }
+  flowArrows.push({ main, tails });
 }
 
 function helixPos(u, out) {
@@ -425,6 +602,21 @@ function helixPos(u, out) {
   const x = -COIL_LEN / 2 + u * COIL_LEN;
   const th = u * Math.PI * 2 * COIL_TURNS;
   return out.set(x, COIL_RAD * Math.cos(th), COIL_RAD * Math.sin(th));
+}
+
+const _tangent = new THREE.Vector3();
+const _q = new THREE.Quaternion();
+const _v = new THREE.Vector3();
+const UP = new THREE.Vector3(0, 1, 0);
+
+function helixTangent(u, dir, out) {
+  u = ((u % 1) + 1) % 1;
+  const th = u * Math.PI * 2 * COIL_TURNS;
+  const dth = Math.PI * 2 * COIL_TURNS;
+  out.set(COIL_LEN, -COIL_RAD * Math.sin(th) * dth, COIL_RAD * Math.cos(th) * dth);
+  out.normalize();
+  if (dir < 0) out.negate();
+  return out;
 }
 
 /* ═══════════════════════════════════════════════
@@ -507,16 +699,11 @@ let prevFlux = 0;
 
 let lastPoleKey = '';
 
-const _tmpVec = new THREE.Vector3();
-
 function fmtPos(v) {
   const s = v.toFixed(1);
   return v > 0.05 ? '+' + s : s;
 }
 
-/* ═══════════════════════════════════════════════
-   磁通量模型（含線圈外漏磁）
-   ═══════════════════════════════════════════════ */
 function computeFlux(x) {
   const xL = x - halfLen;
   const xR = x + halfLen;
@@ -568,7 +755,7 @@ function animate(now) {
   const dt = Math.min((now - prevTime) / 1000, 0.05);
   prevTime = now;
 
-  /* ── 自動移動 ── */
+  /* 自動移動 */
   const AUTO_SPEED = 3.0;
   if (autoMode === 1) {
     targetX += dt * AUTO_SPEED;
@@ -582,16 +769,16 @@ function animate(now) {
     posVal.textContent = fmtPos(targetX);
   }
 
-  /* ── 磁鐵平滑移動 ── */
+  /* 磁鐵平滑移動 */
   magnetX += (targetX - magnetX) * Math.min(1, dt * 14);
   magnetGroup.position.x = magnetX;
 
-  /* ── 磁通量與其變化率（含線圈外漏磁） ── */
+  /* 磁通量與變化率 */
   const flux = computeFlux(magnetX);
   const dFlux = (flux - prevFlux) / Math.max(dt, 1e-4);
   prevFlux = flux;
 
-  /* ── 感應電流：冷次定律 ── */
+  /* 感應電流 */
   let tgtSign = currentSign;
   let tgtIntensity = 0;
 
@@ -600,7 +787,6 @@ function animate(now) {
     tgtIntensity = Math.min(1, 0.20 + Math.abs(dFlux) * 1.3);
   }
 
-  /* ── 翻轉磁極暫態脈衝 ── */
   if (flipPulse > 0) {
     tgtSign = -magnetDir;
     tgtIntensity = Math.max(tgtIntensity, flipPulse);
@@ -611,19 +797,41 @@ function animate(now) {
   currentIntensity += (tgtIntensity - currentIntensity) * Math.min(1, dt * 12);
   if (currentIntensity < 0.004) currentIntensity = 0;
 
-  /* ── 亮點相位流動（0.09） ── */
+  /* 相位流動 */
   phase += currentSign * currentIntensity * FLOW_SPEED * dt;
 
-  dotMat.opacity = currentIntensity;
-  const dotScale = 0.34 + 0.24 * currentIntensity;
-  for (let i = 0; i < DOT_COUNT; i++) {
-    const u = (i / DOT_COUNT) + phase;
-    helixPos(u, _tmpVec);
-    dots[i].position.copy(_tmpVec);
-    dots[i].scale.set(dotScale, dotScale, 1);
+  /* 更新箭頭流 */
+  const dir = currentSign;
+  const visible = currentIntensity > 0.015;
+
+  flowMatMain.opacity     = currentIntensity * 0.95;
+  flowMatTails[0].opacity = currentIntensity * TAIL_ALPHAS[0];
+  flowMatTails[1].opacity = currentIntensity * TAIL_ALPHAS[1];
+  flowMatTails[2].opacity = currentIntensity * TAIL_ALPHAS[2];
+
+  for (let i = 0; i < ARROW_COUNT; i++) {
+    const A = flowArrows[i];
+    const u0 = i / ARROW_COUNT + phase;
+
+    helixPos(u0, _v);
+    A.main.position.copy(_v);
+    helixTangent(u0, dir, _tangent);
+    _q.setFromUnitVectors(UP, _tangent);
+    A.main.quaternion.copy(_q);
+    A.main.visible = visible;
+
+    for (let k = 0; k < 3; k++) {
+      const uT = u0 - dir * TAIL_DU * (k + 1);
+      helixPos(uT, _v);
+      A.tails[k].position.copy(_v);
+      helixTangent(uT, dir, _tangent);
+      _q.setFromUnitVectors(UP, _tangent);
+      A.tails[k].quaternion.copy(_q);
+      A.tails[k].visible = visible;
+    }
   }
 
-  /* ── 更新線圈 N / S 極標示 ── */
+  /* 線圈 N / S 極標示 */
   if (currentIntensity > 0.05) {
     const rightIsN = currentSign > 0;
     const key = rightIsN ? 'N' : 'S';

@@ -111,8 +111,8 @@
     background: rgba(30,48,80,.9);
   }
 
-  /* 手機版優化 */
-  @media (max-width: 720px) {
+  /* 手機版優化（含直立與橫屏） */
+  @media (max-width: 720px), (max-height: 500px) and (orientation: landscape) {
     .hud-title { top:12px; left:12px; padding:10px 14px; }
     .hud-title h1 { font-size:14px; }
     .hud-title p { font-size:11px; }

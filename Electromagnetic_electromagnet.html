@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>電磁鐵結構與極性 · 3D 互動演示</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body {
+    width:100%; height:100%; overflow:hidden;
+    background:#070b14;
+    font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,-apple-system,sans-serif;
+    color:#e8f0ff; user-select:none;
+  }
+  #canvas-wrap { position:fixed; inset:0; }
+
+  .hud { position:fixed; z-index:10; pointer-events:none; }
+
+  .hud-title {
+    top:22px; left:26px;
+    background:linear-gradient(135deg, rgba(20,32,56,.85), rgba(12,20,36,.7));
+    border:1px solid rgba(90,160,255,.25);
+    border-radius:14px; padding:14px 20px;
+    backdrop-filter:blur(8px);
+    box-shadow:0 8px 30px rgba(0,0,0,.5);
+  }
+  .hud-title h1 {
+    font-size:19px; font-weight:800; letter-spacing:1px;
+    background:linear-gradient(90deg,#6fd0ff,#a98bff,#ff8f6f);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .hud-title p { font-size:12.5px; color:#8ea4c8; margin-top:6px; }
+
+  .hud-legend {
+    top:22px; right:26px;
+    background:rgba(14,22,38,.8);
+    border:1px solid rgba(90,160,255,.2);
+    border-radius:12px; padding:12px 16px;
+    font-size:12.5px; line-height:1.9; color:#b6c8e6;
+    backdrop-filter:blur(8px);
+  }
+  .hud-legend .dot {
+    display:inline-block; width:10px; height:10px; border-radius:50%;
+    margin-right:8px; vertical-align:middle;
+  }
+  .dot.yellow { background:#ffd83d; box-shadow:0 0 10px #ffd83d; }
+  .dot.red    { background:#ff3b30; box-shadow:0 0 10px #ff3b30; }
+  .dot.blue   { background:#3b8cff; box-shadow:0 0 10px #3b8cff; }
+  .dot.teal   { background:#4dffd2; box-shadow:0 0 10px #4dffd2; }
+  .dot.cyan   { background:#5fc8ff; box-shadow:0 0 10px #5fc8ff; }
+
+  .hud-bottom {
+    bottom:26px; left:50%; transform:translateX(-50%);
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+    pointer-events:none;
+  }
+
+  #flipBtn {
+    pointer-events:auto;
+    padding:14px 34px;
+    font-size:16px; font-weight:800; letter-spacing:2px;
+    color:#04121f;
+    background:linear-gradient(135deg,#6fe3ff,#5ea9ff 60%,#9b7bff);
+    border:none; border-radius:999px; cursor:pointer;
+    box-shadow:0 6px 26px rgba(80,170,255,.45), inset 0 1px 0 rgba(255,255,255,.6);
+    transition:transform .12s ease, box-shadow .2s ease;
+    font-family:inherit;
+  }
+  #flipBtn:hover { transform:translateY(-2px); box-shadow:0 10px 34px rgba(80,170,255,.65), inset 0 1px 0 rgba(255,255,255,.6); }
+  #flipBtn:active { transform:translateY(1px) scale(.985); }
+
+  #status {
+    font-size:15px; font-weight:700; letter-spacing:1px;
+    padding:8px 22px; border-radius:999px;
+    background:rgba(14,22,38,.85);
+    border:1px solid rgba(90,160,255,.28);
+    backdrop-filter:blur(8px);
+    transition:color .3s ease;
+    white-space:nowrap;
+  }
+  #status .n { color:#ff5b52; }
+  #status .s { color:#5b9bff; }
+
+  .tip {
+    font-size:11.5px; color:#6e82a6; letter-spacing:.5px; text-align:center;
+  }
+
+  /* 全螢幕按鈕（預設隱藏，手機版顯示） */
+  #fullscreenBtn {
+    display: none;
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 20;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(14,22,38,.85);
+    border: 1px solid rgba(90,160,255,.28);
+    color: #e8f0ff;
+    font-size: 20px;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    pointer-events: auto;
+    align-items: center;
+    justify-content: center;
+    transition: transform .2s ease, background .2s ease;
+  }
+  #fullscreenBtn:hover {
+    transform: scale(1.1);
+    background: rgba(30,48,80,.9);
+  }
+
+  /* 手機版優化 */
+  @media (max-width: 720px) {
+    .hud-title { top:12px; left:12px; padding:10px 14px; }
+    .hud-title h1 { font-size:14px; }
+    .hud-title p { font-size:11px; }
+    
+    /* 隱藏右上角說明框 */
+    .hud-legend { display: none; }
+    
+    /* 顯示全螢幕按鈕 */
+    #fullscreenBtn { display: flex; }
+    
+    /* 隱藏下方說明與最下方文字 */
+    #status { display: none; }
+    .tip { display: none; }
+    
+    /* 調整底部按鈕位置，只留反轉按鈕 */
+    .hud-bottom { bottom: 20px; gap: 0; }
+    #flipBtn { padding:11px 24px; font-size:14px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap"></div>
+
+<!-- 手機版全螢幕按鈕 -->
+<button id="fullscreenBtn" title="全螢幕">⛶</button>
+
+<div class="hud hud-title">
+  <h1>電磁鐵 · 電流方向與極性</h1>
+  <p>拖曳旋轉 · 滾輪縮放 — 追蹤黃色光點流向</p>
+</div>
+
+<div class="hud hud-legend">
+  <div><span class="dot yellow"></span>電流方向</div>
+  <div><span class="dot red"></span>N 極</div>
+  <div><span class="dot blue"></span>S 極</div>
+  <div><span class="dot teal"></span>內部磁力線 (S→N)</div>
+  <div><span class="dot cyan"></span>外部磁力線 (N→S)</div>
+</div>
+
+<div class="hud hud-bottom">
+  <div id="status">N 極在 <span class="n">右端</span> · S 極在 <span class="s">左端</span></div>
+  <button id="flipBtn">⇄ 反轉電流方向</button>
+  <div class="tip">右手定則：右手握住線圈，四指順著電流方向，拇指所指的一端就是 N 極｜鐵芯內直線與箭頭＝內部磁力線（S→N），外部藍色弧線＝外部磁力線（N→S）</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ============================================================
+   全螢幕功能
+   ============================================================ */
+const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+fullscreenBtn.addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(err => {
+      console.log(`全螢幕啟動失敗: ${err.message}`);
+    });
+  } else {
+    document.exitFullscreen();
+  }
+});
+
+document.addEventListener('fullscreenchange', () => {
+  if (document.fullscreenElement) {
+    fullscreenBtn.innerHTML = '✕';
+    fullscreenBtn.title = '退出全螢幕';
+  } else {
+    fullscreenBtn.innerHTML = '⛶';
+    fullscreenBtn.title = '全螢幕';
+  }
+});
+
+/* ============================================================
+   基本設定
+   ============================================================ */
+const CFG = {
+  coreRadius: 0.50,
+  coreLength: 4.00,
+  coilRadius: 0.63,
+  coilLength: 3.60,
+  turns: 8,
+  wireRadius: 0.055,
+  batteryY: -2.20,
+  batteryHalf: 1.15,
+};
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x070b14);
+scene.fog = new THREE.Fog(0x070b14, 26, 52);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 300);
+camera.position.set(6.5, 4.6, 8.8);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+document.getElementById('canvas-wrap').appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, -0.35, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.075;
+controls.minDistance = 4.5;
+controls.maxDistance = 26;
+controls.maxPolarAngle = Math.PI * 0.88;
+
+/* ============================================================
+   燈光
+   ============================================================ */
+scene.add(new THREE.HemisphereLight(0x9dc4ff, 0x0a1220, 1.35));
+
+const key = new THREE.DirectionalLight(0xffffff, 2.4);
+key.position.set(7, 11, 8);
+scene.add(key);
+
+const fill = new THREE.DirectionalLight(0x5f9dff, 1.1);
+fill.position.set(-9, -2, -7);
+scene.add(fill);
+
+const rim = new THREE.PointLight(0xff9c55, 22, 26);
+rim.position.set(0, -5.5, 5);
+scene.add(rim);
+
+const glow = new THREE.PointLight(0x6fd0ff, 16, 22);
+glow.position.set(0, 5, -3);
+scene.add(glow);
+
+/* ============================================================
+   地面網格
+   ============================================================ */
+const grid = new THREE.GridHelper(32, 32, 0x1c3050, 0x101c2e);
+grid.position.y = -3.7;
+grid.material.transparent = true;
+grid.material.opacity = 0.55;
+scene.add(grid);
+
+/* ============================================================
+   工具：圓形徽章 Sprite
+   ============================================================ */
+function makeBadge(text, color, scale = 1) {
+  const S = 256;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const ctx = cv.getContext('2d');
+
+  const grd = ctx.createRadialGradient(S * 0.38, S * 0.34, S * 0.05, S / 2, S / 2, S * 0.5);
+  grd.addColorStop(0, '#ffffff');
+  grd.addColorStop(0.30, color);
+  grd.addColorStop(1, color);
+
+  ctx.beginPath();
+  ctx.arc(S / 2, S / 2, S * 0.455, 0, Math.PI * 2);
+  ctx.fillStyle = grd;
+  ctx.fill();
+  ctx.lineWidth = S * 0.042;
+  ctx.strokeStyle = 'rgba(255,255,255,0.92)';
+  ctx.stroke();
+
+  ctx.font = `900 ${S * 0.56}px "Arial Black", Arial, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = S * 0.035;
+  ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+  ctx.strokeText(text, S / 2, S / 2 + S * 0.045);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(text, S / 2, S / 2 + S * 0.045);
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: tex, transparent: true, depthWrite: false
+  }));
+  spr.scale.setScalar(scale);
+  return spr;
+}
+
+/* ============================================================
+   工具：純文字 Sprite（電池正負符號用）
+   ============================================================ */
+function makePlainText(text, color, scale = 1) {
+  const S = 256;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const ctx = cv.getContext('2d');
+
+  ctx.font = `900 ${S * 0.74}px "Arial Black", Arial, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.lineWidth = S * 0.10;
+  ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+  ctx.lineJoin = 'round';
+  ctx.strokeText(text, S / 2, S / 2 + S * 0.02);
+
+  ctx.fillStyle = color;
+  ctx.fillText(text, S / 2, S / 2 + S * 0.02);
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+
+  const spr = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: tex, transparent: true, depthWrite: false
+  }));
+  spr.scale.setScalar(scale);
+  return spr;
+}
+
+/* ============================================================
+   鐵芯（半透明）
+   ============================================================ */
+const coreGeo = new THREE.CylinderGeometry(
+  CFG.coreRadius, CFG.coreRadius, CFG.coreLength, 64, 1, false
+);
+coreGeo.rotateZ(Math.PI / 2);
+
+const coreMat = new THREE.MeshStandardMaterial({
+  color: 0xaebbd0,
+  metalness: 0.30,
+  roughness: 0.15,
+  transparent: true,
+  opacity: 0.42,
+  depthWrite: false,
+  side: THREE.FrontSide,
+});
+const core = new THREE.Mesh(coreGeo, coreMat);
+core.renderOrder = 2;
+scene.add(core);
+
+/* ============================================================
+   鐵芯端蓋（半透明）
+   ============================================================ */
+const capGeo = new THREE.CylinderGeometry(0.525, 0.525, 0.14, 48);
+capGeo.rotateZ(Math.PI / 2);
+
+const matN = new THREE.MeshStandardMaterial({
+  color: 0xff3b30,
+  emissive: 0x6a0d08,
+  emissiveIntensity: 1.0,
+  metalness: 0.35,
+  roughness: 0.45,
+  transparent: true,
+  opacity: 0.55,
+  depthWrite: false,
+});
+const matS = new THREE.MeshStandardMaterial({
+  color: 0x3b8cff,
+  emissive: 0x0a2a6a,
+  emissiveIntensity: 1.0,
+  metalness: 0.35,
+  roughness: 0.45,
+  transparent: true,
+  opacity: 0.55,
+  depthWrite: false,
+});
+
+const capLeft = new THREE.Mesh(capGeo, matS);
+capLeft.position.x = -CFG.coreLength / 2 - 0.08;
+capLeft.renderOrder = 3;
+
+const capRight = new THREE.Mesh(capGeo, matN);
+capRight.position.x = CFG.coreLength / 2 + 0.08;
+capRight.renderOrder = 3;
+
+scene.add(capLeft, capRight);
+
+/* ============================================================
+   內部磁力線（6條細直線，帶移動箭頭，S→N）
+   ============================================================ */
+const innerGroup = new THREE.Group();
+const innerArrows = [];
+const innerRadius = 0.24;
+const innerLength = 3.6;
+const innerStartX = -1.8;
+const innerEndX = 1.8;
+
+const innerLineMat = new THREE.MeshStandardMaterial({
+  color: 0x4dffd2,
+  emissive: 0x1fe0b0,
+  emissiveIntensity: 1.2,
+  transparent: true,
+  opacity: 0.35,
+  metalness: 0.1,
+  roughness: 0.5,
+});
+
+const innerArrowGeo = new THREE.ConeGeometry(0.06, 0.22, 8);
+innerArrowGeo.rotateX(Math.PI / 2);
+const innerArrowMat = new THREE.MeshStandardMaterial({
+  color: 0x9affea,
+  emissive: 0x4dffd2,
+  emissiveIntensity: 2.5,
+  metalness: 0.1,
+  roughness: 0.4,
+});
+
+const INNER_LINES = 6;
+for (let i = 0; i < INNER_LINES; i++) {
+  const phi = (i / INNER_LINES) * Math.PI * 2;
+  const y = innerRadius * Math.cos(phi);
+  const z = innerRadius * Math.sin(phi);
+
+  const lineGeo = new THREE.CylinderGeometry(0.012, 0.012, innerLength, 6);
+  lineGeo.rotateZ(Math.PI / 2);
+  const lineMesh = new THREE.Mesh(lineGeo, innerLineMat);
+  lineMesh.position.set(0, y, z);
+  innerGroup.add(lineMesh);
+
+  for (let k = 0; k < 3; k++) {
+    const arrow = new THREE.Mesh(innerArrowGeo, innerArrowMat);
+    arrow.userData.lineIndex = i;
+    arrow.userData.offset = k / 3;
+    arrow.userData.y = y;
+    arrow.userData.z = z;
+    innerGroup.add(arrow);
+    innerArrows.push(arrow);
+  }
+}
+scene.add(innerGroup);
+
+let innerProgress = 0;
+const zAxis = new THREE.Vector3(0, 0, 1);
+const dirPlusX = new THREE.Vector3(1, 0, 0);
+const dirMinusX = new THREE.Vector3(-1, 0, 0);
+
+function updateInnerFieldLines(dt) {
+  innerProgress = (innerProgress + dt * 0.15) % 1;
+
+  for (const arrow of innerArrows) {
+    let t = (arrow.userData.offset + innerProgress) % 1;
+    let posX, dir;
+    
+    if (currentDir === 1) {
+      posX = innerStartX + innerLength * t;
+      dir = dirPlusX;
+    } else {
+      posX = innerEndX - innerLength * t;
+      dir = dirMinusX;
+    }
+    
+    arrow.position.set(posX, arrow.userData.y, arrow.userData.z);
+    arrow.quaternion.setFromUnitVectors(zAxis, dir);
+  }
+}
+
+/* ============================================================
+   外部磁力線（N → S，射出與回收）
+   ============================================================ */
+const flGroup = new THREE.Group();
+const flCurves = [];
+const flArrows = [];
+
+const flLineMat = new THREE.MeshStandardMaterial({
+  color: 0x5fc8ff,
+  emissive: 0x2a88d0,
+  emissiveIntensity: 1.5,
+  transparent: true,
+  opacity: 0.55,
+  metalness: 0.1,
+  roughness: 0.4,
+});
+
+const flArrowGeo = new THREE.ConeGeometry(0.085, 0.28, 8);
+flArrowGeo.rotateX(Math.PI / 2);
+const flArrowMat = new THREE.MeshStandardMaterial({
+  color: 0x9aeeff,
+  emissive: 0x44ccff,
+  emissiveIntensity: 2.8,
+  metalness: 0.1,
+  roughness: 0.4,
+});
+
+const NUM_LINES = 6;
+const X_POLE = CFG.coreLength / 2;
+const r0 = 0.4;
+const R_mid = 2.6;
+
+for (let i = 0; i < NUM_LINES; i++) {
+  const phi = (i / NUM_LINES) * Math.PI * 2;
+  
+  const p0 = new THREE.Vector3(X_POLE, r0 * Math.cos(phi), r0 * Math.sin(phi));
+  const p1 = new THREE.Vector3(X_POLE + 0.6, 1.2 * Math.cos(phi), 1.2 * Math.sin(phi));
+  const p2 = new THREE.Vector3(1.2, R_mid * Math.cos(phi), R_mid * Math.sin(phi));
+  const p3 = new THREE.Vector3(-1.2, R_mid * Math.cos(phi), R_mid * Math.sin(phi));
+  const p4 = new THREE.Vector3(-X_POLE - 0.6, 1.2 * Math.cos(phi), 1.2 * Math.sin(phi));
+  const p5 = new THREE.Vector3(-X_POLE, r0 * Math.cos(phi), r0 * Math.sin(phi));
+
+  const pts = [p0, p1, p2, p3, p4, p5];
+  
+  const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal', 0.5);
+  curve.arcLengthDivisions = 2000;
+  flCurves.push(curve);
+
+  const tubeGeo = new THREE.TubeGeometry(curve, 100, 0.022, 8, false);
+  const lineMesh = new THREE.Mesh(tubeGeo, flLineMat);
+  flGroup.add(lineMesh);
+
+  for (let k = 0; k < 3; k++) {
+    const arrow = new THREE.Mesh(flArrowGeo, flArrowMat);
+    arrow.userData.curveIndex = flCurves.length - 1;
+    arrow.userData.offset = k / 3;
+    flGroup.add(arrow);
+    flArrows.push(arrow);
+  }
+}
+
+scene.add(flGroup);
+
+let flProgress = 0;
+const flTmp = new THREE.Vector3();
+const flTangent = new THREE.Vector3();
+
+function updateFieldLines(dt) {
+  flProgress = (flProgress + dt * 0.12 * currentDir + 1) % 1;
+
+  for (const arrow of flArrows) {
+    const curve = flCurves[arrow.userData.curveIndex];
+    const t = (arrow.userData.offset + flProgress) % 1;
+    
+    curve.getPointAt(t, flTmp);
+    arrow.position.copy(flTmp);
+    
+    curve.getTangentAt(t, flTangent);
+    if (currentDir === -1) {
+      flTangent.negate();
+    }
+    arrow.quaternion.setFromUnitVectors(zAxis, flTangent);
+  }
+}
+
+/* ============================================================
+   線圈（螺旋導線）
+   ============================================================ */
+function makeHelixPoints() {
+  const pts = [];
+  const R = CFG.coilRadius, L = CFG.coilLength, N = CFG.turns;
+  const steps = N * 34;
+  for (let i = 0; i <= steps; i++) {
+    const u = i / steps;
+    const x = -L / 2 + L * u;
+    const th = 2 * Math.PI * N * u;
+    pts.push(new THREE.Vector3(x, R * Math.cos(th), R * Math.sin(th)));
+  }
+  return pts;
+}
+
+const helixPts = makeHelixPoints();
+
+const by = CFG.batteryY;
+const bx = CFG.batteryHalf;
+const leadX = 1.80;
+
+const pathPts = [];
+pathPts.push(new THREE.Vector3(-bx, by, 0));
+pathPts.push(new THREE.Vector3(-leadX, by, 0));
+pathPts.push(new THREE.Vector3(-leadX, (by + CFG.coilRadius) / 2, 0));
+pathPts.push(...helixPts);
+pathPts.push(new THREE.Vector3(leadX, (by + CFG.coilRadius) / 2, 0));
+pathPts.push(new THREE.Vector3(leadX, by, 0));
+pathPts.push(new THREE.Vector3(bx, by, 0));
+
+const wireCurve = new THREE.CatmullRomCurve3(pathPts, false, 'centripetal', 0.5);
+wireCurve.arcLengthDivisions = 4000;
+wireCurve.getLength();
+
+const wireMat = new THREE.MeshStandardMaterial({
+  color: 0xd98a3c, metalness: 0.95, roughness: 0.26,
+  emissive: 0x1c0a00, emissiveIntensity: 1.0,
+});
+const tubeGeo = new THREE.TubeGeometry(wireCurve, 1400, CFG.wireRadius, 10, false);
+const wireMesh = new THREE.Mesh(tubeGeo, wireMat);
+scene.add(wireMesh);
+
+/* ============================================================
+   電流光點
+   ============================================================ */
+const NUM_DOTS = 72;
+const dotGeo = new THREE.SphereGeometry(0.072, 12, 12);
+const dotMat = new THREE.MeshStandardMaterial({
+  color: 0xffe066, emissive: 0xffb300, emissiveIntensity: 2.6,
+  metalness: 0.1, roughness: 0.4,
+});
+
+const dots = [];
+for (let i = 0; i < NUM_DOTS; i++) {
+  const d = new THREE.Mesh(dotGeo, dotMat);
+  d.userData.offset = i / NUM_DOTS;
+  scene.add(d);
+  dots.push(d);
+}
+
+let progress = 0;
+let currentDir = 1;
+
+function updateDots() {
+  const v = new THREE.Vector3();
+  for (let i = 0; i < dots.length; i++) {
+    const t = (dots[i].userData.offset + progress) % 1;
+    wireCurve.getPointAt((t + 1) % 1, v);
+    dots[i].position.copy(v);
+  }
+}
+
+/* ============================================================
+   電池
+   ============================================================ */
+const batGeo = new THREE.CylinderGeometry(0.34, 0.34, 2.30, 40);
+batGeo.rotateZ(Math.PI / 2);
+const batMat = new THREE.MeshStandardMaterial({
+  color: 0x2c3a4d, metalness: 0.75, roughness: 0.38,
+  emissive: 0x08111c, emissiveIntensity: 1.0,
+});
+const battery = new THREE.Mesh(batGeo, batMat);
+battery.position.set(0, by, 0);
+scene.add(battery);
+
+const termGeo = new THREE.CylinderGeometry(0.30, 0.30, 0.09, 32);
+termGeo.rotateZ(Math.PI / 2);
+const termMat = new THREE.MeshStandardMaterial({
+  color: 0xc9a24b, metalness: 1.0, roughness: 0.25,
+});
+const termL = new THREE.Mesh(termGeo, termMat);
+termL.position.set(-bx - 0.01, by, 0);
+const termR = new THREE.Mesh(termGeo, termMat);
+termR.position.set(bx + 0.01, by, 0);
+scene.add(termL, termR);
+
+const plusSprite  = makePlainText('+', '#ffffff', 0.62);
+const minusSprite = makePlainText('−', '#ffffff', 0.62);
+scene.add(plusSprite, minusSprite);
+
+/* ============================================================
+   N / S 極標籤
+   ============================================================ */
+const LABEL_X = 2.92;
+const leftN  = makeBadge('N', '#e8392e', 1.0);
+const leftS  = makeBadge('S', '#2f7cf0', 1.0);
+const rightN = makeBadge('N', '#e8392e', 1.0);
+const rightS = makeBadge('S', '#2f7cf0', 1.0);
+
+leftN.position.set(-LABEL_X, 0, 0);
+leftS.position.set(-LABEL_X, 0, 0);
+rightN.position.set(LABEL_X, 0, 0);
+rightS.position.set(LABEL_X, 0, 0);
+
+scene.add(leftN, leftS, rightN, rightS);
+
+/* ============================================================
+   狀態套用
+   ============================================================ */
+const statusEl = document.getElementById('status');
+
+function applyState() {
+  const nOnRight = (currentDir === 1);
+
+  capRight.material = nOnRight ? matN : matS;
+  capLeft.material  = nOnRight ? matS : matN;
+
+  rightN.visible = nOnRight;
+  rightS.visible = !nOnRight;
+  leftN.visible  = !nOnRight;
+  leftS.visible  = nOnRight;
+
+  const plusX  = nOnRight ? -1.38 : 1.38;
+  const minusX = nOnRight ?  1.38 : -1.38;
+  plusSprite.position.set(plusX, by + 0.52, 0);
+  minusSprite.position.set(minusX, by + 0.52, 0);
+
+  if (nOnRight) {
+    statusEl.innerHTML = 'N 極在 <span class="n">右端</span> · S 極在 <span class="s">左端</span>';
+  } else {
+    statusEl.innerHTML = 'N 極在 <span class="n">左端</span> · S 極在 <span class="s">右端</span>';
+  }
+}
+
+/* ============================================================
+   互動
+   ============================================================ */
+document.getElementById('flipBtn').addEventListener('click', () => {
+  currentDir *= -1;
+  applyState();
+});
+
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+    e.preventDefault();
+    currentDir *= -1;
+    applyState();
+  }
+});
+
+/* ============================================================
+   動畫
+   ============================================================ */
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const dt = Math.min(clock.getDelta(), 0.05);
+
+  progress = (progress + dt * 0.070 * currentDir + 1) % 1;
+
+  updateInnerFieldLines(dt);
+  updateFieldLines(dt);
+
+  updateDots();
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+/* ============================================================
+   初始化
+   ============================================================ */
+applyState();
+updateDots();
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>

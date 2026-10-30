@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>地球繞行太陽 3D 演示</title>
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#04060c;}
+  body{
+    font-family:"Microsoft JhengHei","PingFang TC","Noto Sans TC",system-ui,sans-serif;
+    color:#dbe6f5;user-select:none;-webkit-tap-highlight-color:transparent;
+  }
+  canvas{display:block;touch-action:none;}
+
+  /* ===== 舞台（橫豎切換時整體旋轉） ===== */
+  #stage{
+    position:fixed;inset:0;overflow:visible;
+  }
+  #stage > canvas{width:100%;height:100%;display:block;}
+
+  body.rotated #stage{
+    inset:auto;
+    top:50%;left:50%;
+    transform:translate(-50%,-50%) rotate(90deg);
+  }
+
+  /* ===== 標題 ===== */
+  #title{position:fixed;top:18px;left:22px;pointer-events:none;z-index:12;}
+  #title h1{
+    margin:0;font-size:17px;font-weight:600;letter-spacing:2px;
+    color:#a9c8ff;text-shadow:0 0 18px rgba(90,150,255,.7);
+  }
+  #title p{margin:6px 0 0;font-size:12px;color:#6d87ab;letter-spacing:.5px;}
+
+  /* ===== 右上角手機工具 ===== */
+  #mobileTools{
+    position:fixed;top:14px;right:14px;display:flex;gap:8px;z-index:22;
+  }
+  #mobileTools button{
+    background:rgba(20,40,70,.72);
+    border:1px solid rgba(90,150,230,.5);
+    color:#cfe3ff;font-size:12px;padding:7px 12px;border-radius:8px;
+    cursor:pointer;font-family:inherit;white-space:nowrap;
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    transition:.18s;
+  }
+  #mobileTools button:hover{background:rgba(50,100,170,.82);}
+  #mobileTools button:active{transform:scale(.96);}
+
+  /* ===== 季節資訊框 ===== */
+  #infoBox{
+    position:fixed;top:66px;right:14px;width:268px;max-width:calc(100vw - 28px);
+    background:rgba(8,18,34,.93);
+    border:1px solid rgba(110,170,240,.45);
+    border-radius:12px;padding:14px 16px;
+    font-size:12.5px;line-height:1.75;color:#cfe0f5;
+    z-index:15;opacity:0;transform:translateY(-10px);
+    pointer-events:none;
+    transition:opacity .28s ease, transform .28s ease;
+    box-shadow:0 8px 30px rgba(0,0,0,.5);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  }
+  #infoBox.show{opacity:1;transform:translateY(0);pointer-events:auto;}
+  .ib-title{
+    font-size:14px;font-weight:600;color:#9fd0ff;margin-bottom:7px;
+    letter-spacing:1px;
+  }
+  .ib-line{display:flex;justify-content:space-between;gap:10px;}
+  .ib-k{color:#7f9cc0;flex:0 0 auto;}
+  .ib-v{color:#d8ecff;font-weight:600;text-align:right;}
+  .ib-sep{height:1px;background:rgba(110,170,240,.2);margin:8px 0;}
+
+  /* ===== 底部控制面板 ===== */
+  #panel{
+    position:fixed;left:50%;bottom:22px;transform:translateX(-50%);
+    width:min(680px,94vw);
+    background:rgba(9,17,30,.82);
+    border:1px solid rgba(90,150,230,.25);
+    border-radius:16px;padding:16px 20px 14px;
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    box-shadow:0 12px 40px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
+    display:flex;flex-direction:column;gap:11px;
+    z-index:18;
+  }
+  .row{display:flex;align-items:center;gap:12px;font-size:13px;}
+  .row > label{flex:0 0 auto;color:#8fb4e0;letter-spacing:.5px;}
+  input[type="range"]{
+    -webkit-appearance:none;appearance:none;flex:1 1 auto;height:4px;border-radius:2px;
+    background:linear-gradient(90deg,#2b4b7a,#3d6fb0);outline:none;cursor:pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+    background:#8ec0ff;border:2px solid #2b6fd0;
+    box-shadow:0 0 10px rgba(120,180,255,.8);cursor:pointer;
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:14px;height:14px;border-radius:50%;background:#8ec0ff;
+    border:2px solid #2b6fd0;cursor:pointer;
+  }
+  .val{flex:0 0 62px;text-align:right;font-variant-numeric:tabular-nums;color:#cfe3ff;font-size:13px;}
+  .btns{display:flex;gap:10px;flex-wrap:wrap;}
+  button{
+    flex:1 1 auto;background:rgba(60,120,200,.2);
+    border:1px solid rgba(90,150,230,.45);color:#cfe3ff;
+    font-size:13px;padding:7px 12px;border-radius:9px;
+    cursor:pointer;transition:.18s;font-family:inherit;white-space:nowrap;
+  }
+  button:hover{background:rgba(80,150,240,.34);border-color:rgba(120,180,255,.7);}
+  button:active{transform:scale(.97);}
+  button.active{
+    background:rgba(120,190,255,.38);
+    border-color:rgba(170,225,255,.85);
+    color:#fff;
+    box-shadow:0 0 14px rgba(120,190,255,.45);
+  }
+  .btns.seasons button{
+    background:rgba(70,170,130,.16);
+    border-color:rgba(110,220,170,.38);
+    color:#c8f2e0;
+  }
+  .btns.seasons button:hover{
+    background:rgba(100,210,160,.3);
+    border-color:rgba(160,245,205,.7);
+  }
+  #status{
+    display:flex;gap:20px;flex-wrap:wrap;font-size:12.5px;color:#7f9cc0;
+    border-top:1px solid rgba(90,150,230,.15);padding-top:10px;
+  }
+  #status b{color:#a9d0ff;font-weight:600;}
+
+  @media (max-width:560px){
+    #title h1{font-size:14px;} #title p{font-size:11px;}
+    #panel{padding:12px 14px;bottom:12px;gap:9px;}
+    .row{font-size:12px;}
+    button{font-size:11.5px;padding:6px 6px;}
+    #status{font-size:11.5px;gap:12px;}
+    #infoBox{width:230px;font-size:11.5px;padding:11px 13px;}
+    #mobileTools button{font-size:11px;padding:6px 9px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="title">
+    <h1>地球繞行太陽 3D 演示</h1>
+    <p>拖曳旋轉視角 · 滾輪縮放 · 公轉為逆時針</p>
+  </div>
+
+  <div id="mobileTools">
+    <button id="fsBtn">⛶ 全螢幕</button>
+    <button id="rotationBtn">⟳ 畫面轉向</button>
+  </div>
+
+  <div id="infoBox">
+    <div class="ib-title" id="ibTitle">—</div>
+    <div class="ib-line"><span class="ib-k">陽光直射</span><span class="ib-v" id="ibSun">—</span></div>
+    <div class="ib-line"><span class="ib-k">台灣白天</span><span class="ib-v" id="ibDay">—</span></div>
+    <div class="ib-line"><span class="ib-k">台灣夜晚</span><span class="ib-v" id="ibNight">—</span></div>
+    <div class="ib-sep"></div>
+    <div class="ib-line"><span class="ib-k">嘉義正午天頂角</span><span class="ib-v" id="ibZenith">—</span></div>
+    <div class="ib-line"><span class="ib-k">嘉義正午仰角</span><span class="ib-v" id="ibAlt">—</span></div>
+  </div>
+
+  <div id="panel">
+    <div class="row">
+      <label>公轉位置</label>
+      <input id="orbitSlider" type="range" min="0" max="360" step="0.5" value="90" />
+      <span class="val" id="angleVal">90°</span>
+    </div>
+
+    <div class="btns seasons">
+      <button data-angle="90"  data-season="spring">春分</button>
+      <button data-angle="180" data-season="summer">夏至</button>
+      <button data-angle="270" data-season="autumn">秋分</button>
+      <button data-angle="0"   data-season="winter">冬至</button>
+    </div>
+
+    <div class="btns">
+      <button id="playBtn">暫停公轉</button>
+      <button id="globalViewBtn" class="active">整體視角</button>
+      <button id="earthViewBtn">地球視角</button>
+    </div>
+
+    <div id="status">
+      <span>季節：<b id="seasonVal">—</b></span>
+      <span>太陽直射緯度：<b id="declVal">—</b></span>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ==================== 參數 ==================== */
+const ORBIT_R      = 34;
+const EARTH_R      = 1.7;
+const SUN_R        = 3.4;
+const AXIAL_TILT   = THREE.MathUtils.degToRad(23.44);
+
+// 太陽略往冬至方向（+X）偏移，模擬真實系統質心非太陽中心的現象
+const SUN_OFFSET   = new THREE.Vector3(0.9, 0, 0);
+
+// 公轉一圈所需秒數
+const ORBIT_PERIOD = 120;
+// 自轉速率：公轉一圈自轉 365/3 圈（比真實比例慢 3 倍）
+const SPIN_RATIO   = 365 / 3;
+const SPIN_PERIOD  = ORBIT_PERIOD / SPIN_RATIO;
+
+// 整體視角：相機沿 +Z 軸俯視，使冬至（+X）在右、夏至（-X）在左
+const GLOBAL_CAM_POS    = new THREE.Vector3(0, 45, 65);
+const GLOBAL_CAM_TARGET = new THREE.Vector3(0, 0, 0);
+const EARTH_CAM_DIST    = EARTH_R * 5.5;
+const TRANS_DUR         = 1.1;
+
+// 整體視角的「觀看方向」單位向量（由原點指向相機的方向）
+const GLOBAL_VIEW_DIR   = GLOBAL_CAM_POS.clone().normalize();
+
+/* ==================== 舞台 & 渲染器 ==================== */
+const stage = document.getElementById('stage');
+
+const scene = new THREE.Scene();
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 4000);
+camera.position.copy(GLOBAL_CAM_POS);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+stage.insertBefore(renderer.domElement, stage.firstChild);
+
+/* ==================== 自訂軌道控制（支援橫豎旋轉） ==================== */
+class SimpleOrbit {
+  constructor(camera, dom) {
+    this.camera = camera;
+    this.dom = dom;
+    this.target = new THREE.Vector3();
+    this.minDistance = 3;
+    this.maxDistance = 240;
+    this.rotateSpeed = 1.0;
+    this.zoomSpeed = 1.0;
+    this.damping = 0.12;
+    this.rotated = false;
+
+    this._sph = new THREE.Spherical();
+    this._dTheta = 0;
+    this._dPhi = 0;
+    this._scale = 1;
+
+    this._dragging = false;
+    this._px = 0;
+    this._py = 0;
+    this._touchDist = 0;
+
+    const el = dom;
+    el.addEventListener('pointerdown', e => {
+      if (e.button !== undefined && e.button !== 0) return;
+      this._dragging = true;
+      this._px = e.clientX;
+      this._py = e.clientY;
+    });
+    window.addEventListener('pointermove', e => {
+      if (!this._dragging) return;
+      let dx = e.clientX - this._px;
+      let dy = e.clientY - this._py;
+      this._px = e.clientX;
+      this._py = e.clientY;
+
+      const rect = this.dom.getBoundingClientRect();
+      let W = rect.width || 1;
+      let H = rect.height || 1;
+
+      if (this.rotated) {
+        const t = dx;
+        dx = -dy;
+        dy = t;
+        const tmp = W; W = H; H = tmp;
+      }
+
+      this._dTheta -= 2 * Math.PI * dx / W * this.rotateSpeed;
+      this._dPhi   -= 2 * Math.PI * dy / H * this.rotateSpeed;
+    });
+    window.addEventListener('pointerup', () => { this._dragging = false; });
+
+    el.addEventListener('wheel', e => {
+      e.preventDefault();
+      let d = e.deltaY;
+      if (e.deltaMode === 1) d *= 16;
+      else if (e.deltaMode === 2) d *= 100;
+      const f = Math.pow(0.95, this.zoomSpeed);
+      this._scale *= d > 0 ? f : 1 / f;
+    }, { passive: false });
+
+    el.addEventListener('touchstart', e => {
+      if (e.touches.length === 2) {
+        this._touchDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+      }
+    }, { passive: false });
+
+    el.addEventListener('touchmove', e => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const d = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        if (this._touchDist > 0) this._scale *= this._touchDist / d;
+        this._touchDist = d;
+      }
+    }, { passive: false });
+
+    el.addEventListener('touchend', () => { this._touchDist = 0; });
+
+    this.syncFromCamera();
+  }
+
+  syncFromCamera() {
+    const off = new THREE.Vector3().subVectors(this.camera.position, this.target);
+    this._sph.setFromVector3(off);
+  }
+
+  update() {
+    const off = new THREE.Vector3().subVectors(this.camera.position, this.target);
+    this._sph.setFromVector3(off);
+
+    this._sph.theta += this._dTheta;
+    this._sph.phi   += this._dPhi;
+    this._sph.phi = Math.max(0.03, Math.min(Math.PI - 0.03, this._sph.phi));
+
+    this._dTheta *= (1 - this.damping);
+    this._dPhi   *= (1 - this.damping);
+
+    this._sph.radius *= this._scale;
+    this._sph.radius = Math.max(this.minDistance, Math.min(this.maxDistance, this._sph.radius));
+    this._scale = 1 + (this._scale - 1) * (1 - this.damping);
+
+    off.setFromSpherical(this._sph);
+    this.camera.position.copy(this.target).add(off);
+    this.camera.lookAt(this.target);
+  }
+}
+
+const orbit = new SimpleOrbit(camera, renderer.domElement);
+orbit.target.copy(GLOBAL_CAM_TARGET);
+orbit.syncFromCamera();
+
+/* ==================== 星空 ==================== */
+(function buildStars() {
+  const COUNT = 3500;
+  const pos = new Float32Array(COUNT * 3);
+  for (let i = 0; i < COUNT; i++) {
+    const r  = 420 + Math.random() * 700;
+    const th = Math.random() * Math.PI * 2;
+    const ph = Math.acos(2 * Math.random() - 1);
+    pos[i * 3]     = r * Math.sin(ph) * Math.cos(th);
+    pos[i * 3 + 1] = r * Math.cos(ph);
+    pos[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({
+    color: 0xffffff, size: 1.6, sizeAttenuation: true,
+    transparent: true, opacity: 0.85, depthWrite: false
+  })));
+})();
+
+/* ==================== 太陽 ==================== */
+const sun = new THREE.Mesh(
+  new THREE.SphereGeometry(SUN_R, 48, 48),
+  new THREE.MeshBasicMaterial({ color: 0xffe08a })
+);
+sun.position.copy(SUN_OFFSET);
+scene.add(sun);
+
+function makeGlowTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  g.addColorStop(0.00, 'rgba(255,245,205,1)');
+  g.addColorStop(0.18, 'rgba(255,205,95,0.55)');
+  g.addColorStop(0.45, 'rgba(255,150,40,0.18)');
+  g.addColorStop(1.00, 'rgba(255,120,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 256, 256);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: makeGlowTexture(), blending: THREE.AdditiveBlending,
+  transparent: true, depthWrite: false
+}));
+glow.scale.set(26, 26, 1);
+glow.position.copy(SUN_OFFSET);
+scene.add(glow);
+
+/* ---- 放射狀光芒 ---- */
+function makeSunRaysTexture() {
+  const S = 1024;
+  const c = document.createElement('canvas');
+  c.width = c.height = S;
+  const ctx = c.getContext('2d');
+  const cx = S / 2, cy = S / 2;
+
+  const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, S / 2);
+  halo.addColorStop(0.00, 'rgba(255,245,200,0.55)');
+  halo.addColorStop(0.14, 'rgba(255,205,100,0.22)');
+  halo.addColorStop(0.42, 'rgba(255,155,45,0.06)');
+  halo.addColorStop(1.00, 'rgba(255,120,0,0)');
+  ctx.fillStyle = halo;
+  ctx.fillRect(0, 0, S, S);
+
+  const RAYS = 16;
+  for (let i = 0; i < RAYS; i++) {
+    const a      = (i / RAYS) * Math.PI * 2;
+    const isLong = (i % 2 === 0);
+    const len    = isLong ? S * 0.475 : S * 0.335;
+    const halfW  = isLong ? S * 0.030 : S * 0.016;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(a);
+
+    const g = ctx.createLinearGradient(0, 0, len, 0);
+    g.addColorStop(0.00, 'rgba(255,250,215,0.95)');
+    g.addColorStop(0.12, 'rgba(255,225,135,0.72)');
+    g.addColorStop(0.45, 'rgba(255,175,55,0.20)');
+    g.addColorStop(1.00, 'rgba(255,140,20,0)');
+
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(0, -halfW);
+    ctx.lineTo(len, 0);
+    ctx.lineTo(0, halfW);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, S * 0.12);
+  core.addColorStop(0.00, 'rgba(255,255,255,1)');
+  core.addColorStop(0.32, 'rgba(255,248,210,0.95)');
+  core.addColorStop(1.00, 'rgba(255,205,110,0)');
+  ctx.fillStyle = core;
+  ctx.beginPath();
+  ctx.arc(cx, cy, S * 0.12, 0, Math.PI * 2);
+  ctx.fill();
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+const sunRaysTex = makeSunRaysTexture();
+
+const sunRaysA = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: sunRaysTex, blending: THREE.AdditiveBlending,
+  transparent: true, depthWrite: false, opacity: 0.95
+}));
+sunRaysA.scale.set(22, 22, 1);
+sunRaysA.position.copy(SUN_OFFSET);
+scene.add(sunRaysA);
+
+const sunRaysB = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: sunRaysTex, blending: THREE.AdditiveBlending,
+  transparent: true, depthWrite: false, opacity: 0.5
+}));
+sunRaysB.scale.set(15, 15, 1);
+sunRaysB.position.copy(SUN_OFFSET);
+scene.add(sunRaysB);
+
+/* ==================== 光源 ==================== */
+const sunLight = new THREE.PointLight(0xfff4e0, 2.3, 0, 0);
+sunLight.position.copy(SUN_OFFSET);
+scene.add(sunLight);
+scene.add(new THREE.AmbientLight(0x3a5a8c, 0.32));
+
+/* ==================== 黃道面（仍以原點為中心） ==================== */
+const eclipticDisk = new THREE.Mesh(
+  new THREE.CircleGeometry(ORBIT_R + 7, 96),
+  new THREE.MeshBasicMaterial({
+    color: 0x3a74c4, transparent: true, opacity: 0.09,
+    side: THREE.DoubleSide, depthWrite: false
+  })
+);
+eclipticDisk.rotation.x = -Math.PI / 2;
+eclipticDisk.position.y = -0.02;
+scene.add(eclipticDisk);
+
+const grid = new THREE.PolarGridHelper(ORBIT_R + 7, 12, 4, 96, 0x2f5c96, 0x24456e);
+grid.material.transparent = true;
+grid.material.opacity = 0.42;
+scene.add(grid);
+
+(function buildOrbitLine() {
+  const pts = [];
+  for (let i = 0; i <= 240; i++) {
+    const a = (i / 240) * Math.PI * 2;
+    pts.push(new THREE.Vector3(ORBIT_R * Math.cos(a), 0, -ORBIT_R * Math.sin(a)));
+  }
+  const g = new THREE.BufferGeometry().setFromPoints(pts);
+  scene.add(new THREE.Line(g, new THREE.LineBasicMaterial({
+    color: 0x5aa0f0, transparent: true, opacity: 0.65
+  })));
+})();
+
+/* ==================== 地球貼圖 ==================== */
+function makeEarthTexture() {
+  const W = 2048, H = 1024;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+
+  const og = ctx.createLinearGradient(0, 0, 0, H);
+  og.addColorStop(0.00, '#0a1e42');
+  og.addColorStop(0.22, '#0f4a8c');
+  og.addColorStop(0.50, '#1571c4');
+  og.addColorStop(0.78, '#0f4a8c');
+  og.addColorStop(1.00, '#0a1e42');
+  ctx.fillStyle = og;
+  ctx.fillRect(0, 0, W, H);
+
+  for (let i = 0; i < 2600; i++) {
+    ctx.fillStyle = `rgba(255,255,255,${Math.random() * 0.028})`;
+    ctx.beginPath();
+    ctx.arc(Math.random() * W, Math.random() * H, Math.random() * 28 + 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const X = lon => (lon + 180) / 360 * W;
+  const Y = lat => (90 - lat) / 180 * H;
+
+  function blob(lon, lat, rlon, rlat, rot, color) {
+    ctx.save();
+    ctx.translate(X(lon), Y(lat));
+    ctx.rotate(rot);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, rlon / 360 * W, rlat / 180 * H, 0, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  const LAND  = '#3d7a41';
+  const LAND2 = '#2d5f33';
+  const LAND3 = '#4f8a4a';
+  const SAND  = '#c6ae6b';
+  const ICE   = '#eaf6ff';
+
+  blob(-102, 48, 31, 19, 0, LAND);
+  blob(-95,  32, 19, 12, 0, LAND2);
+  blob(-78,  50, 17, 14, 0, LAND3);
+  blob(-86,  14,  8,  7, 0, LAND2);
+  blob(-60, -18, 14, 22, 0.15, LAND);
+  blob(-66, -38,  8, 12, 0, LAND2);
+  blob(-42,  73, 12,  9, 0, ICE);
+  blob( 18,   8, 20, 26, 0, LAND);
+  blob( 16,  22, 22, 11, 0, SAND);
+  blob( 26, -15, 14, 16, 0, LAND2);
+  blob( 16,  51, 18, 12, 0, LAND);
+  blob( 82,  50, 46, 22, 0, LAND);
+  blob( 58,  27, 20, 12, 0, SAND);
+  blob( 78,  20, 10, 12, 0, LAND3);
+  blob(106,  10, 12, 10, 0, LAND2);
+  blob(134, -25, 18, 12, 0, LAND);
+  blob(140, -22, 12,  8, 0, SAND);
+
+  const ag = ctx.createLinearGradient(0, Y(-62), 0, H);
+  ag.addColorStop(0.00, 'rgba(235,248,255,0)');
+  ag.addColorStop(0.40, 'rgba(235,248,255,0.92)');
+  ag.addColorStop(1.00, 'rgba(252,255,255,1)');
+  ctx.fillStyle = ag;
+  ctx.fillRect(0, Y(-62), W, H - Y(-62));
+
+  const bg = ctx.createLinearGradient(0, 0, 0, Y(68));
+  bg.addColorStop(0.00, 'rgba(250,255,255,1)');
+  bg.addColorStop(1.00, 'rgba(235,248,255,0)');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, Y(68));
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return tex;
+}
+
+/* ==================== 地球系統 ==================== */
+const earthSystem = new THREE.Group();
+scene.add(earthSystem);
+
+const tiltGroup = new THREE.Group();
+tiltGroup.rotation.z = -AXIAL_TILT;
+earthSystem.add(tiltGroup);
+
+const earth = new THREE.Mesh(
+  new THREE.SphereGeometry(EARTH_R, 64, 48),
+  new THREE.MeshPhongMaterial({
+    map: makeEarthTexture(),
+    shininess: 10,
+    specular: new THREE.Color(0x0c1420)
+  })
+);
+tiltGroup.add(earth);
+
+/* ---- 赤道紅線 ---- */
+const equatorRing = new THREE.Mesh(
+  new THREE.TorusGeometry(EARTH_R * 1.003, 0.019, 8, 128),
+  new THREE.MeshBasicMaterial({ color: 0xff3030 })
+);
+equatorRing.rotation.x = Math.PI / 2;
+earth.add(equatorRing);
+
+/* ---- 自轉軸（北端箭頭，南端無球） ---- */
+const axisLen = EARTH_R * 2.15;
+const axisGeo = new THREE.BufferGeometry().setFromPoints([
+  new THREE.Vector3(0, -axisLen, 0),
+  new THREE.Vector3(0,  axisLen, 0)
+]);
+tiltGroup.add(new THREE.Line(axisGeo, new THREE.LineBasicMaterial({
+  color: 0xff5a5a, transparent: true, opacity: 0.95
+})));
+
+const arrowHead = new THREE.Mesh(
+  new THREE.ConeGeometry(0.22, 0.62, 20),
+  new THREE.MeshBasicMaterial({ color: 0xff5a5a })
+);
+arrowHead.position.y = axisLen + 0.31;
+tiltGroup.add(arrowHead);
+
+/* ==================== 文字標籤 ==================== */
+function makeLabel(text, color = '#cfe3ff', worldHeight = 1.7) {
+  const fontSize = 72, pad = 14;
+  const m = document.createElement('canvas').getContext('2d');
+  m.font = `600 ${fontSize}px "Microsoft JhengHei", sans-serif`;
+  const textW = m.measureText(text).width;
+
+  const c = document.createElement('canvas');
+  c.width  = Math.ceil(textW) + pad * 2;
+  c.height = fontSize + pad * 2;
+  const ctx = c.getContext('2d');
+  ctx.font = `600 ${fontSize}px "Microsoft JhengHei", sans-serif`;
+  ctx.fillStyle = color;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, c.width / 2, c.height / 2);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: tex, transparent: true, depthTest: true, depthWrite: false
+  }));
+  sp.scale.set(worldHeight * c.width / c.height, worldHeight, 1);
+  return sp;
+}
+
+const axisLabel = makeLabel('地軸', '#ff9a9a', 1.5);
+axisLabel.position.set(1.35, axisLen + 0.95, 0);
+tiltGroup.add(axisLabel);
+
+const northLabel = makeLabel('N', '#ffffff', 1.0);
+northLabel.position.set(-0.85, axisLen + 0.35, 0);
+tiltGroup.add(northLabel);
+
+const eclipticLabel = makeLabel('黃道面', '#7fb6ff', 1.9);
+eclipticLabel.position.set(ORBIT_R * 0.72, 1.4, ORBIT_R * 0.72);
+scene.add(eclipticLabel);
+
+/* ==================== 狀態 ==================== */
+const axisDir = new THREE.Vector3(Math.sin(AXIAL_TILT), Math.cos(AXIAL_TILT), 0);
+
+let orbitAngle = Math.PI / 2;
+let orbiting   = true;
+let totalTime  = 0;
+
+const clock = new THREE.Clock();
+
+let viewMode      = 'global';
+let transitioning = false;
+let transT        = 0;
+const startCamPos = new THREE.Vector3();
+const startTarget = new THREE.Vector3();
+
+const _earthPos   = new THREE.Vector3();
+const _desiredPos = new THREE.Vector3();
+const _desiredTgt = new THREE.Vector3();
+const _delta      = new THREE.Vector3();
+
+/* 地球視角：與整體視角「同一方向」看過去 */
+function computeEarthView(outPos, outTgt) {
+  _earthPos.copy(earthSystem.position);
+  outPos.copy(_earthPos).addScaledVector(GLOBAL_VIEW_DIR, EARTH_CAM_DIST);
+  outTgt.copy(_earthPos);
+}
+
+function startTransitionTo(mode) {
+  viewMode = mode;
+  transitioning = true;
+  transT = 0;
+  startCamPos.copy(camera.position);
+  startTarget.copy(orbit.target);
+  updateViewButtons();
+}
+
+/* ==================== 四季資料 ==================== */
+const SEASON_INFO = {
+  spring: {
+    title: '春分（約 3 月 20 日）',
+    sunPos: '赤道 0°',
+    dayLength: '12 小時 00 分',
+    nightLength: '12 小時 00 分',
+    zenith: '23.4°',
+    altitude: '66.6°'
+  },
+  summer: {
+    title: '夏至（約 6 月 21 日）',
+    sunPos: '北回歸線 23.44°N',
+    dayLength: '13 小時 27 分',
+    nightLength: '10 小時 33 分',
+    zenith: '0.0°（直射）',
+    altitude: '90.0°'
+  },
+  autumn: {
+    title: '秋分（約 9 月 23 日）',
+    sunPos: '赤道 0°',
+    dayLength: '12 小時 00 分',
+    nightLength: '12 小時 00 分',
+    zenith: '23.4°',
+    altitude: '66.6°'
+  },
+  winter: {
+    title: '冬至（約 12 月 22 日）',
+    sunPos: '南回歸線 23.44°S',
+    dayLength: '10 小時 33 分',
+    nightLength: '13 小時 27 分',
+    zenith: '46.9°',
+    altitude: '43.1°'
+  }
+};
+
+/* ==================== UI 元素 ==================== */
+const orbitSlider   = document.getElementById('orbitSlider');
+const angleVal      = document.getElementById('angleVal');
+const playBtn       = document.getElementById('playBtn');
+const globalViewBtn = document.getElementById('globalViewBtn');
+const earthViewBtn  = document.getElementById('earthViewBtn');
+const seasonVal     = document.getElementById('seasonVal');
+const declVal       = document.getElementById('declVal');
+
+const infoBox  = document.getElementById('infoBox');
+const ibTitle  = document.getElementById('ibTitle');
+const ibSun    = document.getElementById('ibSun');
+const ibDay    = document.getElementById('ibDay');
+const ibNight  = document.getElementById('ibNight');
+const ibZenith = document.getElementById('ibZenith');
+const ibAlt    = document.getElementById('ibAlt');
+
+const fsBtn       = document.getElementById('fsBtn');
+const rotationBtn = document.getElementById('rotationBtn');
+
+/* ==================== UI 邏輯 ==================== */
+function syncSlider() {
+  const deg = ((THREE.MathUtils.radToDeg(orbitAngle) % 360) + 360) % 360;
+  orbitSlider.value = deg.toFixed(1);
+  angleVal.textContent = deg.toFixed(0) + '°';
+}
+
+function setOrbiting(v) {
+  orbiting = v;
+  playBtn.textContent = v ? '暫停公轉' : '繼續公轉';
+  if (v) hideSeasonInfo();
+}
+
+function updateViewButtons() {
+  globalViewBtn.classList.toggle('active', viewMode === 'global');
+  earthViewBtn.classList.toggle('active', viewMode === 'earth');
+}
+
+function onEarthJumped() {
+  if (viewMode === 'earth') startTransitionTo('earth');
+}
+
+function showSeasonInfo(key) {
+  const d = SEASON_INFO[key];
+  if (!d) return;
+  ibTitle.textContent  = d.title;
+  ibSun.textContent    = d.sunPos;
+  ibDay.textContent    = d.dayLength;
+  ibNight.textContent  = d.nightLength;
+  ibZenith.textContent = d.zenith;
+  ibAlt.textContent    = d.altitude;
+  infoBox.classList.add('show');
+}
+
+function hideSeasonInfo() {
+  infoBox.classList.remove('show');
+}
+
+orbitSlider.addEventListener('input', () => {
+  setOrbiting(false);
+  orbitAngle = THREE.MathUtils.degToRad(parseFloat(orbitSlider.value));
+  angleVal.textContent = parseFloat(orbitSlider.value).toFixed(0) + '°';
+  onEarthJumped();
+  hideSeasonInfo();
+});
+
+playBtn.addEventListener('click', () => setOrbiting(!orbiting));
+
+globalViewBtn.addEventListener('click', () => {
+  startTransitionTo('global');
+  hideSeasonInfo();
+});
+
+earthViewBtn.addEventListener('click', () => {
+  startTransitionTo('earth');
+  hideSeasonInfo();
+});
+
+document.querySelectorAll('.seasons button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    orbitAngle = THREE.MathUtils.degToRad(parseFloat(btn.dataset.angle));
+    setOrbiting(false);
+    syncSlider();
+    onEarthJumped();
+    showSeasonInfo(btn.dataset.season);
+  });
+});
+
+/* ==================== 全螢幕 ==================== */
+fsBtn.addEventListener('click', async () => {
+  try {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      const el = document.documentElement;
+      if (el.requestFullscreen) await el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      else alert('此瀏覽器不支援全螢幕，請使用瀏覽器選單手動操作。');
+    } else {
+      if (document.exitFullscreen) await document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    }
+  } catch (e) {
+    console.warn('Fullscreen error:', e);
+  }
+});
+
+/* ==================== 畫面轉向（橫版 / 直版） ==================== */
+let isRotated = false;
+
+function applyRotation(on) {
+  isRotated = on;
+  document.body.classList.toggle('rotated', on);
+  orbit.rotated = on;
+  rotationBtn.textContent = on ? '⟲ 畫面轉向' : '⟳ 畫面轉向';
+  onResize();
+  requestAnimationFrame(onResize);
+}
+
+rotationBtn.addEventListener('click', () => applyRotation(!isRotated));
+
+/* ==================== 尺寸調整 ==================== */
+function onResize() {
+  const w = isRotated ? innerHeight : innerWidth;
+  const h = isRotated ? innerWidth  : innerHeight;
+
+  stage.style.width  = w + 'px';
+  stage.style.height = h + 'px';
+
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+
+addEventListener('resize', onResize);
+
+/* ==================== 動畫迴圈 ==================== */
+const _sunDir = new THREE.Vector3();
+const SPIN_ANGLE_PER_SEC = (Math.PI * 2) / SPIN_PERIOD;
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const dt = Math.min(clock.getDelta(), 0.08);
+  totalTime += dt;
+
+  /* --- 太陽光芒動畫 --- */
+  sunRaysA.material.rotation =  totalTime * 0.055;
+  sunRaysB.material.rotation = -totalTime * 0.105;
+  const pA = 1 + Math.sin(totalTime * 1.6) * 0.022;
+  const pB = 1 + Math.sin(totalTime * 1.6 + 1.9) * 0.035;
+  sunRaysA.scale.set(22 * pA, 22 * pA, 1);
+  sunRaysB.scale.set(15 * pB, 15 * pB, 1);
+
+  /* --- 公轉（逆時針） --- */
+  if (orbiting) {
+    orbitAngle += (Math.PI * 2 / ORBIT_PERIOD) * dt;
+    if (orbitAngle >= Math.PI * 2) orbitAngle -= Math.PI * 2;
+    syncSlider();
+  }
+
+  const cx = Math.cos(orbitAngle);
+  const sz = Math.sin(orbitAngle);
+
+  // 地球位置以原點為中心
+  earthSystem.position.set(ORBIT_R * cx, 0, -ORBIT_R * sz);
+
+  /* --- 自轉（永遠進行，速度為原始比例的 1/3） --- */
+  earth.rotation.y += SPIN_ANGLE_PER_SEC * dt;
+
+  /* --- 視角目標 --- */
+  if (viewMode === 'earth') {
+    computeEarthView(_desiredPos, _desiredTgt);
+  } else {
+    _desiredPos.copy(GLOBAL_CAM_POS);
+    _desiredTgt.copy(GLOBAL_CAM_TARGET);
+  }
+
+  /* --- 視角過渡 / 跟隨 --- */
+  if (transitioning) {
+    transT += dt / TRANS_DUR;
+    const t = Math.min(transT, 1);
+    const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    camera.position.lerpVectors(startCamPos, _desiredPos, e);
+    orbit.target.lerpVectors(startTarget, _desiredTgt, e);
+    camera.lookAt(orbit.target);
+    if (t >= 1) {
+      transitioning = false;
+      orbit.syncFromCamera();
+    }
+  } else {
+    if (viewMode === 'earth') {
+      _delta.copy(earthSystem.position).sub(orbit.target);
+      orbit.target.copy(earthSystem.position);
+      camera.position.add(_delta);
+    }
+    orbit.update();
+  }
+
+  /* --- 太陽直射緯度（改用太陽實際位置計算） --- */
+  _sunDir.copy(sun.position).sub(earthSystem.position).normalize();
+  const dot  = THREE.MathUtils.clamp(axisDir.dot(_sunDir), -1, 1);
+  const decl = Math.asin(dot) * 180 / Math.PI;
+
+  const deg = ((THREE.MathUtils.radToDeg(orbitAngle) % 360) + 360) % 360;
+
+  declVal.textContent =
+    Math.abs(decl) < 0.2
+      ? '0.0°（赤道）'
+      : Math.abs(decl).toFixed(1) + '°' + (decl > 0 ? 'N' : 'S');
+
+  let season;
+  if (deg < 90)        season = '冬至 → 春分（北半球：冬季）';
+  else if (deg < 180)  season = '春分 → 夏至（北半球：春季）';
+  else if (deg < 270)  season = '夏至 → 秋分（北半球：夏季）';
+  else                 season = '秋分 → 冬至（北半球：秋季）';
+  seasonVal.textContent = season;
+
+  renderer.render(scene, camera);
+}
+
+/* ==================== 啟動 ==================== */
+onResize();
+syncSlider();
+updateViewButtons();
+animate();
+</script>
+</body>
+</html>

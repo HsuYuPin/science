@@ -13,9 +13,9 @@
   }
   canvas{display:block;touch-action:none;}
 
-  /* ===== 舞台（橫豎切換時整體旋轉） ===== */
+  /* ===== 舞台（橫豎切換時只旋轉 3D 畫面） ===== */
   #stage{
-    position:fixed;inset:0;overflow:visible;
+    position:fixed;inset:0;overflow:visible;z-index:1;
   }
   #stage > canvas{width:100%;height:100%;display:block;}
 
@@ -51,14 +51,14 @@
   /* ===== 季節資訊框 ===== */
   #infoBox{
     position:fixed;top:66px;right:14px;width:268px;max-width:calc(100vw - 28px);
-    background:rgba(8,18,34,.93);
+    background:rgba(8,18,34,.95);
     border:1px solid rgba(110,170,240,.45);
     border-radius:12px;padding:14px 16px;
     font-size:12.5px;line-height:1.75;color:#cfe0f5;
-    z-index:15;opacity:0;transform:translateY(-10px);
+    z-index:25;opacity:0;transform:translateY(-10px);
     pointer-events:none;
     transition:opacity .28s ease, transform .28s ease;
-    box-shadow:0 8px 30px rgba(0,0,0,.5);
+    box-shadow:0 8px 30px rgba(0,0,0,.6);
     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
   }
   #infoBox.show{opacity:1;transform:translateY(0);pointer-events:auto;}
@@ -71,19 +71,21 @@
   .ib-v{color:#d8ecff;font-weight:600;text-align:right;}
   .ib-sep{height:1px;background:rgba(110,170,240,.2);margin:8px 0;}
 
-  /* ===== 底部控制面板 ===== */
+  /* ===== 左上角控制面板 ===== */
   #panel{
-    position:fixed;left:50%;bottom:22px;transform:translateX(-50%);
-    width:min(680px,94vw);
-    background:rgba(9,17,30,.82);
+    position:fixed;left:22px;top:70px;bottom:auto;transform:none;
+    width:min(380px, calc(100vw - 44px));
+    max-height:calc(100vh - 100px);
+    overflow-y:auto;overflow-x:hidden;
+    background:rgba(9,17,30,.85);
     border:1px solid rgba(90,150,230,.25);
-    border-radius:16px;padding:16px 20px 14px;
+    border-radius:16px;padding:16px 18px 14px;
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
     box-shadow:0 12px 40px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
     display:flex;flex-direction:column;gap:11px;
     z-index:18;
   }
-  .row{display:flex;align-items:center;gap:12px;font-size:13px;}
+  .row{display:flex;align-items:center;gap:10px;font-size:13px;}
   .row > label{flex:0 0 auto;color:#8fb4e0;letter-spacing:.5px;}
   input[type="range"]{
     -webkit-appearance:none;appearance:none;flex:1 1 auto;height:4px;border-radius:2px;
@@ -98,12 +100,12 @@
     width:14px;height:14px;border-radius:50%;background:#8ec0ff;
     border:2px solid #2b6fd0;cursor:pointer;
   }
-  .val{flex:0 0 62px;text-align:right;font-variant-numeric:tabular-nums;color:#cfe3ff;font-size:13px;}
-  .btns{display:flex;gap:10px;flex-wrap:wrap;}
+  .val{flex:0 0 52px;text-align:right;font-variant-numeric:tabular-nums;color:#cfe3ff;font-size:13px;}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;}
   button{
     flex:1 1 auto;background:rgba(60,120,200,.2);
     border:1px solid rgba(90,150,230,.45);color:#cfe3ff;
-    font-size:13px;padding:7px 12px;border-radius:9px;
+    font-size:12.5px;padding:7px 10px;border-radius:9px;
     cursor:pointer;transition:.18s;font-family:inherit;white-space:nowrap;
   }
   button:hover{background:rgba(80,150,240,.34);border-color:rgba(120,180,255,.7);}
@@ -118,31 +120,39 @@
     background:rgba(70,170,130,.16);
     border-color:rgba(110,220,170,.38);
     color:#c8f2e0;
+    flex: 1 1 0; padding: 7px 2px;
   }
   .btns.seasons button:hover{
     background:rgba(100,210,160,.3);
     border-color:rgba(160,245,205,.7);
   }
   #status{
-    display:flex;gap:20px;flex-wrap:wrap;font-size:12.5px;color:#7f9cc0;
+    display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#7f9cc0;
     border-top:1px solid rgba(90,150,230,.15);padding-top:10px;
+    line-height:1.5;
   }
   #status b{color:#a9d0ff;font-weight:600;}
 
   @media (max-width:560px){
+    #title{top:14px;left:14px;}
     #title h1{font-size:14px;} #title p{font-size:11px;}
-    #panel{padding:12px 14px;bottom:12px;gap:9px;}
-    .row{font-size:12px;}
-    button{font-size:11.5px;padding:6px 6px;}
-    #status{font-size:11.5px;gap:12px;}
-    #infoBox{width:230px;font-size:11.5px;padding:11px 13px;}
+    #mobileTools{top:10px;right:10px;}
     #mobileTools button{font-size:11px;padding:6px 9px;}
+    #panel{
+      left:12px;top:58px;
+      width:calc(100vw - 24px);
+      max-height:calc(100vh - 80px);
+      padding:12px 14px;gap:9px;
+    }
+    .row{font-size:12px;}
+    button{font-size:11.5px;padding:6px 4px;}
+    #status{font-size:11px;gap:10px;}
+    #infoBox{width:240px;font-size:11.5px;padding:11px 13px;right:12px;top:58px;}
   }
 </style>
 </head>
 <body>
 
-<div id="stage">
   <div id="title">
     <h1>地球繞行太陽 3D 演示</h1>
     <p>拖曳旋轉視角 · 滾輪縮放 · 公轉為逆時針</p>
@@ -179,6 +189,10 @@
 
     <div class="btns">
       <button id="playBtn">暫停公轉</button>
+      <button id="speedBtn">速率 1×</button>
+    </div>
+
+    <div class="btns">
       <button id="globalViewBtn" class="active">整體視角</button>
       <button id="earthViewBtn">地球視角</button>
     </div>
@@ -188,7 +202,8 @@
       <span>太陽直射緯度：<b id="declVal">—</b></span>
     </div>
   </div>
-</div>
+
+  <div id="stage"></div>
 
 <script type="importmap">
 {
@@ -207,23 +222,25 @@ const EARTH_R      = 1.7;
 const SUN_R        = 3.4;
 const AXIAL_TILT   = THREE.MathUtils.degToRad(23.44);
 
-// 太陽略往冬至方向（+X）偏移，模擬真實系統質心非太陽中心的現象
+// 太陽略往冬至方向（+X）偏移
 const SUN_OFFSET   = new THREE.Vector3(0.9, 0, 0);
 
-// 公轉一圈所需秒數
+// 公轉一圈所需秒數（基準速率）
 const ORBIT_PERIOD = 120;
-// 自轉速率：公轉一圈自轉 365/3 圈（比真實比例慢 3 倍）
+// 自轉速率：公轉一圈自轉 365/3 圈
 const SPIN_RATIO   = 365 / 3;
 const SPIN_PERIOD  = ORBIT_PERIOD / SPIN_RATIO;
 
-// 整體視角：相機沿 +Z 軸俯視，使冬至（+X）在右、夏至（-X）在左
+// 整體視角：相機沿 +Z 軸俯視，冬至（+X）在右、夏至（-X）在左
 const GLOBAL_CAM_POS    = new THREE.Vector3(0, 45, 65);
 const GLOBAL_CAM_TARGET = new THREE.Vector3(0, 0, 0);
 const EARTH_CAM_DIST    = EARTH_R * 5.5;
 const TRANS_DUR         = 1.1;
 
-// 整體視角的「觀看方向」單位向量（由原點指向相機的方向）
-const GLOBAL_VIEW_DIR   = GLOBAL_CAM_POS.clone().normalize();
+/* ==================== 狀態變數（需在 orbit 前宣告） ==================== */
+let viewMode      = 'global';
+let transitioning = false;
+let userInteracted = false; // 使用者是否手動操作過視角
 
 /* ==================== 舞台 & 渲染器 ==================== */
 const stage = document.getElementById('stage');
@@ -238,7 +255,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 stage.insertBefore(renderer.domElement, stage.firstChild);
 
-/* ==================== 自訂軌道控制（支援橫豎旋轉） ==================== */
+/* ==================== 自訂軌道控制 ==================== */
 class SimpleOrbit {
   constructor(camera, dom) {
     this.camera = camera;
@@ -250,6 +267,7 @@ class SimpleOrbit {
     this.zoomSpeed = 1.0;
     this.damping = 0.12;
     this.rotated = false;
+    this.onUserInteract = null; // 使用者操作回呼
 
     this._sph = new THREE.Spherical();
     this._dTheta = 0;
@@ -267,6 +285,7 @@ class SimpleOrbit {
       this._dragging = true;
       this._px = e.clientX;
       this._py = e.clientY;
+      if (this.onUserInteract) this.onUserInteract();
     });
     window.addEventListener('pointermove', e => {
       if (!this._dragging) return;
@@ -298,6 +317,7 @@ class SimpleOrbit {
       else if (e.deltaMode === 2) d *= 100;
       const f = Math.pow(0.95, this.zoomSpeed);
       this._scale *= d > 0 ? f : 1 / f;
+      if (this.onUserInteract) this.onUserInteract();
     }, { passive: false });
 
     el.addEventListener('touchstart', e => {
@@ -306,6 +326,7 @@ class SimpleOrbit {
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         );
+        if (this.onUserInteract) this.onUserInteract();
       }
     }, { passive: false });
 
@@ -355,6 +376,13 @@ class SimpleOrbit {
 const orbit = new SimpleOrbit(camera, renderer.domElement);
 orbit.target.copy(GLOBAL_CAM_TARGET);
 orbit.syncFromCamera();
+
+// 綁定手動操作事件，讓系統停止鎖定
+orbit.onUserInteract = () => {
+  if (viewMode === 'earth') {
+    userInteracted = true;
+  }
+};
 
 /* ==================== 星空 ==================== */
 (function buildStars() {
@@ -488,7 +516,7 @@ sunLight.position.copy(SUN_OFFSET);
 scene.add(sunLight);
 scene.add(new THREE.AmbientLight(0x3a5a8c, 0.32));
 
-/* ==================== 黃道面（仍以原點為中心） ==================== */
+/* ==================== 黃道面 ==================== */
 const eclipticDisk = new THREE.Mesh(
   new THREE.CircleGeometry(ORBIT_R + 7, 96),
   new THREE.MeshBasicMaterial({
@@ -678,17 +706,19 @@ const eclipticLabel = makeLabel('黃道面', '#7fb6ff', 1.9);
 eclipticLabel.position.set(ORBIT_R * 0.72, 1.4, ORBIT_R * 0.72);
 scene.add(eclipticLabel);
 
-/* ==================== 狀態 ==================== */
+/* ==================== 狀態與變數 ==================== */
 const axisDir = new THREE.Vector3(Math.sin(AXIAL_TILT), Math.cos(AXIAL_TILT), 0);
 
 let orbitAngle = Math.PI / 2;
 let orbiting   = true;
 let totalTime  = 0;
 
+let speedIndex = 0;
+const SPEEDS = [1, 2, 4, 8];
+let speedMultiplier = 1;
+
 const clock = new THREE.Clock();
 
-let viewMode      = 'global';
-let transitioning = false;
 let transT        = 0;
 const startCamPos = new THREE.Vector3();
 const startTarget = new THREE.Vector3();
@@ -698,15 +728,59 @@ const _desiredPos = new THREE.Vector3();
 const _desiredTgt = new THREE.Vector3();
 const _delta      = new THREE.Vector3();
 
-/* 地球視角：與整體視角「同一方向」看過去 */
+// 地球視角的陽光方向設定（true=左側, false=右側）
+let isLeftSun = true;
+
+function updateSunSide() {
+  if (orbiting) {
+    isLeftSun = false; // 公轉中，強制陽光在右側
+  } else {
+    const deg = ((THREE.MathUtils.radToDeg(orbitAngle) % 360) + 360) % 360;
+    // 冬至(0), 春分(90) -> 左側; 夏至(180), 秋分(270) -> 右側
+    if ((deg >= 315 || deg < 45) || (deg >= 45 && deg < 135)) {
+      isLeftSun = true;
+    } else {
+      isLeftSun = false;
+    }
+  }
+}
+
+const _Y = new THREE.Vector3(0, 1, 0);
+const _dirToSun = new THREE.Vector3();
+const _Vh = new THREE.Vector3();
+const _V = new THREE.Vector3();
+
 function computeEarthView(outPos, outTgt) {
   _earthPos.copy(earthSystem.position);
-  outPos.copy(_earthPos).addScaledVector(GLOBAL_VIEW_DIR, EARTH_CAM_DIST);
+  
+  // 地球指向太陽的方向
+  _dirToSun.copy(sun.position).sub(_earthPos).normalize();
+  
+  // 計算水平視線方向 V_h
+  if (isLeftSun) {
+    // 太陽在左側
+    _Vh.crossVectors(_dirToSun, _Y).normalize();
+  } else {
+    // 太陽在右側
+    _Vh.crossVectors(_Y, _dirToSun).normalize();
+  }
+  
+  // 俯角 10 度
+  const pitch = THREE.MathUtils.degToRad(10);
+  // _V 是從相機指向地球的向量
+  _V.copy(_Vh).multiplyScalar(Math.cos(pitch));
+  _V.addScaledVector(_Y, -Math.sin(pitch));
+
+  outPos.copy(_earthPos).sub(_V.multiplyScalar(EARTH_CAM_DIST));
   outTgt.copy(_earthPos);
 }
 
 function startTransitionTo(mode) {
   viewMode = mode;
+  userInteracted = false; // 重置使用者操作狀態，允許自動轉向
+  if (mode === 'earth' && orbiting) {
+    isLeftSun = false;
+  }
   transitioning = true;
   transT = 0;
   startCamPos.copy(camera.position);
@@ -754,6 +828,7 @@ const SEASON_INFO = {
 const orbitSlider   = document.getElementById('orbitSlider');
 const angleVal      = document.getElementById('angleVal');
 const playBtn       = document.getElementById('playBtn');
+const speedBtn      = document.getElementById('speedBtn');
 const globalViewBtn = document.getElementById('globalViewBtn');
 const earthViewBtn  = document.getElementById('earthViewBtn');
 const seasonVal     = document.getElementById('seasonVal');
@@ -781,6 +856,7 @@ function setOrbiting(v) {
   orbiting = v;
   playBtn.textContent = v ? '暫停公轉' : '繼續公轉';
   if (v) hideSeasonInfo();
+  updateSunSide();
 }
 
 function updateViewButtons() {
@@ -814,9 +890,16 @@ orbitSlider.addEventListener('input', () => {
   angleVal.textContent = parseFloat(orbitSlider.value).toFixed(0) + '°';
   onEarthJumped();
   hideSeasonInfo();
+  updateSunSide();
 });
 
 playBtn.addEventListener('click', () => setOrbiting(!orbiting));
+
+speedBtn.addEventListener('click', () => {
+  speedIndex = (speedIndex + 1) % SPEEDS.length;
+  speedMultiplier = SPEEDS[speedIndex];
+  speedBtn.textContent = '速率 ' + speedMultiplier + '×';
+});
 
 globalViewBtn.addEventListener('click', () => {
   startTransitionTo('global');
@@ -835,6 +918,7 @@ document.querySelectorAll('.seasons button').forEach(btn => {
     syncSlider();
     onEarthJumped();
     showSeasonInfo(btn.dataset.season);
+    updateSunSide();
   });
 });
 
@@ -855,7 +939,7 @@ fsBtn.addEventListener('click', async () => {
   }
 });
 
-/* ==================== 畫面轉向（橫版 / 直版） ==================== */
+/* ==================== 畫面轉向 ==================== */
 let isRotated = false;
 
 function applyRotation(on) {
@@ -892,6 +976,8 @@ function animate() {
   requestAnimationFrame(animate);
 
   const dt = Math.min(clock.getDelta(), 0.08);
+  const simDt = dt * speedMultiplier;
+
   totalTime += dt;
 
   /* --- 太陽光芒動畫 --- */
@@ -904,7 +990,7 @@ function animate() {
 
   /* --- 公轉（逆時針） --- */
   if (orbiting) {
-    orbitAngle += (Math.PI * 2 / ORBIT_PERIOD) * dt;
+    orbitAngle += (Math.PI * 2 / ORBIT_PERIOD) * simDt;
     if (orbitAngle >= Math.PI * 2) orbitAngle -= Math.PI * 2;
     syncSlider();
   }
@@ -912,11 +998,10 @@ function animate() {
   const cx = Math.cos(orbitAngle);
   const sz = Math.sin(orbitAngle);
 
-  // 地球位置以原點為中心
   earthSystem.position.set(ORBIT_R * cx, 0, -ORBIT_R * sz);
 
-  /* --- 自轉（永遠進行，速度為原始比例的 1/3） --- */
-  earth.rotation.y += SPIN_ANGLE_PER_SEC * dt;
+  /* --- 自轉 --- */
+  earth.rotation.y += SPIN_ANGLE_PER_SEC * simDt;
 
   /* --- 視角目標 --- */
   if (viewMode === 'earth') {
@@ -926,7 +1011,7 @@ function animate() {
     _desiredTgt.copy(GLOBAL_CAM_TARGET);
   }
 
-  /* --- 視角過渡 / 跟隨 --- */
+  /* --- 視角過渡 / 跟隨 / 自由控制 --- */
   if (transitioning) {
     transT += dt / TRANS_DUR;
     const t = Math.min(transT, 1);
@@ -940,14 +1025,25 @@ function animate() {
     }
   } else {
     if (viewMode === 'earth') {
-      _delta.copy(earthSystem.position).sub(orbit.target);
-      orbit.target.copy(earthSystem.position);
-      camera.position.add(_delta);
+      if (!userInteracted) {
+        // 自動平滑跟隨，保持陽光在指定方向
+        camera.position.lerp(_desiredPos, 0.15);
+        orbit.target.lerp(_desiredTgt, 0.15);
+        camera.lookAt(orbit.target);
+        orbit.syncFromCamera();
+      } else {
+        // 使用者已手動控制視角，僅跟隨地球平移，允許自由旋轉
+        _delta.copy(earthSystem.position).sub(orbit.target);
+        orbit.target.copy(earthSystem.position);
+        camera.position.add(_delta);
+        orbit.update();
+      }
+    } else {
+      orbit.update();
     }
-    orbit.update();
   }
 
-  /* --- 太陽直射緯度（改用太陽實際位置計算） --- */
+  /* --- 太陽直射緯度 --- */
   _sunDir.copy(sun.position).sub(earthSystem.position).normalize();
   const dot  = THREE.MathUtils.clamp(axisDir.dot(_sunDir), -1, 1);
   const decl = Math.asin(dot) * 180 / Math.PI;
@@ -972,6 +1068,7 @@ function animate() {
 /* ==================== 啟動 ==================== */
 onResize();
 syncSlider();
+updateSunSide();
 updateViewButtons();
 animate();
 </script>

@@ -250,7 +250,7 @@ const ORBIT_PERIOD = 120;
 const SPIN_RATIO   = 365 / 3;
 const SPIN_PERIOD  = ORBIT_PERIOD / SPIN_RATIO;
 
-// 注意：這裡改為動態向量，稍後在 onResize 裡自適應計算位置
+// 整體視角的相機位置與方向
 const GLOBAL_CAM_POS    = new THREE.Vector3(0, 45, 65);
 const GLOBAL_CAM_TARGET = new THREE.Vector3(0, 0, 0);
 const BASE_CAM_DIR      = new THREE.Vector3(0, 45, 65);
@@ -958,14 +958,11 @@ function onResize() {
   // 動態計算整體視角的相機位置，確保直立螢幕下左右邊界不被裁切
   const aspect = w / h;
   
-  // 豎屏時採用更高的俯角，讓圓形軌道在螢幕上更扁平，避免左右超出視野
-  if (aspect < 0.8) {
-    BASE_CAM_DIR.set(0, 75, 35).normalize();
-  } else {
-    BASE_CAM_DIR.set(0, 45, 65).normalize();
-  }
+  // 改成固定俯角 15 度
+  const pitch = 15 * Math.PI / 180;
+  BASE_CAM_DIR.set(0, Math.sin(pitch), Math.cos(pitch)).normalize();
 
-  const boundR = 38; // 軌道邊界半徑 (包含太陽偏移)
+  const boundR = 38; // 軌道邊界半徑
   const vFov = camera.fov * Math.PI / 180;
   const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
   const dV = boundR / Math.tan(vFov / 2);

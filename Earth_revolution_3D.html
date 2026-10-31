@@ -250,8 +250,11 @@ const ORBIT_PERIOD = 120;
 const SPIN_RATIO   = 365 / 3;
 const SPIN_PERIOD  = ORBIT_PERIOD / SPIN_RATIO;
 
+// 注意：這裡改為動態向量，稍後在 onResize 裡自適應計算位置
 const GLOBAL_CAM_POS    = new THREE.Vector3(0, 45, 65);
 const GLOBAL_CAM_TARGET = new THREE.Vector3(0, 0, 0);
+const BASE_CAM_DIR      = new THREE.Vector3(0, 45, 65);
+
 const EARTH_CAM_DIST    = EARTH_R * 5.5;
 const TRANS_DUR         = 1.1;
 
@@ -280,7 +283,7 @@ class SimpleOrbit {
     this.dom = dom;
     this.target = new THREE.Vector3();
     this.minDistance = 3;
-    this.maxDistance = 240;
+    this.maxDistance = 400;
     this.rotateSpeed = 1.0;
     this.zoomSpeed = 1.0;
     this.damping = 0.12;
@@ -940,7 +943,7 @@ fsBtn.addEventListener('click', async () => {
   }
 });
 
-/* ==================== 尺寸調整 ==================== */
+/* ==================== 尺寸調整與自適應相機 ==================== */
 function onResize() {
   const w = innerWidth;
   const h = innerHeight;
@@ -951,6 +954,32 @@ function onResize() {
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+
+  // 動態計算整體視角的相機位置，確保直立螢幕下左右邊界不被裁切
+  const aspect = w / h;
+  
+  // 豎屏時採用更高的俯角，讓圓形軌道在螢幕上更扁平，避免左右超出視野
+  if (aspect < 0.8) {
+    BASE_CAM_DIR.set(0, 75, 35).normalize();
+  } else {
+    BASE_CAM_DIR.set(0, 45, 65).normalize();
+  }
+
+  const boundR = 38; // 軌道邊界半徑 (包含太陽偏移)
+  const vFov = camera.fov * Math.PI / 180;
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+  const dV = boundR / Math.tan(vFov / 2);
+  const dH = boundR / Math.tan(hFov / 2);
+  
+  // 取較大的需求距離，乘以 1.05 加上少許邊距
+  const finalDist = Math.max(dV, dH) * 1.05; 
+  
+  GLOBAL_CAM_POS.copy(BASE_CAM_DIR).multiplyScalar(finalDist);
+
+  // 如果當前處於整體視角，觸發平滑過渡以適應新尺寸
+  if (viewMode === 'global' && !transitioning) {
+    startTransitionTo('global');
+  }
 }
 
 addEventListener('resize', onResize);

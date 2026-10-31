@@ -13,17 +13,11 @@
   }
   canvas{display:block;touch-action:none;}
 
-  /* ===== 舞台（橫豎切換時只旋轉 3D 畫面） ===== */
+  /* ===== 舞台 ===== */
   #stage{
     position:fixed;inset:0;overflow:visible;z-index:1;
   }
   #stage > canvas{width:100%;height:100%;display:block;}
-
-  body.rotated #stage{
-    inset:auto;
-    top:50%;left:50%;
-    transform:translate(-50%,-50%) rotate(90deg);
-  }
 
   /* ===== 標題 ===== */
   #title{position:fixed;top:18px;left:22px;pointer-events:none;z-index:12;}
@@ -33,7 +27,7 @@
   }
   #title p{margin:6px 0 0;font-size:12px;color:#6d87ab;letter-spacing:.5px;}
 
-  /* ===== 右上角手機工具 ===== */
+  /* ===== 右上角工具 ===== */
   #mobileTools{
     position:fixed;top:14px;right:14px;display:flex;gap:8px;z-index:22;
   }
@@ -71,9 +65,9 @@
   .ib-v{color:#d8ecff;font-weight:600;text-align:right;}
   .ib-sep{height:1px;background:rgba(110,170,240,.2);margin:8px 0;}
 
-  /* ===== 左上角控制面板 ===== */
+  /* ===== 控制面板 ===== */
   #panel{
-    position:fixed;left:22px;top:70px;bottom:auto;transform:none;
+    position:fixed;left:22px;top:70px;bottom:auto;
     width:min(380px, calc(100vw - 44px));
     max-height:calc(100vh - 100px);
     overflow-y:auto;overflow-x:hidden;
@@ -101,7 +95,10 @@
     border:2px solid #2b6fd0;cursor:pointer;
   }
   .val{flex:0 0 52px;text-align:right;font-variant-numeric:tabular-nums;color:#cfe3ff;font-size:13px;}
+  
   .btns{display:flex;gap:8px;flex-wrap:wrap;}
+  .btns.four-btns{flex-wrap:nowrap;}
+  
   button{
     flex:1 1 auto;background:rgba(60,120,200,.2);
     border:1px solid rgba(90,150,230,.45);color:#cfe3ff;
@@ -116,38 +113,61 @@
     color:#fff;
     box-shadow:0 0 14px rgba(120,190,255,.45);
   }
+  
+  .btns.seasons button, .four-btns button {
+    flex: 1 1 0; 
+    padding: 7px 2px;
+    text-align: center;
+  }
+  
   .btns.seasons button{
     background:rgba(70,170,130,.16);
     border-color:rgba(110,220,170,.38);
     color:#c8f2e0;
-    flex: 1 1 0; padding: 7px 2px;
   }
   .btns.seasons button:hover{
     background:rgba(100,210,160,.3);
     border-color:rgba(160,245,205,.7);
   }
-  #status{
-    display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#7f9cc0;
-    border-top:1px solid rgba(90,150,230,.15);padding-top:10px;
-    line-height:1.5;
-  }
-  #status b{color:#a9d0ff;font-weight:600;}
 
-  @media (max-width:560px){
-    #title{top:14px;left:14px;}
-    #title h1{font-size:14px;} #title p{font-size:11px;}
-    #mobileTools{top:10px;right:10px;}
-    #mobileTools button{font-size:11px;padding:6px 9px;}
-    #panel{
-      left:12px;top:58px;
-      width:calc(100vw - 24px);
-      max-height:calc(100vh - 80px);
-      padding:12px 14px;gap:9px;
+  /* ===== 手機版優化 ===== */
+  @media (max-width: 768px) {
+    #title { display: none !important; }
+    
+    #mobileTools {
+      top: 12px; right: 12px;
     }
-    .row{font-size:12px;}
-    button{font-size:11.5px;padding:6px 4px;}
-    #status{font-size:11px;gap:10px;}
-    #infoBox{width:240px;font-size:11.5px;padding:11px 13px;right:12px;top:58px;}
+    
+    #panel {
+      left: 12px;
+      top: 52px;
+      width: calc(100vw - 24px);
+      max-height: none;
+      padding: 10px 12px;
+      gap: 8px;
+    }
+    
+    #orbitRow {
+      display: none;
+    }
+    
+    .btns.seasons button, .four-btns button {
+      font-size: 11px;
+      padding: 7px 1px;
+    }
+    
+    #infoBox {
+      top: auto;
+      bottom: 12px;
+      right: 12px;
+      width: 240px;
+      font-size: 11.5px;
+      padding: 11px 13px;
+      transform: translateY(10px);
+    }
+    #infoBox.show {
+      transform: translateY(0);
+    }
   }
 </style>
 </head>
@@ -160,7 +180,6 @@
 
   <div id="mobileTools">
     <button id="fsBtn">⛶ 全螢幕</button>
-    <button id="rotationBtn">⟳ 畫面轉向</button>
   </div>
 
   <div id="infoBox">
@@ -174,7 +193,7 @@
   </div>
 
   <div id="panel">
-    <div class="row">
+    <div class="row" id="orbitRow">
       <label>公轉位置</label>
       <input id="orbitSlider" type="range" min="0" max="360" step="0.5" value="90" />
       <span class="val" id="angleVal">90°</span>
@@ -187,19 +206,11 @@
       <button data-angle="0"   data-season="winter">冬至</button>
     </div>
 
-    <div class="btns">
+    <div class="btns four-btns">
       <button id="playBtn">暫停公轉</button>
       <button id="speedBtn">速率 1×</button>
-    </div>
-
-    <div class="btns">
       <button id="globalViewBtn" class="active">整體視角</button>
       <button id="earthViewBtn">地球視角</button>
-    </div>
-
-    <div id="status">
-      <span>季節：<b id="seasonVal">—</b></span>
-      <span>太陽直射緯度：<b id="declVal">—</b></span>
     </div>
   </div>
 
@@ -225,22 +236,20 @@ const AXIAL_TILT   = THREE.MathUtils.degToRad(23.44);
 // 太陽略往冬至方向（+X）偏移
 const SUN_OFFSET   = new THREE.Vector3(0.9, 0, 0);
 
-// 公轉一圈所需秒數（基準速率）
+// 公轉一圈所需秒數
 const ORBIT_PERIOD = 120;
-// 自轉速率：公轉一圈自轉 365/3 圈
 const SPIN_RATIO   = 365 / 3;
 const SPIN_PERIOD  = ORBIT_PERIOD / SPIN_RATIO;
 
-// 整體視角：相機沿 +Z 軸俯視，冬至（+X）在右、夏至（-X）在左
 const GLOBAL_CAM_POS    = new THREE.Vector3(0, 45, 65);
 const GLOBAL_CAM_TARGET = new THREE.Vector3(0, 0, 0);
 const EARTH_CAM_DIST    = EARTH_R * 5.5;
 const TRANS_DUR         = 1.1;
 
-/* ==================== 狀態變數（需在 orbit 前宣告） ==================== */
+/* ==================== 狀態變數 ==================== */
 let viewMode      = 'global';
 let transitioning = false;
-let userInteracted = false; // 使用者是否手動操作過視角
+let userInteracted = false;
 
 /* ==================== 舞台 & 渲染器 ==================== */
 const stage = document.getElementById('stage');
@@ -266,8 +275,7 @@ class SimpleOrbit {
     this.rotateSpeed = 1.0;
     this.zoomSpeed = 1.0;
     this.damping = 0.12;
-    this.rotated = false;
-    this.onUserInteract = null; // 使用者操作回呼
+    this.onUserInteract = null;
 
     this._sph = new THREE.Spherical();
     this._dTheta = 0;
@@ -287,6 +295,7 @@ class SimpleOrbit {
       this._py = e.clientY;
       if (this.onUserInteract) this.onUserInteract();
     });
+    
     window.addEventListener('pointermove', e => {
       if (!this._dragging) return;
       let dx = e.clientX - this._px;
@@ -295,18 +304,14 @@ class SimpleOrbit {
       this._py = e.clientY;
 
       const rect = this.dom.getBoundingClientRect();
-      let W = rect.width || 1;
-      let H = rect.height || 1;
+      const W = rect.width || 1;
+      const H = rect.height || 1;
 
-      if (this.rotated) {
-        const t = dx;
-        dx = -dy;
-        dy = t;
-        const tmp = W; W = H; H = tmp;
-      }
+      // 降低觸控模式的旋轉靈敏度
+      const speedFactor = (e.pointerType === 'touch') ? 0.4 : 1.0;
 
-      this._dTheta -= 2 * Math.PI * dx / W * this.rotateSpeed;
-      this._dPhi   -= 2 * Math.PI * dy / H * this.rotateSpeed;
+      this._dTheta -= 2 * Math.PI * dx / W * this.rotateSpeed * speedFactor;
+      this._dPhi   -= 2 * Math.PI * dy / H * this.rotateSpeed * speedFactor;
     });
     window.addEventListener('pointerup', () => { this._dragging = false; });
 
@@ -377,7 +382,6 @@ const orbit = new SimpleOrbit(camera, renderer.domElement);
 orbit.target.copy(GLOBAL_CAM_TARGET);
 orbit.syncFromCamera();
 
-// 綁定手動操作事件，讓系統停止鎖定
 orbit.onUserInteract = () => {
   if (viewMode === 'earth') {
     userInteracted = true;
@@ -510,17 +514,17 @@ sunRaysB.scale.set(15, 15, 1);
 sunRaysB.position.copy(SUN_OFFSET);
 scene.add(sunRaysB);
 
-/* ==================== 光源 ==================== */
-const sunLight = new THREE.PointLight(0xfff4e0, 2.3, 0, 0);
+/* ==================== 光源（調整強度以增加明暗對比） ==================== */
+const sunLight = new THREE.PointLight(0xfff4e0, 3.8, 0, 0);
 sunLight.position.copy(SUN_OFFSET);
 scene.add(sunLight);
-scene.add(new THREE.AmbientLight(0x3a5a8c, 0.32));
+scene.add(new THREE.AmbientLight(0x152233, 0.15)); 
 
-/* ==================== 黃道面 ==================== */
+/* ==================== 黃道面（透明度設為 0.06） ==================== */
 const eclipticDisk = new THREE.Mesh(
   new THREE.CircleGeometry(ORBIT_R + 7, 96),
   new THREE.MeshBasicMaterial({
-    color: 0x3a74c4, transparent: true, opacity: 0.09,
+    color: 0x3a74c4, transparent: true, opacity: 0.06, // 調整為 0.06
     side: THREE.DoubleSide, depthWrite: false
   })
 );
@@ -530,7 +534,7 @@ scene.add(eclipticDisk);
 
 const grid = new THREE.PolarGridHelper(ORBIT_R + 7, 12, 4, 96, 0x2f5c96, 0x24456e);
 grid.material.transparent = true;
-grid.material.opacity = 0.42;
+grid.material.opacity = 0.25; 
 scene.add(grid);
 
 (function buildOrbitLine() {
@@ -637,8 +641,8 @@ const earth = new THREE.Mesh(
   new THREE.SphereGeometry(EARTH_R, 64, 48),
   new THREE.MeshPhongMaterial({
     map: makeEarthTexture(),
-    shininess: 10,
-    specular: new THREE.Color(0x0c1420)
+    shininess: 12, 
+    specular: new THREE.Color(0x334455)
   })
 );
 tiltGroup.add(earth);
@@ -651,7 +655,7 @@ const equatorRing = new THREE.Mesh(
 equatorRing.rotation.x = Math.PI / 2;
 earth.add(equatorRing);
 
-/* ---- 自轉軸（北端箭頭，南端無球） ---- */
+/* ---- 自轉軸（北端箭頭） ---- */
 const axisLen = EARTH_R * 2.15;
 const axisGeo = new THREE.BufferGeometry().setFromPoints([
   new THREE.Vector3(0, -axisLen, 0),
@@ -728,15 +732,13 @@ const _desiredPos = new THREE.Vector3();
 const _desiredTgt = new THREE.Vector3();
 const _delta      = new THREE.Vector3();
 
-// 地球視角的陽光方向設定（true=左側, false=右側）
 let isLeftSun = true;
 
 function updateSunSide() {
   if (orbiting) {
-    isLeftSun = false; // 公轉中，強制陽光在右側
+    isLeftSun = false;
   } else {
     const deg = ((THREE.MathUtils.radToDeg(orbitAngle) % 360) + 360) % 360;
-    // 冬至(0), 春分(90) -> 左側; 夏至(180), 秋分(270) -> 右側
     if ((deg >= 315 || deg < 45) || (deg >= 45 && deg < 135)) {
       isLeftSun = true;
     } else {
@@ -752,22 +754,15 @@ const _V = new THREE.Vector3();
 
 function computeEarthView(outPos, outTgt) {
   _earthPos.copy(earthSystem.position);
-  
-  // 地球指向太陽的方向
   _dirToSun.copy(sun.position).sub(_earthPos).normalize();
   
-  // 計算水平視線方向 V_h
   if (isLeftSun) {
-    // 太陽在左側
     _Vh.crossVectors(_dirToSun, _Y).normalize();
   } else {
-    // 太陽在右側
     _Vh.crossVectors(_Y, _dirToSun).normalize();
   }
   
-  // 俯角 10 度
   const pitch = THREE.MathUtils.degToRad(10);
-  // _V 是從相機指向地球的向量
   _V.copy(_Vh).multiplyScalar(Math.cos(pitch));
   _V.addScaledVector(_Y, -Math.sin(pitch));
 
@@ -777,7 +772,7 @@ function computeEarthView(outPos, outTgt) {
 
 function startTransitionTo(mode) {
   viewMode = mode;
-  userInteracted = false; // 重置使用者操作狀態，允許自動轉向
+  userInteracted = false;
   if (mode === 'earth' && orbiting) {
     isLeftSun = false;
   }
@@ -795,12 +790,12 @@ const SEASON_INFO = {
     sunPos: '赤道 0°',
     dayLength: '12 小時 00 分',
     nightLength: '12 小時 00 分',
-    zenith: '23.4°',
-    altitude: '66.6°'
+    zenith: '23.5°',
+    altitude: '66.5°'
   },
   summer: {
     title: '夏至（約 6 月 21 日）',
-    sunPos: '北回歸線 23.44°N',
+    sunPos: '北回歸線 23.5°N',
     dayLength: '13 小時 27 分',
     nightLength: '10 小時 33 分',
     zenith: '0.0°（直射）',
@@ -811,16 +806,16 @@ const SEASON_INFO = {
     sunPos: '赤道 0°',
     dayLength: '12 小時 00 分',
     nightLength: '12 小時 00 分',
-    zenith: '23.4°',
-    altitude: '66.6°'
+    zenith: '23.5°',
+    altitude: '66.5°'
   },
   winter: {
     title: '冬至（約 12 月 22 日）',
-    sunPos: '南回歸線 23.44°S',
+    sunPos: '南回歸線 23.5°S',
     dayLength: '10 小時 33 分',
     nightLength: '13 小時 27 分',
-    zenith: '46.9°',
-    altitude: '43.1°'
+    zenith: '47.0°',
+    altitude: '43.0°'
   }
 };
 
@@ -831,8 +826,6 @@ const playBtn       = document.getElementById('playBtn');
 const speedBtn      = document.getElementById('speedBtn');
 const globalViewBtn = document.getElementById('globalViewBtn');
 const earthViewBtn  = document.getElementById('earthViewBtn');
-const seasonVal     = document.getElementById('seasonVal');
-const declVal       = document.getElementById('declVal');
 
 const infoBox  = document.getElementById('infoBox');
 const ibTitle  = document.getElementById('ibTitle');
@@ -843,7 +836,6 @@ const ibZenith = document.getElementById('ibZenith');
 const ibAlt    = document.getElementById('ibAlt');
 
 const fsBtn       = document.getElementById('fsBtn');
-const rotationBtn = document.getElementById('rotationBtn');
 
 /* ==================== UI 邏輯 ==================== */
 function syncSlider() {
@@ -939,24 +931,10 @@ fsBtn.addEventListener('click', async () => {
   }
 });
 
-/* ==================== 畫面轉向 ==================== */
-let isRotated = false;
-
-function applyRotation(on) {
-  isRotated = on;
-  document.body.classList.toggle('rotated', on);
-  orbit.rotated = on;
-  rotationBtn.textContent = on ? '⟲ 畫面轉向' : '⟳ 畫面轉向';
-  onResize();
-  requestAnimationFrame(onResize);
-}
-
-rotationBtn.addEventListener('click', () => applyRotation(!isRotated));
-
 /* ==================== 尺寸調整 ==================== */
 function onResize() {
-  const w = isRotated ? innerHeight : innerWidth;
-  const h = isRotated ? innerWidth  : innerHeight;
+  const w = innerWidth;
+  const h = innerHeight;
 
   stage.style.width  = w + 'px';
   stage.style.height = h + 'px';
@@ -969,7 +947,6 @@ function onResize() {
 addEventListener('resize', onResize);
 
 /* ==================== 動畫迴圈 ==================== */
-const _sunDir = new THREE.Vector3();
 const SPIN_ANGLE_PER_SEC = (Math.PI * 2) / SPIN_PERIOD;
 
 function animate() {
@@ -1026,13 +1003,11 @@ function animate() {
   } else {
     if (viewMode === 'earth') {
       if (!userInteracted) {
-        // 自動平滑跟隨，保持陽光在指定方向
         camera.position.lerp(_desiredPos, 0.15);
         orbit.target.lerp(_desiredTgt, 0.15);
         camera.lookAt(orbit.target);
         orbit.syncFromCamera();
       } else {
-        // 使用者已手動控制視角，僅跟隨地球平移，允許自由旋轉
         _delta.copy(earthSystem.position).sub(orbit.target);
         orbit.target.copy(earthSystem.position);
         camera.position.add(_delta);
@@ -1042,25 +1017,6 @@ function animate() {
       orbit.update();
     }
   }
-
-  /* --- 太陽直射緯度 --- */
-  _sunDir.copy(sun.position).sub(earthSystem.position).normalize();
-  const dot  = THREE.MathUtils.clamp(axisDir.dot(_sunDir), -1, 1);
-  const decl = Math.asin(dot) * 180 / Math.PI;
-
-  const deg = ((THREE.MathUtils.radToDeg(orbitAngle) % 360) + 360) % 360;
-
-  declVal.textContent =
-    Math.abs(decl) < 0.2
-      ? '0.0°（赤道）'
-      : Math.abs(decl).toFixed(1) + '°' + (decl > 0 ? 'N' : 'S');
-
-  let season;
-  if (deg < 90)        season = '冬至 → 春分（北半球：冬季）';
-  else if (deg < 180)  season = '春分 → 夏至（北半球：春季）';
-  else if (deg < 270)  season = '夏至 → 秋分（北半球：夏季）';
-  else                 season = '秋分 → 冬至（北半球：秋季）';
-  seasonVal.textContent = season;
 
   renderer.render(scene, camera);
 }

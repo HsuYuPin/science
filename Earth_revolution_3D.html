@@ -59,7 +59,6 @@
   .ib-v{color:#d8ecff;font-weight:600;text-align:right;}
   .ib-sep{height:1px;background:rgba(110,170,240,.2);margin:8px 0;}
 
-  /* 黃道面滑桿（在 infoBox 內） */
   .ib-slider-line input[type="range"]{
     flex:1 1 auto;min-width:50px;height:3px;border-radius:2px;
     -webkit-appearance:none;appearance:none;outline:none;cursor:pointer;
@@ -262,6 +261,9 @@ const TRANS_DUR         = 1.1;
 let viewMode      = 'global';
 let transitioning = false;
 let userInteracted = false;
+
+/* 轉場完成後的回呼（用於兩階段轉場） */
+let onTransitionComplete = null;
 
 /* ==================== 舞台 & 渲染器 ==================== */
 const stage = document.getElementById('stage');
@@ -565,7 +567,6 @@ grid.material.transparent = true;
 grid.material.opacity = GRID_BASE_OPACITY; 
 scene.add(grid);
 
-/* 依百分比套用黃道面透明度：disk 直接映射，grid 依初始比例放大 */
 function applyEclipticOpacity(percent) {
   const f = percent / 100;
   eclipticDisk.material.opacity = f;
@@ -776,7 +777,7 @@ function makeEarthTexture() {
   ctx.fillStyle = ig;
   ctx.fillRect(0, Y(-58), W, H - Y(-58));
 
-  /* ---------- 7. 輸出（回歸線改以 3D 環繪製，見地球網格段） ---------- */
+  /* ---------- 7. 輸出 ---------- */
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -945,7 +946,8 @@ function computeEarthView(outPos, outTgt) {
   outTgt.copy(_earthPos);
 }
 
-function startTransitionTo(mode) {
+/* 開始轉場（可選 onComplete 回呼） */
+function startTransitionTo(mode, onComplete) {
   viewMode = mode;
   userInteracted = false;
   if (mode === 'earth' && orbiting) {
@@ -955,6 +957,7 @@ function startTransitionTo(mode) {
   transT = 0;
   startCamPos.copy(camera.position);
   startTarget.copy(orbit.target);
+  onTransitionComplete = onComplete || null;
   updateViewButtons();
 }
 
@@ -1091,14 +1094,26 @@ earthViewBtn.addEventListener('click', () => {
   hideSeasonInfo();
 });
 
+/* 季節按鈕：在地球視角下切換節氣時，先退到整體視角再進入新節氣的地球視角 */
 document.querySelectorAll('.seasons button').forEach(btn => {
   btn.addEventListener('click', () => {
+    const wasEarthView = (viewMode === 'earth');
+
     orbitAngle = THREE.MathUtils.degToRad(parseFloat(btn.dataset.angle));
     setOrbiting(false);
     syncSlider();
-    onEarthJumped();
     showSeasonInfo(btn.dataset.season);
     updateSunSide();
+
+    if (wasEarthView) {
+      // 兩階段轉場：earth → global → earth（新節氣）
+      startTransitionTo('global', () => {
+        startTransitionTo('earth');
+      });
+    } else {
+      // 非地球視角：清除任何殘留的轉場回呼
+      onTransitionComplete = null;
+    }
   });
 });
 
@@ -1202,6 +1217,11 @@ function animate() {
     if (t >= 1) {
       transitioning = false;
       orbit.syncFromCamera();
+      if (onTransitionComplete) {
+        const cb = onTransitionComplete;
+        onTransitionComplete = null;
+        cb();
+      }
     }
   } else {
     if (viewMode === 'earth') {

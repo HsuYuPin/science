@@ -54,10 +54,27 @@
     font-size:14px;font-weight:600;color:#9fd0ff;margin-bottom:7px;
     letter-spacing:1px;
   }
-  .ib-line{display:flex;justify-content:space-between;gap:10px;}
+  .ib-line{display:flex;justify-content:space-between;gap:10px;align-items:center;}
   .ib-k{color:#7f9cc0;flex:0 0 auto;}
   .ib-v{color:#d8ecff;font-weight:600;text-align:right;}
   .ib-sep{height:1px;background:rgba(110,170,240,.2);margin:8px 0;}
+
+  /* 黃道面滑桿（在 infoBox 內） */
+  .ib-slider-line input[type="range"]{
+    flex:1 1 auto;min-width:50px;height:3px;border-radius:2px;
+    -webkit-appearance:none;appearance:none;outline:none;cursor:pointer;
+    background:linear-gradient(90deg,#2b4b7a,#3d6fb0);
+  }
+  .ib-slider-line input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:12px;height:12px;border-radius:50%;
+    background:#8ec0ff;border:2px solid #2b6fd0;
+    box-shadow:0 0 8px rgba(120,180,255,.8);cursor:pointer;
+  }
+  .ib-slider-line input[type="range"]::-moz-range-thumb{
+    width:10px;height:10px;border-radius:50%;background:#8ec0ff;
+    border:2px solid #2b6fd0;cursor:pointer;
+  }
+  .ib-slider-line .ib-v{flex:0 0 36px;font-size:11.5px;}
 
   #panel{
     position:fixed;left:22px;top:70px;bottom:auto;
@@ -171,6 +188,12 @@
     <div class="ib-sep"></div>
     <div class="ib-line"><span class="ib-k">嘉義正午天頂角</span><span class="ib-v" id="ibZenith">—</span></div>
     <div class="ib-line"><span class="ib-k">嘉義正午仰角</span><span class="ib-v" id="ibAlt">—</span></div>
+    <div class="ib-sep"></div>
+    <div class="ib-line ib-slider-line">
+      <span class="ib-k">黃道面</span>
+      <input id="eclipticSlider" type="range" min="1" max="100" step="1" value="6" />
+      <span class="ib-v" id="eclipticVal">6%</span>
+    </div>
   </div>
 
   <div id="panel">
@@ -222,6 +245,11 @@ const SPIN_PERIOD  = ORBIT_PERIOD / SPIN_RATIO;
 
 // 太陽自轉週期（視覺用，約 25 秒一圈）
 const SUN_SPIN_PERIOD = 25;
+
+// 黃道面透明度（初始值）
+const ECLIPTIC_BASE_OPACITY = 0.06;
+const GRID_BASE_OPACITY     = 0.25;
+const ECLIPTIC_BASE_PERCENT = 6;   // 對應滑桿初始值 6%
 
 const GLOBAL_CAM_POS    = new THREE.Vector3(0, 45, 65);
 const GLOBAL_CAM_TARGET = new THREE.Vector3(0, 0, 0);
@@ -524,7 +552,7 @@ scene.add(new THREE.AmbientLight(0x152233, 0.15));
 const eclipticDisk = new THREE.Mesh(
   new THREE.CircleGeometry(ORBIT_R + 7, 96),
   new THREE.MeshBasicMaterial({
-    color: 0x3a74c4, transparent: true, opacity: 0.06,
+    color: 0x3a74c4, transparent: true, opacity: ECLIPTIC_BASE_OPACITY,
     side: THREE.DoubleSide, depthWrite: false
   })
 );
@@ -534,8 +562,15 @@ scene.add(eclipticDisk);
 
 const grid = new THREE.PolarGridHelper(ORBIT_R + 7, 12, 4, 96, 0x2f5c96, 0x24456e);
 grid.material.transparent = true;
-grid.material.opacity = 0.25; 
+grid.material.opacity = GRID_BASE_OPACITY; 
 scene.add(grid);
+
+/* 依百分比套用黃道面透明度：disk 直接映射，grid 依初始比例放大 */
+function applyEclipticOpacity(percent) {
+  const f = percent / 100;
+  eclipticDisk.material.opacity = f;
+  grid.material.opacity = Math.min(f * (GRID_BASE_OPACITY / ECLIPTIC_BASE_OPACITY), 1.0);
+}
 
 (function buildOrbitLine() {
   const pts = [];
@@ -967,13 +1002,15 @@ const speedBtn      = document.getElementById('speedBtn');
 const globalViewBtn = document.getElementById('globalViewBtn');
 const earthViewBtn  = document.getElementById('earthViewBtn');
 
-const infoBox  = document.getElementById('infoBox');
-const ibTitle  = document.getElementById('ibTitle');
-const ibSun    = document.getElementById('ibSun');
-const ibDay    = document.getElementById('ibDay');
-const ibNight  = document.getElementById('ibNight');
-const ibZenith = document.getElementById('ibZenith');
-const ibAlt    = document.getElementById('ibAlt');
+const infoBox       = document.getElementById('infoBox');
+const ibTitle       = document.getElementById('ibTitle');
+const ibSun         = document.getElementById('ibSun');
+const ibDay         = document.getElementById('ibDay');
+const ibNight       = document.getElementById('ibNight');
+const ibZenith      = document.getElementById('ibZenith');
+const ibAlt         = document.getElementById('ibAlt');
+const eclipticSlider = document.getElementById('eclipticSlider');
+const eclipticVal    = document.getElementById('eclipticVal');
 
 const fsBtn       = document.getElementById('fsBtn');
 
@@ -1014,7 +1051,18 @@ function showSeasonInfo(key) {
 
 function hideSeasonInfo() {
   infoBox.classList.remove('show');
+  /* 關閉文字框時，黃道面透明度回到初始值 */
+  eclipticSlider.value = ECLIPTIC_BASE_PERCENT;
+  eclipticVal.textContent = ECLIPTIC_BASE_PERCENT + '%';
+  applyEclipticOpacity(ECLIPTIC_BASE_PERCENT);
 }
+
+/* 黃道面滑桿 */
+eclipticSlider.addEventListener('input', () => {
+  const v = parseFloat(eclipticSlider.value);
+  eclipticVal.textContent = v + '%';
+  applyEclipticOpacity(v);
+});
 
 orbitSlider.addEventListener('input', () => {
   setOrbiting(false);

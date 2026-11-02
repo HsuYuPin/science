@@ -37,7 +37,6 @@
   #mobileTools button:hover{background:rgba(50,100,170,.82);}
   #mobileTools button:active{transform:scale(.96);}
 
-  /* 嘉義模式專用暫停按鈕（圖示，右上角全螢幕鍵下方） */
   #chiayiPauseBtn {
     position: fixed;
     top: 56px;
@@ -193,6 +192,25 @@
     border-color:rgba(160,245,205,.7);
   }
 
+  /* ===== 嘉義模式：太陽位置顯示（僅一行字） ===== */
+  #elevationDisplay {
+    margin-top: 2px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(110, 170, 240, 0.25);
+    display: none;
+    font-size: 12.5px;
+    text-align: center;
+    color: #cfe0f5;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  #elevationDisplay.show { display: block; }
+  #elevationDisplay b { color: #ffe066; font-weight: 600; }
+  
+  #elevationDisplay.noon { color: #ffcc44; }
+  #elevationDisplay.noon b { color: #ffcc44; }
+
   @media (max-width: 768px), (pointer: coarse) and (max-height: 500px) {
     #title { display: none !important; }
     #mobileTools { top: 10px; right: 10px; }
@@ -228,6 +246,7 @@
     }
     #infoBox.show { transform: translateY(0); }
     .ib-btn { font-size: 11px; padding: 7px 10px; }
+    #elevationDisplay { font-size: 11.5px; }
   }
 </style>
 </head>
@@ -281,6 +300,10 @@
       <button id="speedBtn">速率 1×</button>
       <button id="globalViewBtn" class="active">整體視角</button>
       <button id="earthViewBtn">地球視角</button>
+    </div>
+
+    <div id="elevationDisplay">
+      <span id="edText">仰角 <b>—</b> | 天頂角 <b>—</b></span>
     </div>
   </div>
 
@@ -345,6 +368,13 @@ let chiayiPaused  = false;
 let zenithLine    = null;
 let zenithTip     = null;
 let zenithLabel   = null;
+
+/* 仰角自動暫停追蹤 */
+let prevElevation    = null;
+let prevDelta        = 0;
+let autoPaused       = false;
+let elevationWarmup  = 0;
+let currentSeason    = 'spring';
 
 /* ==================== 舞台 & 渲染器 ==================== */
 const stage = document.getElementById('stage');
@@ -1141,8 +1171,34 @@ function computeChiayiView(outPos, outTgt) {
 
 /* 進入嘉義時，初始面向東方地平線（水平） */
 function computeInitialChiayiYawPitch() {
-  chiayiYaw   = 0;   // 0 = 面向東方
-  chiayiPitch = 0;   // 0 = 水平
+  chiayiYaw   = 0;
+  chiayiPitch = 0;
+}
+
+/* 取得最接近的節氣（用於正午暫停時顯示理論數值） */
+function getClosestSeason(angleRad) {
+  const deg = ((THREE.MathUtils.radToDeg(angleRad) % 360) + 360) % 360;
+  if (deg >= 45 && deg < 135) return 'spring';
+  if (deg >= 135 && deg < 225) return 'summer';
+  if (deg >= 225 && deg < 315) return 'autumn';
+  return 'winter';
+}
+
+/* 計算目前太陽相對嘉義的仰角與天頂角（度） */
+const _sunDirFromChiayi = new THREE.Vector3();
+function computeSunAngles() {
+  earthSystem.updateMatrixWorld(true);
+  chiayiMarker.getWorldPosition(_chiayiWorldPos);
+  chiayiMarker.getWorldQuaternion(_tempQuat);
+
+  _chiayiUp.copy(chiayiLocalUp).applyQuaternion(_tempQuat).normalize();
+
+  _sunDirFromChiayi.copy(sun.position).sub(_chiayiWorldPos).normalize();
+  const sinElev = THREE.MathUtils.clamp(_sunDirFromChiayi.dot(_chiayiUp), -1, 1);
+  const elevationDeg = THREE.MathUtils.radToDeg(Math.asin(sinElev));
+  const zenithDeg    = 90 - elevationDeg;
+
+  return { elevationDeg, zenithDeg };
 }
 
 function startTransitionTo(mode, onComplete) {
@@ -1156,6 +1212,14 @@ function startTransitionTo(mode, onComplete) {
     chiayiSpinFactor = CHIAYI_SPIN_SLOW;
     camera.fov = CHIAYI_FOV;
     camera.updateProjectionMatrix();
+
+    /* 重置仰角追蹤狀態 */
+    prevElevation   = null;
+    prevDelta       = 0;
+    autoPaused      = false;
+    elevationWarmup = 0;
+    elevationDisplay.classList.add('show');
+    elevationDisplay.classList.remove('noon');
   }
 
   /* 離開嘉義 */
@@ -1171,6 +1235,8 @@ function startTransitionTo(mode, onComplete) {
     chiayiPaused = false;
     chiayiPauseBtn.textContent = '⏸';
     chiayiPauseBtn.classList.remove('paused');
+
+    elevationDisplay.classList.remove('show');
   }
 
   viewMode = mode;
@@ -1242,6 +1308,9 @@ const eclipticVal    = document.getElementById('eclipticVal');
 const chiayiBtn      = document.getElementById('chiayiBtn');
 const chiayiPauseBtn = document.getElementById('chiayiPauseBtn');
 
+const elevationDisplay = document.getElementById('elevationDisplay');
+const edText           = document.getElementById('edText');
+
 const fsBtn = document.getElementById('fsBtn');
 
 /* ==================== UI 邏輯 ==================== */
@@ -1286,6 +1355,18 @@ function hideSeasonInfo() {
   applyEclipticOpacity(ECLIPTIC_BASE_PERCENT);
 }
 
+/* 更新暫停狀態與文字顯示 */
+function setChiayiPaused(paused, msgHtml = null, isNoon = false) {
+  chiayiPaused = paused;
+  chiayiPauseBtn.textContent = paused ? '▶' : '⏸';
+  chiayiPauseBtn.classList.toggle('paused', paused);
+
+  if (paused && msgHtml) {
+    edText.innerHTML = msgHtml;
+    elevationDisplay.classList.toggle('noon', isNoon);
+  }
+}
+
 /* 黃道面滑桿 */
 eclipticSlider.addEventListener('input', () => {
   const v = parseFloat(eclipticSlider.value);
@@ -1297,6 +1378,7 @@ orbitSlider.addEventListener('input', () => {
   setOrbiting(false);
   orbitAngle = THREE.MathUtils.degToRad(parseFloat(orbitSlider.value));
   angleVal.textContent = parseFloat(orbitSlider.value).toFixed(0) + '°';
+  currentSeason = getClosestSeason(orbitAngle);
   onEarthJumped();
   hideSeasonInfo();
   updateSunSide();
@@ -1333,11 +1415,15 @@ chiayiBtn.addEventListener('click', () => {
   }
 });
 
-/* 嘉義模式暫停按鈕 */
+/* 嘉義模式暫停按鈕（手動點擊：取消自動暫停狀態） */
 chiayiPauseBtn.addEventListener('click', () => {
-  chiayiPaused = !chiayiPaused;
-  chiayiPauseBtn.textContent = chiayiPaused ? '▶' : '⏸';
-  chiayiPauseBtn.classList.toggle('paused', chiayiPaused);
+  const nextPaused = !chiayiPaused;
+  setChiayiPaused(nextPaused, null);
+  autoPaused = false;
+  
+  if (!nextPaused) {
+    elevationDisplay.classList.remove('noon');
+  }
 });
 
 /* 季節按鈕：在地球或嘉義視角時，會先退回整體視角，再進入新節氣的地球視角 */
@@ -1349,9 +1435,10 @@ document.querySelectorAll('.seasons button').forEach(btn => {
     const wasEarth  = (viewMode === 'earth');
 
     orbitAngle = THREE.MathUtils.degToRad(parseFloat(btn.dataset.angle));
+    currentSeason = btn.dataset.season;
     setOrbiting(false);
     syncSlider();
-    showSeasonInfo(btn.dataset.season);
+    showSeasonInfo(currentSeason);
     updateSunSide();
 
     if (wasChiayi || wasEarth) {
@@ -1446,6 +1533,39 @@ function animate() {
       : SPIN_ANGLE_PER_SEC * simDt * chiayiSpinFactor;
   earth.rotation.y += earthSpinDt;
 
+  /* ---- 嘉義模式：計算並更新太陽仰角顯示 + 自動暫停判定 ---- */
+  if (viewMode === 'chiayi' && !transitioning) {
+    const { elevationDeg, zenithDeg } = computeSunAngles();
+    
+    if (!chiayiPaused) {
+      let icon = '☀️';
+      if (elevationDeg < 0) icon = '🌙';
+      else if (elevationDeg < 10) icon = '🌅';
+      
+      edText.innerHTML = `${icon} 仰角 <b>${elevationDeg.toFixed(1)}°</b> | 天頂角 <b>${zenithDeg.toFixed(1)}°</b>`;
+      elevationDisplay.classList.remove('noon');
+
+      /* 暖機：進入前 0.3 秒不判定，避免剛進入就觸發 */
+      if (elevationWarmup < 0.3) {
+        elevationWarmup += dt;
+      } else {
+        const delta = (prevElevation === null) ? 0 : (elevationDeg - prevElevation);
+
+        /* 只保留：正午最大仰角 → 仰角由上升轉為下降（以節氣理論值為準） */
+        if (prevDelta > 0 && delta <= 0 && elevationDeg > 0) {
+          const sInfo = SEASON_INFO[currentSeason];
+          const zenithText = sInfo.zenith.replace('（直射）', '');
+          const msg = `☀️ 正午：仰角 <b>${sInfo.altitude}</b> | 天頂角 <b>${zenithText}</b>`;
+          setChiayiPaused(true, msg, true);
+          autoPaused = true;
+        }
+
+        prevElevation = elevationDeg;
+        prevDelta = delta;
+      }
+    }
+  }
+
   /* 視角目標 */
   if (viewMode === 'chiayi') {
     computeChiayiView(_desiredPos, _desiredTgt);
@@ -1465,7 +1585,6 @@ function animate() {
     camera.position.lerpVectors(startCamPos, _desiredPos, e);
     orbit.target.lerpVectors(startTarget, _desiredTgt, e);
 
-    /* up 向量平滑插值，避免過渡結束時畫面翻轉 */
     if (viewMode === 'chiayi') {
       _targetUp.copy(_chiayiUp);
     } else {
@@ -1479,12 +1598,16 @@ function animate() {
       transitioning = false;
       orbit.syncFromCamera();
 
-      /* 進入嘉義完成：顯示天頂線、天頂球、天頂文字、暫停按鈕 */
       if (viewMode === 'chiayi') {
         zenithLine.visible = true;
         zenithTip.visible = true;
         zenithLabel.visible = true;
         chiayiPauseBtn.classList.add('show');
+
+        prevElevation   = null;
+        prevDelta       = 0;
+        elevationWarmup = 0;
+        autoPaused      = false;
       }
 
       if (onTransitionComplete) {
@@ -1495,7 +1618,6 @@ function animate() {
     }
   } else {
     if (viewMode === 'chiayi') {
-      /* 貼地：位置與 up 直接套用切平面基向量 */
       camera.position.copy(_desiredPos);
       camera.up.copy(_chiayiUp);
       camera.lookAt(_desiredTgt);

@@ -37,8 +37,42 @@
   #mobileTools button:hover{background:rgba(50,100,170,.82);}
   #mobileTools button:active{transform:scale(.96);}
 
+  /* 嘉義模式專用暫停按鈕（圖示，右上角全螢幕鍵下方） */
+  #chiayiPauseBtn {
+    position: fixed;
+    top: 56px;
+    right: 14px;
+    width: 38px;
+    height: 32px;
+    background: rgba(20, 40, 70, .72);
+    border: 1px solid rgba(90, 150, 230, .5);
+    color: #cfe3ff;
+    font-size: 14px;
+    line-height: 1;
+    border-radius: 8px;
+    cursor: pointer;
+    z-index: 22;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-family: inherit;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition: 0.18s;
+    padding: 0;
+    flex: 0 0 auto;
+  }
+  #chiayiPauseBtn.show { display: flex; }
+  #chiayiPauseBtn:hover { background: rgba(50, 100, 170, .82); }
+  #chiayiPauseBtn:active { transform: scale(.96); }
+  #chiayiPauseBtn.paused {
+    background: rgba(255, 160, 60, .85);
+    border-color: rgba(255, 200, 120, .9);
+    color: #fff;
+  }
+
   #infoBox{
-    position:fixed;top:66px;right:14px;width:268px;max-width:calc(100vw - 28px);
+    position:fixed;top:108px;right:14px;width:268px;max-width:calc(100vw - 28px);
     background:rgba(8,18,34,.95);
     border:1px solid rgba(110,170,240,.45);
     border-radius:12px;padding:14px 16px;
@@ -163,6 +197,13 @@
     #title { display: none !important; }
     #mobileTools { top: 10px; right: 10px; }
     #mobileTools button { padding: 8px 12px; font-size: 16px; line-height: 1; }
+    #chiayiPauseBtn {
+      top: 46px;
+      right: 10px;
+      width: 34px;
+      height: 28px;
+      font-size: 13px;
+    }
     #panel {
       left: 10px; top: 10px;
       width: calc(100vw - 65px);
@@ -200,6 +241,8 @@
   <div id="mobileTools">
     <button id="fsBtn" title="全螢幕">⛶</button>
   </div>
+
+  <button id="chiayiPauseBtn" title="暫停/繼續自轉">⏸</button>
 
   <div id="infoBox">
     <div class="ib-title" id="ibTitle">—</div>
@@ -275,9 +318,9 @@ const ECLIPTIC_BASE_PERCENT = 6;
 /* 嘉義參數 */
 const CHIAYI_LAT = 23.5;
 const CHIAYI_LON = 120;
-const CHIAYI_EYE_HEIGHT = 0.03;         // 眼睛高於地表（單位與 EARTH_R 同）
-const CHIAYI_FOV        = 75;           // 嘉義模式 FOV
-const CHIAYI_SPIN_SLOW  = 1 / 30;       // 自轉慢速倍率
+const CHIAYI_EYE_HEIGHT = 0.03;
+const CHIAYI_FOV        = 75;
+const CHIAYI_SPIN_SLOW  = 1 / 30;
 
 const GLOBAL_CAM_POS    = new THREE.Vector3(0, 45, 65);
 const GLOBAL_CAM_TARGET = new THREE.Vector3(0, 0, 0);
@@ -293,11 +336,15 @@ let userInteracted = false;
 let onTransitionComplete = null;
 
 /* 嘉義模式狀態 */
-let chiayiYaw     = 0;              // 水平視角（0 = 面向東）
-let chiayiPitch   = 0;              // 俯仰（+向上，-向下）
-let chiayiSpinFactor = 1;           // 嘉義模式慢速倍率
-let savedFov = 45;                  // 進入嘉義前的 FOV
-let prevModeBeforeChiayi = 'earth'; // 退出嘉義要回到哪個視角
+let chiayiYaw     = 0;
+let chiayiPitch   = 0;
+let chiayiSpinFactor = 1;
+let savedFov = 45;
+let prevModeBeforeChiayi = 'earth';
+let chiayiPaused  = false;
+let zenithLine    = null;
+let zenithTip     = null;
+let zenithLabel   = null;
 
 /* ==================== 舞台 & 渲染器 ==================== */
 const stage = document.getElementById('stage');
@@ -355,7 +402,6 @@ class SimpleOrbit {
       const H = rect.height || 1;
       const speedFactor = (e.pointerType === 'touch') ? 0.4 : 1.0;
 
-      /* 嘉義模式：拖曳改控視角 */
       if (viewMode === 'chiayi') {
         chiayiYaw   -= 2 * Math.PI * dx / W * speedFactor;
         chiayiPitch -= 2 * Math.PI * dy / H * speedFactor;
@@ -375,7 +421,6 @@ class SimpleOrbit {
       if (e.deltaMode === 1) d *= 16;
       else if (e.deltaMode === 2) d *= 100;
 
-      /* 嘉義模式：滾輪改縮放 FOV */
       if (viewMode === 'chiayi') {
         const factor = d > 0 ? 1.05 : 0.95;
         camera.fov = Math.max(30, Math.min(110, camera.fov * factor));
@@ -884,11 +929,6 @@ arrowHead.position.y = axisLen + 0.31;
 tiltGroup.add(arrowHead);
 
 /* ==================== 嘉義定錨 & 切平面基向量 ==================== */
-/* 位置由 SphereGeometry 預設 UV 推算：
-   - 經度 lon → phi = (lon + 180)°
-   - 緯度 lat → theta = 90° - lat
-   - 球面座標：(-cosφ·sinθ, cosθ, sinφ·sinθ) * EARTH_R
-*/
 const chiayiPhi   = (CHIAYI_LON + 180) * Math.PI / 180;
 const chiayiTheta = Math.PI / 2 - CHIAYI_LAT * Math.PI / 180;
 
@@ -912,6 +952,46 @@ const chiayiLocalNorth = new THREE.Vector3()
 const chiayiMarker = new THREE.Object3D();
 chiayiMarker.position.copy(chiayiLocalUp).multiplyScalar(EARTH_R);
 earth.add(chiayiMarker);
+
+/* ---- 天頂參考線（虛線 + 頂端標記，僅嘉義模式可見） ---- */
+(function createZenithLine() {
+  const lineLen = 3.5;
+  const pts = [
+    chiayiLocalUp.clone().multiplyScalar(EARTH_R + 0.005),
+    chiayiLocalUp.clone().multiplyScalar(EARTH_R + lineLen),
+  ];
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const mat = new THREE.LineDashedMaterial({
+    color: 0xffe066,
+    dashSize: 0.18,
+    gapSize: 0.10,
+    transparent: true,
+    opacity: 1.0,
+    depthTest: false,
+    depthWrite: false,
+  });
+  zenithLine = new THREE.Line(geo, mat);
+  zenithLine.computeLineDistances();
+  zenithLine.visible = false;
+  zenithLine.renderOrder = 999;
+  earth.add(zenithLine);
+
+  /* 頂端標記球 */
+  const tipPos = chiayiLocalUp.clone().multiplyScalar(EARTH_R + lineLen);
+  const tipGeo = new THREE.SphereGeometry(0.10, 16, 16);
+  const tipMat = new THREE.MeshBasicMaterial({
+    color: 0xffe066,
+    transparent: true,
+    opacity: 1.0,
+    depthTest: false,
+    depthWrite: false,
+  });
+  zenithTip = new THREE.Mesh(tipGeo, tipMat);
+  zenithTip.position.copy(tipPos);
+  zenithTip.visible = false;
+  zenithTip.renderOrder = 999;
+  earth.add(zenithTip);
+})();
 
 /* ---- 暫存向量 ---- */
 const _chiayiWorldPos = new THREE.Vector3();
@@ -959,6 +1039,16 @@ tiltGroup.add(northLabel);
 const eclipticLabel = makeLabel('黃道面', '#7fb6ff', 1.9);
 eclipticLabel.position.set(ORBIT_R * 0.72, 1.4, ORBIT_R * 0.72);
 scene.add(eclipticLabel);
+
+/* ---- 天頂文字標籤（僅嘉義模式可見，位於天頂球東側） ---- */
+zenithLabel = makeLabel('天頂', '#ffe066', 0.42);
+zenithLabel.position
+  .copy(chiayiLocalUp).multiplyScalar(EARTH_R + 3.5)
+  .addScaledVector(chiayiLocalEast, 0.55);
+zenithLabel.material.depthTest = false;
+zenithLabel.renderOrder = 999;
+zenithLabel.visible = false;
+earth.add(zenithLabel);
 
 /* 臨時變數：四元數與目標 up */
 const _tempQuat = new THREE.Quaternion();
@@ -1054,6 +1144,7 @@ function computeInitialChiayiYawPitch() {
   chiayiYaw   = 0;   // 0 = 面向東方
   chiayiPitch = 0;   // 0 = 水平
 }
+
 function startTransitionTo(mode, onComplete) {
   const wasChiayi = (viewMode === 'chiayi');
 
@@ -1072,6 +1163,14 @@ function startTransitionTo(mode, onComplete) {
     chiayiSpinFactor = 1;
     camera.fov = savedFov;
     camera.updateProjectionMatrix();
+
+    zenithLine.visible = false;
+    zenithTip.visible = false;
+    zenithLabel.visible = false;
+    chiayiPauseBtn.classList.remove('show');
+    chiayiPaused = false;
+    chiayiPauseBtn.textContent = '⏸';
+    chiayiPauseBtn.classList.remove('paused');
   }
 
   viewMode = mode;
@@ -1141,6 +1240,7 @@ const ibAlt          = document.getElementById('ibAlt');
 const eclipticSlider = document.getElementById('eclipticSlider');
 const eclipticVal    = document.getElementById('eclipticVal');
 const chiayiBtn      = document.getElementById('chiayiBtn');
+const chiayiPauseBtn = document.getElementById('chiayiPauseBtn');
 
 const fsBtn = document.getElementById('fsBtn');
 
@@ -1231,6 +1331,13 @@ chiayiBtn.addEventListener('click', () => {
   } else {
     startTransitionTo('chiayi');
   }
+});
+
+/* 嘉義模式暫停按鈕 */
+chiayiPauseBtn.addEventListener('click', () => {
+  chiayiPaused = !chiayiPaused;
+  chiayiPauseBtn.textContent = chiayiPaused ? '▶' : '⏸';
+  chiayiPauseBtn.classList.toggle('paused', chiayiPaused);
 });
 
 /* 季節按鈕：在地球或嘉義視角時，會先退回整體視角，再進入新節氣的地球視角 */
@@ -1332,8 +1439,12 @@ function animate() {
 
   earthSystem.position.set(ORBIT_R * cx, 0, -ORBIT_R * sz);
 
-  /* 地球自轉（嘉義模式下慢速，讓日出日落可觀察） */
-  earth.rotation.y += SPIN_ANGLE_PER_SEC * simDt * chiayiSpinFactor;
+  /* 地球自轉（嘉義模式下慢速，且可暫停） */
+  const earthSpinDt =
+    (viewMode === 'chiayi' && chiayiPaused)
+      ? 0
+      : SPIN_ANGLE_PER_SEC * simDt * chiayiSpinFactor;
+  earth.rotation.y += earthSpinDt;
 
   /* 視角目標 */
   if (viewMode === 'chiayi') {
@@ -1367,6 +1478,14 @@ function animate() {
     if (t >= 1) {
       transitioning = false;
       orbit.syncFromCamera();
+
+      /* 進入嘉義完成：顯示天頂線、天頂球、天頂文字、暫停按鈕 */
+      if (viewMode === 'chiayi') {
+        zenithLine.visible = true;
+        zenithTip.visible = true;
+        zenithLabel.visible = true;
+        chiayiPauseBtn.classList.add('show');
+      }
 
       if (onTransitionComplete) {
         const cb = onTransitionComplete;

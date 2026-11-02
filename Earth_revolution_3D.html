@@ -1049,26 +1049,11 @@ function computeChiayiView(outPos, outTgt) {
   outTgt.copy(outPos).add(_chiayiForward);
 }
 
-/* 進入嘉義時，讓鏡頭初始對準太陽方向 */
+/* 進入嘉義時，初始面向東方地平線（水平） */
 function computeInitialChiayiYawPitch() {
-  earthSystem.updateMatrixWorld(true);
-
-  chiayiMarker.getWorldPosition(_chiayiWorldPos);
-  chiayiMarker.getWorldQuaternion(_tempQuat);
-
-  const up    = new THREE.Vector3().copy(chiayiLocalUp).applyQuaternion(_tempQuat).normalize();
-  const east  = new THREE.Vector3().copy(chiayiLocalEast).applyQuaternion(_tempQuat).normalize();
-  const north = new THREE.Vector3().copy(chiayiLocalNorth).applyQuaternion(_tempQuat).normalize();
-
-  const toSun = new THREE.Vector3().copy(sun.position).sub(_chiayiWorldPos).normalize();
-  const e = toSun.dot(east);
-  const n = toSun.dot(north);
-  const u = toSun.dot(up);
-
-  chiayiYaw   = Math.atan2(n, e);
-  chiayiPitch = Math.asin(Math.max(-1, Math.min(1, u)));
+  chiayiYaw   = 0;   // 0 = 面向東方
+  chiayiPitch = 0;   // 0 = 水平
 }
-
 function startTransitionTo(mode, onComplete) {
   const wasChiayi = (viewMode === 'chiayi');
 

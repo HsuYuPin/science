@@ -75,6 +75,27 @@
   }
   .ib-slider-line .ib-v{flex:0 0 36px;font-size:11.5px;}
 
+  .ib-btn{
+    width:100%;
+    background:rgba(80,200,255,.16);
+    border:1px solid rgba(120,220,255,.5);
+    color:#c0ecff;
+    padding:8px 12px;
+    font-size:12px;
+    border-radius:8px;
+    cursor:pointer;
+    font-family:inherit;
+    letter-spacing:1px;
+    transition:0.18s;
+    display:block;
+  }
+  .ib-btn:hover{
+    background:rgba(120,230,255,.3);
+    border-color:rgba(180,240,255,.8);
+    color:#fff;
+  }
+  .ib-btn:active{transform:scale(.97);}
+
   #panel{
     position:fixed;left:22px;top:70px;bottom:auto;
     width:min(380px, calc(100vw - 44px));
@@ -104,9 +125,9 @@
     border:2px solid #2b6fd0;cursor:pointer;
   }
   .val{flex:0 0 52px;text-align:right;font-variant-numeric:tabular-nums;color:#cfe3ff;font-size:13px;}
-  
+
   .btns{display:flex;gap:8px;flex-wrap:nowrap;}
-  
+
   button{
     flex:1 1 auto;background:rgba(60,120,200,.2);
     border:1px solid rgba(90,150,230,.45);color:#cfe3ff;
@@ -121,13 +142,13 @@
     color:#fff;
     box-shadow:0 0 14px rgba(120,190,255,.45);
   }
-  
+
   .btns.seasons button, .btns.four-btns button {
-    flex: 1 1 0; 
+    flex: 1 1 0;
     padding: 7px 2px;
     text-align: center;
   }
-  
+
   .btns.seasons button{
     background:rgba(70,170,130,.16);
     border-color:rgba(110,220,170,.38);
@@ -159,12 +180,13 @@
     #infoBox {
       top: auto; bottom: 12px;
       left: 12px; right: auto;
-      width: 220px;
+      width: 230px;
       font-size: 11.5px;
       padding: 11px 13px;
       transform: translateY(10px);
     }
     #infoBox.show { transform: translateY(0); }
+    .ib-btn { font-size: 11px; padding: 7px 10px; }
   }
 </style>
 </head>
@@ -193,6 +215,8 @@
       <input id="eclipticSlider" type="range" min="1" max="100" step="1" value="6" />
       <span class="ib-v" id="eclipticVal">6%</span>
     </div>
+    <div class="ib-sep"></div>
+    <button id="chiayiBtn" class="ib-btn">🌅 嘉義日出日落</button>
   </div>
 
   <div id="panel">
@@ -242,13 +266,18 @@ const ORBIT_PERIOD = 120;
 const SPIN_RATIO   = 365 / 3;
 const SPIN_PERIOD  = ORBIT_PERIOD / SPIN_RATIO;
 
-// 太陽自轉週期（視覺用，約 25 秒一圈）
 const SUN_SPIN_PERIOD = 25;
 
-// 黃道面透明度（初始值）
 const ECLIPTIC_BASE_OPACITY = 0.06;
 const GRID_BASE_OPACITY     = 0.25;
-const ECLIPTIC_BASE_PERCENT = 6;   // 對應滑桿初始值 6%
+const ECLIPTIC_BASE_PERCENT = 6;
+
+/* 嘉義參數 */
+const CHIAYI_LAT = 23.5;
+const CHIAYI_LON = 120;
+const CHIAYI_EYE_HEIGHT = 0.03;         // 眼睛高於地表（單位與 EARTH_R 同）
+const CHIAYI_FOV        = 75;           // 嘉義模式 FOV
+const CHIAYI_SPIN_SLOW  = 1 / 30;       // 自轉慢速倍率
 
 const GLOBAL_CAM_POS    = new THREE.Vector3(0, 45, 65);
 const GLOBAL_CAM_TARGET = new THREE.Vector3(0, 0, 0);
@@ -261,16 +290,20 @@ const TRANS_DUR         = 1.1;
 let viewMode      = 'global';
 let transitioning = false;
 let userInteracted = false;
-
-/* 轉場完成後的回呼（用於兩階段轉場） */
 let onTransitionComplete = null;
+
+/* 嘉義模式狀態 */
+let chiayiYaw     = 0;              // 水平視角（0 = 面向東）
+let chiayiPitch   = 0;              // 俯仰（+向上，-向下）
+let chiayiSpinFactor = 1;           // 嘉義模式慢速倍率
+let savedFov = 45;                  // 進入嘉義前的 FOV
+let prevModeBeforeChiayi = 'earth'; // 退出嘉義要回到哪個視角
 
 /* ==================== 舞台 & 渲染器 ==================== */
 const stage = document.getElementById('stage');
-
 const scene = new THREE.Scene();
 
-const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 4000);
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.01, 4000);
 camera.position.copy(GLOBAL_CAM_POS);
 camera.lookAt(0, 0, 0);
 
@@ -309,7 +342,7 @@ class SimpleOrbit {
       this._py = e.clientY;
       if (this.onUserInteract) this.onUserInteract();
     });
-    
+
     window.addEventListener('pointermove', e => {
       if (!this._dragging) return;
       let dx = e.clientX - this._px;
@@ -320,8 +353,16 @@ class SimpleOrbit {
       const rect = this.dom.getBoundingClientRect();
       const W = rect.width || 1;
       const H = rect.height || 1;
-
       const speedFactor = (e.pointerType === 'touch') ? 0.4 : 1.0;
+
+      /* 嘉義模式：拖曳改控視角 */
+      if (viewMode === 'chiayi') {
+        chiayiYaw   -= 2 * Math.PI * dx / W * speedFactor;
+        chiayiPitch -= 2 * Math.PI * dy / H * speedFactor;
+        chiayiPitch = Math.max(-Math.PI/2 + 0.05,
+                      Math.min( Math.PI/2 - 0.05, chiayiPitch));
+        return;
+      }
 
       this._dTheta -= 2 * Math.PI * dx / W * this.rotateSpeed * speedFactor;
       this._dPhi   -= 2 * Math.PI * dy / H * this.rotateSpeed * speedFactor;
@@ -333,6 +374,15 @@ class SimpleOrbit {
       let d = e.deltaY;
       if (e.deltaMode === 1) d *= 16;
       else if (e.deltaMode === 2) d *= 100;
+
+      /* 嘉義模式：滾輪改縮放 FOV */
+      if (viewMode === 'chiayi') {
+        const factor = d > 0 ? 1.05 : 0.95;
+        camera.fov = Math.max(30, Math.min(110, camera.fov * factor));
+        camera.updateProjectionMatrix();
+        return;
+      }
+
       const f = Math.pow(0.95, this.zoomSpeed);
       this._scale *= d > 0 ? f : 1 / f;
       if (this.onUserInteract) this.onUserInteract();
@@ -355,7 +405,15 @@ class SimpleOrbit {
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         );
-        if (this._touchDist > 0) this._scale *= this._touchDist / d;
+        if (this._touchDist > 0) {
+          if (viewMode === 'chiayi') {
+            const ratio = this._touchDist / d;
+            camera.fov = Math.max(30, Math.min(110, camera.fov * ratio));
+            camera.updateProjectionMatrix();
+          } else {
+            this._scale *= this._touchDist / d;
+          }
+        }
         this._touchDist = d;
       }
     }, { passive: false });
@@ -396,9 +454,7 @@ orbit.target.copy(GLOBAL_CAM_TARGET);
 orbit.syncFromCamera();
 
 orbit.onUserInteract = () => {
-  if (viewMode === 'earth') {
-    userInteracted = true;
-  }
+  if (viewMode === 'earth') userInteracted = true;
 };
 
 /* ==================== 星空 ==================== */
@@ -421,7 +477,7 @@ orbit.onUserInteract = () => {
   })));
 })();
 
-/* ==================== 太陽（程序化表面著色器） ==================== */
+/* ==================== 太陽 ==================== */
 const sunUniforms = { uTime: { value: 0 } };
 
 const sunMaterial = new THREE.ShaderMaterial({
@@ -430,7 +486,6 @@ const sunMaterial = new THREE.ShaderMaterial({
     varying vec3 vLocalPos;
     varying vec3 vWorldNormal;
     varying vec3 vWorldPos;
-
     void main() {
       vLocalPos    = position;
       vWorldNormal = normalize(mat3(modelMatrix) * normal);
@@ -441,7 +496,6 @@ const sunMaterial = new THREE.ShaderMaterial({
   `,
   fragmentShader: /* glsl */`
     uniform float uTime;
-
     varying vec3 vLocalPos;
     varying vec3 vWorldNormal;
     varying vec3 vWorldPos;
@@ -451,7 +505,6 @@ const sunMaterial = new THREE.ShaderMaterial({
       p *= 17.0;
       return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
     }
-
     float noise3(vec3 x) {
       vec3 i = floor(x);
       vec3 f = fract(x);
@@ -463,7 +516,6 @@ const sunMaterial = new THREE.ShaderMaterial({
             mix(hash31(i + vec3(0.0, 1.0, 1.0)), hash31(i + vec3(1.0, 1.0, 1.0)), f.x), f.y),
         f.z);
     }
-
     float fbm3(vec3 p) {
       float v = 0.0;
       float a = 0.5;
@@ -474,50 +526,37 @@ const sunMaterial = new THREE.ShaderMaterial({
       }
       return v;
     }
-
     void main() {
       vec3  dir = normalize(vLocalPos);
       float t   = uTime * 0.05;
-
       float n1   = fbm3(dir * 3.5  + vec3(t, t * 0.6, -t * 0.4));
       float n2   = fbm3(dir * 9.0  - vec3(t * 1.4, 0.0, t * 0.9));
       float gran = fbm3(dir * 26.0 + n2 * 1.2);
-
       float bright = 0.72 + 0.28 * smoothstep(0.30, 0.80, gran);
       bright += 0.22 * (smoothstep(0.35, 0.85, n1) - 0.5);
       bright += 0.10 * (smoothstep(0.40, 0.90, n2) - 0.5);
-
       float spotField = fbm3(dir * 2.2 + 11.3);
       float spot = smoothstep(0.60, 0.70, spotField) * smoothstep(0.45, 0.75, n1);
       bright *= 1.0 - spot * 0.65;
-
       vec3  N    = normalize(vWorldNormal);
       vec3  V    = normalize(cameraPosition - vWorldPos);
       float mu   = clamp(dot(N, V), 0.0, 1.0);
       float limb = pow(mu, 0.55);
-
       vec3 coreCol = vec3(1.00, 0.94, 0.80);
       vec3 edgeCol = vec3(1.00, 0.46, 0.11);
       vec3 col = mix(edgeCol, coreCol, limb);
       col *= bright * 1.35;
-
       col = mix(col, vec3(1.00, 0.32, 0.05), pow(1.0 - mu, 3.0) * 0.55);
-
       gl_FragColor = vec4(col, 1.0);
     }
   `
 });
 
-const sun = new THREE.Mesh(
-  new THREE.SphereGeometry(SUN_R, 96, 64),
-  sunMaterial
-);
+const sun = new THREE.Mesh(new THREE.SphereGeometry(SUN_R, 96, 64), sunMaterial);
 sun.position.copy(SUN_OFFSET);
-
 sun.onBeforeRender = () => {
   sunUniforms.uTime.value = (performance.now() * 0.001) % 500;
 };
-
 scene.add(sun);
 
 /* ==================== 太陽外圍柔光暈 ==================== */
@@ -548,7 +587,7 @@ scene.add(glow);
 const sunLight = new THREE.PointLight(0xfff4e0, 3.8, 0, 0);
 sunLight.position.copy(SUN_OFFSET);
 scene.add(sunLight);
-scene.add(new THREE.AmbientLight(0x152233, 0.15)); 
+scene.add(new THREE.AmbientLight(0x152233, 0.15));
 
 /* ==================== 黃道面 ==================== */
 const eclipticDisk = new THREE.Mesh(
@@ -564,7 +603,7 @@ scene.add(eclipticDisk);
 
 const grid = new THREE.PolarGridHelper(ORBIT_R + 7, 12, 4, 96, 0x2f5c96, 0x24456e);
 grid.material.transparent = true;
-grid.material.opacity = GRID_BASE_OPACITY; 
+grid.material.opacity = GRID_BASE_OPACITY;
 scene.add(grid);
 
 function applyEclipticOpacity(percent) {
@@ -595,7 +634,6 @@ function makeEarthTexture() {
   const X = lon => ((lon + 180) / 360) * W;
   const Y = lat => ((90 - lat) / 180) * H;
 
-  /* ---------- 1. 海洋 ---------- */
   const og = ctx.createLinearGradient(0, 0, 0, H);
   og.addColorStop(0.00, '#061428');
   og.addColorStop(0.16, '#0a2648');
@@ -615,7 +653,6 @@ function makeEarthTexture() {
     ctx.fill();
   }
 
-  /* ---------- 2. 陸地輪廓資料（經度, 緯度） ---------- */
   const LANDS = [
     [
       [-168,66],[-164,60],[-152,58],[-140,60],[-130,54],[-124,48],[-124,40],
@@ -760,7 +797,6 @@ function makeEarthTexture() {
 
   ctx.restore();
 
-  /* ---------- 6. 極區冰蓋 ---------- */
   let ig = ctx.createLinearGradient(0, 0, 0, Y(64));
   ig.addColorStop(0.00, 'rgba(245,250,255,1)');
   ig.addColorStop(0.40, 'rgba(232,244,255,0.85)');
@@ -777,7 +813,6 @@ function makeEarthTexture() {
   ctx.fillStyle = ig;
   ctx.fillRect(0, Y(-58), W, H - Y(-58));
 
-  /* ---------- 7. 輸出 ---------- */
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -808,13 +843,13 @@ tiltGroup.add(earth);
 
 /* ---- 赤道紅線 ---- */
 const equatorRing = new THREE.Mesh(
-  new THREE.TorusGeometry(EARTH_R * 1.003, 0.008, 8, 160),
+  new THREE.TorusGeometry(EARTH_R * 1.003, 0.006, 8, 160),
   new THREE.MeshBasicMaterial({ color: 0xff3030, transparent: true, opacity: 0.9 })
 );
 equatorRing.rotation.x = Math.PI / 2;
 earth.add(equatorRing);
 
-/* ---- 南北回歸線（3D 白環，不受陰影影響） ---- */
+/* ---- 南北回歸線 ---- */
 const TROPIC_LAT   = THREE.MathUtils.degToRad(23.44);
 const tropicRingR  = EARTH_R * Math.cos(TROPIC_LAT) * 1.003;
 const tropicRingY  = EARTH_R * Math.sin(TROPIC_LAT);
@@ -823,7 +858,7 @@ const tropicMat = new THREE.MeshBasicMaterial({
 });
 [1, -1].forEach(sign => {
   const tropicRing = new THREE.Mesh(
-    new THREE.TorusGeometry(tropicRingR, 0.006, 8, 160),
+    new THREE.TorusGeometry(tropicRingR, 0.003, 8, 160),
     tropicMat
   );
   tropicRing.rotation.x = Math.PI / 2;
@@ -831,7 +866,7 @@ const tropicMat = new THREE.MeshBasicMaterial({
   earth.add(tropicRing);
 });
 
-/* ---- 自轉軸（北端箭頭） ---- */
+/* ---- 自轉軸 ---- */
 const axisLen = EARTH_R * 2.15;
 const axisGeo = new THREE.BufferGeometry().setFromPoints([
   new THREE.Vector3(0, -axisLen, 0),
@@ -847,6 +882,45 @@ const arrowHead = new THREE.Mesh(
 );
 arrowHead.position.y = axisLen + 0.31;
 tiltGroup.add(arrowHead);
+
+/* ==================== 嘉義定錨 & 切平面基向量 ==================== */
+/* 位置由 SphereGeometry 預設 UV 推算：
+   - 經度 lon → phi = (lon + 180)°
+   - 緯度 lat → theta = 90° - lat
+   - 球面座標：(-cosφ·sinθ, cosθ, sinφ·sinθ) * EARTH_R
+*/
+const chiayiPhi   = (CHIAYI_LON + 180) * Math.PI / 180;
+const chiayiTheta = Math.PI / 2 - CHIAYI_LAT * Math.PI / 180;
+
+const chiayiLocalUp = new THREE.Vector3(
+  -Math.cos(chiayiPhi) * Math.sin(chiayiTheta),
+   Math.cos(chiayiTheta),
+   Math.sin(chiayiPhi) * Math.sin(chiayiTheta)
+).normalize();
+
+const chiayiLocalEast = new THREE.Vector3(
+   Math.sin(chiayiPhi),
+   0,
+   Math.cos(chiayiPhi)
+).normalize();
+
+const chiayiLocalNorth = new THREE.Vector3()
+  .crossVectors(chiayiLocalUp, chiayiLocalEast)
+  .normalize();
+
+/* 附在 earth 上，隨自轉/傾斜一起移動 */
+const chiayiMarker = new THREE.Object3D();
+chiayiMarker.position.copy(chiayiLocalUp).multiplyScalar(EARTH_R);
+earth.add(chiayiMarker);
+
+/* ---- 暫存向量 ---- */
+const _chiayiWorldPos = new THREE.Vector3();
+const _chiayiUp       = new THREE.Vector3();
+const _chiayiEast     = new THREE.Vector3();
+const _chiayiNorth    = new THREE.Vector3();
+const _chiayiForward  = new THREE.Vector3();
+const _tempUp         = new THREE.Vector3();
+const startUp         = new THREE.Vector3();
 
 /* ==================== 文字標籤 ==================== */
 function makeLabel(text, color = '#cfe3ff', worldHeight = 1.7) {
@@ -885,6 +959,10 @@ tiltGroup.add(northLabel);
 const eclipticLabel = makeLabel('黃道面', '#7fb6ff', 1.9);
 eclipticLabel.position.set(ORBIT_R * 0.72, 1.4, ORBIT_R * 0.72);
 scene.add(eclipticLabel);
+
+/* 臨時變數：四元數與目標 up */
+const _tempQuat = new THREE.Quaternion();
+const _targetUp = new THREE.Vector3();
 
 /* ==================== 狀態與變數 ==================== */
 const axisDir = new THREE.Vector3(Math.sin(AXIAL_TILT), Math.cos(AXIAL_TILT), 0);
@@ -931,13 +1009,13 @@ const _V = new THREE.Vector3();
 function computeEarthView(outPos, outTgt) {
   _earthPos.copy(earthSystem.position);
   _dirToSun.copy(sun.position).sub(_earthPos).normalize();
-  
+
   if (isLeftSun) {
     _Vh.crossVectors(_dirToSun, _Y).normalize();
   } else {
     _Vh.crossVectors(_Y, _dirToSun).normalize();
   }
-  
+
   const pitch = THREE.MathUtils.degToRad(10);
   _V.copy(_Vh).multiplyScalar(Math.cos(pitch));
   _V.addScaledVector(_Y, -Math.sin(pitch));
@@ -946,17 +1024,80 @@ function computeEarthView(outPos, outTgt) {
   outTgt.copy(_earthPos);
 }
 
-/* 開始轉場（可選 onComplete 回呼） */
+/* 嘉義視角：根據地球當前姿態，計算貼地相機位置與朝向 */
+function computeChiayiView(outPos, outTgt) {
+  earthSystem.updateMatrixWorld(true);
+
+  chiayiMarker.getWorldPosition(_chiayiWorldPos);
+  chiayiMarker.getWorldQuaternion(_tempQuat);
+
+  _chiayiUp.copy(chiayiLocalUp).applyQuaternion(_tempQuat).normalize();
+  _chiayiEast.copy(chiayiLocalEast).applyQuaternion(_tempQuat).normalize();
+  _chiayiNorth.copy(chiayiLocalNorth).applyQuaternion(_tempQuat).normalize();
+
+  const cosY = Math.cos(chiayiYaw);
+  const sinY = Math.sin(chiayiYaw);
+  const cosP = Math.cos(chiayiPitch);
+  const sinP = Math.sin(chiayiPitch);
+
+  _chiayiForward.copy(_chiayiEast).multiplyScalar(cosY * cosP)
+    .addScaledVector(_chiayiNorth, sinY * cosP)
+    .addScaledVector(_chiayiUp, sinP)
+    .normalize();
+
+  outPos.copy(_chiayiWorldPos).addScaledVector(_chiayiUp, CHIAYI_EYE_HEIGHT);
+  outTgt.copy(outPos).add(_chiayiForward);
+}
+
+/* 進入嘉義時，讓鏡頭初始對準太陽方向 */
+function computeInitialChiayiYawPitch() {
+  earthSystem.updateMatrixWorld(true);
+
+  chiayiMarker.getWorldPosition(_chiayiWorldPos);
+  chiayiMarker.getWorldQuaternion(_tempQuat);
+
+  const up    = new THREE.Vector3().copy(chiayiLocalUp).applyQuaternion(_tempQuat).normalize();
+  const east  = new THREE.Vector3().copy(chiayiLocalEast).applyQuaternion(_tempQuat).normalize();
+  const north = new THREE.Vector3().copy(chiayiLocalNorth).applyQuaternion(_tempQuat).normalize();
+
+  const toSun = new THREE.Vector3().copy(sun.position).sub(_chiayiWorldPos).normalize();
+  const e = toSun.dot(east);
+  const n = toSun.dot(north);
+  const u = toSun.dot(up);
+
+  chiayiYaw   = Math.atan2(n, e);
+  chiayiPitch = Math.asin(Math.max(-1, Math.min(1, u)));
+}
+
 function startTransitionTo(mode, onComplete) {
+  const wasChiayi = (viewMode === 'chiayi');
+
+  /* 進入嘉義 */
+  if (mode === 'chiayi' && !wasChiayi) {
+    prevModeBeforeChiayi = viewMode;
+    savedFov = camera.fov;
+    computeInitialChiayiYawPitch();
+    chiayiSpinFactor = CHIAYI_SPIN_SLOW;
+    camera.fov = CHIAYI_FOV;
+    camera.updateProjectionMatrix();
+  }
+
+  /* 離開嘉義 */
+  if (mode !== 'chiayi' && wasChiayi) {
+    chiayiSpinFactor = 1;
+    camera.fov = savedFov;
+    camera.updateProjectionMatrix();
+  }
+
   viewMode = mode;
   userInteracted = false;
-  if (mode === 'earth' && orbiting) {
-    isLeftSun = false;
-  }
+  if (mode === 'earth' && orbiting) isLeftSun = false;
+
   transitioning = true;
   transT = 0;
   startCamPos.copy(camera.position);
   startTarget.copy(orbit.target);
+  startUp.copy(camera.up);
   onTransitionComplete = onComplete || null;
   updateViewButtons();
 }
@@ -998,24 +1139,25 @@ const SEASON_INFO = {
 };
 
 /* ==================== UI 元素 ==================== */
-const orbitSlider   = document.getElementById('orbitSlider');
-const angleVal      = document.getElementById('angleVal');
-const playBtn       = document.getElementById('playBtn');
-const speedBtn      = document.getElementById('speedBtn');
-const globalViewBtn = document.getElementById('globalViewBtn');
-const earthViewBtn  = document.getElementById('earthViewBtn');
+const orbitSlider    = document.getElementById('orbitSlider');
+const angleVal       = document.getElementById('angleVal');
+const playBtn        = document.getElementById('playBtn');
+const speedBtn       = document.getElementById('speedBtn');
+const globalViewBtn  = document.getElementById('globalViewBtn');
+const earthViewBtn   = document.getElementById('earthViewBtn');
 
-const infoBox       = document.getElementById('infoBox');
-const ibTitle       = document.getElementById('ibTitle');
-const ibSun         = document.getElementById('ibSun');
-const ibDay         = document.getElementById('ibDay');
-const ibNight       = document.getElementById('ibNight');
-const ibZenith      = document.getElementById('ibZenith');
-const ibAlt         = document.getElementById('ibAlt');
+const infoBox        = document.getElementById('infoBox');
+const ibTitle        = document.getElementById('ibTitle');
+const ibSun          = document.getElementById('ibSun');
+const ibDay          = document.getElementById('ibDay');
+const ibNight        = document.getElementById('ibNight');
+const ibZenith       = document.getElementById('ibZenith');
+const ibAlt          = document.getElementById('ibAlt');
 const eclipticSlider = document.getElementById('eclipticSlider');
 const eclipticVal    = document.getElementById('eclipticVal');
+const chiayiBtn      = document.getElementById('chiayiBtn');
 
-const fsBtn       = document.getElementById('fsBtn');
+const fsBtn = document.getElementById('fsBtn');
 
 /* ==================== UI 邏輯 ==================== */
 function syncSlider() {
@@ -1054,7 +1196,6 @@ function showSeasonInfo(key) {
 
 function hideSeasonInfo() {
   infoBox.classList.remove('show');
-  /* 關閉文字框時，黃道面透明度回到初始值 */
   eclipticSlider.value = ECLIPTIC_BASE_PERCENT;
   eclipticVal.textContent = ECLIPTIC_BASE_PERCENT + '%';
   applyEclipticOpacity(ECLIPTIC_BASE_PERCENT);
@@ -1085,19 +1226,35 @@ speedBtn.addEventListener('click', () => {
 });
 
 globalViewBtn.addEventListener('click', () => {
+  if (transitioning) return;
   startTransitionTo('global');
   hideSeasonInfo();
 });
 
 earthViewBtn.addEventListener('click', () => {
+  if (transitioning) return;
   startTransitionTo('earth');
   hideSeasonInfo();
 });
 
-/* 季節按鈕：在地球視角下切換節氣時，先退到整體視角再進入新節氣的地球視角 */
+/* 嘉義按鈕：切換進入 / 退出嘉義視角 */
+chiayiBtn.addEventListener('click', () => {
+  if (transitioning) return;
+  if (viewMode === 'chiayi') {
+    const targetMode = (prevModeBeforeChiayi === 'global') ? 'global' : 'earth';
+    startTransitionTo(targetMode);
+  } else {
+    startTransitionTo('chiayi');
+  }
+});
+
+/* 季節按鈕：在地球或嘉義視角時，會先退回整體視角，再進入新節氣的地球視角 */
 document.querySelectorAll('.seasons button').forEach(btn => {
   btn.addEventListener('click', () => {
-    const wasEarthView = (viewMode === 'earth');
+    if (transitioning) return;
+
+    const wasChiayi = (viewMode === 'chiayi');
+    const wasEarth  = (viewMode === 'earth');
 
     orbitAngle = THREE.MathUtils.degToRad(parseFloat(btn.dataset.angle));
     setOrbiting(false);
@@ -1105,13 +1262,11 @@ document.querySelectorAll('.seasons button').forEach(btn => {
     showSeasonInfo(btn.dataset.season);
     updateSunSide();
 
-    if (wasEarthView) {
-      // 兩階段轉場：earth → global → earth（新節氣）
+    if (wasChiayi || wasEarth) {
       startTransitionTo('global', () => {
         startTransitionTo('earth');
       });
     } else {
-      // 非地球視角：清除任何殘留的轉場回呼
       onTransitionComplete = null;
     }
   });
@@ -1146,8 +1301,6 @@ function onResize() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 
-  const aspect = w / h;
-  
   const pitch = 15 * Math.PI / 180;
   BASE_CAM_DIR.set(0, Math.sin(pitch), Math.cos(pitch)).normalize();
 
@@ -1156,9 +1309,8 @@ function onResize() {
   const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
   const dV = boundR / Math.tan(vFov / 2);
   const dH = boundR / Math.tan(hFov / 2);
-  
-  const finalDist = Math.max(dV, dH) * 1.05; 
-  
+  const finalDist = Math.max(dV, dH) * 1.05;
+
   GLOBAL_CAM_POS.copy(BASE_CAM_DIR).multiplyScalar(finalDist);
 
   if (viewMode === 'global' && !transitioning) {
@@ -1180,11 +1332,11 @@ function animate() {
 
   totalTime += dt;
 
-  /* --- 太陽自轉 --- */
+  /* 太陽自轉 */
   sun.rotation.y += SUN_SPIN_ANGLE_PER_SEC * simDt;
 
-  /* --- 公轉（逆時針） --- */
-  if (orbiting) {
+  /* 公轉（嘉義模式暫停，聚焦於「一天」） */
+  if (orbiting && viewMode !== 'chiayi') {
     orbitAngle += (Math.PI * 2 / ORBIT_PERIOD) * simDt;
     if (orbitAngle >= Math.PI * 2) orbitAngle -= Math.PI * 2;
     syncSlider();
@@ -1195,28 +1347,42 @@ function animate() {
 
   earthSystem.position.set(ORBIT_R * cx, 0, -ORBIT_R * sz);
 
-  /* --- 地球自轉 --- */
-  earth.rotation.y += SPIN_ANGLE_PER_SEC * simDt;
+  /* 地球自轉（嘉義模式下慢速，讓日出日落可觀察） */
+  earth.rotation.y += SPIN_ANGLE_PER_SEC * simDt * chiayiSpinFactor;
 
-  /* --- 視角目標 --- */
-  if (viewMode === 'earth') {
+  /* 視角目標 */
+  if (viewMode === 'chiayi') {
+    computeChiayiView(_desiredPos, _desiredTgt);
+  } else if (viewMode === 'earth') {
     computeEarthView(_desiredPos, _desiredTgt);
   } else {
     _desiredPos.copy(GLOBAL_CAM_POS);
     _desiredTgt.copy(GLOBAL_CAM_TARGET);
   }
 
-  /* --- 視角過渡 / 跟隨 / 自由控制 --- */
+  /* 過渡 / 跟隨 / 自由控制 */
   if (transitioning) {
     transT += dt / TRANS_DUR;
     const t = Math.min(transT, 1);
     const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
     camera.position.lerpVectors(startCamPos, _desiredPos, e);
     orbit.target.lerpVectors(startTarget, _desiredTgt, e);
+
+    /* up 向量平滑插值，避免過渡結束時畫面翻轉 */
+    if (viewMode === 'chiayi') {
+      _targetUp.copy(_chiayiUp);
+    } else {
+      _targetUp.set(0, 1, 0);
+    }
+    camera.up.copy(startUp).lerp(_targetUp, e).normalize();
+
     camera.lookAt(orbit.target);
+
     if (t >= 1) {
       transitioning = false;
       orbit.syncFromCamera();
+
       if (onTransitionComplete) {
         const cb = onTransitionComplete;
         onTransitionComplete = null;
@@ -1224,7 +1390,13 @@ function animate() {
       }
     }
   } else {
-    if (viewMode === 'earth') {
+    if (viewMode === 'chiayi') {
+      /* 貼地：位置與 up 直接套用切平面基向量 */
+      camera.position.copy(_desiredPos);
+      camera.up.copy(_chiayiUp);
+      camera.lookAt(_desiredTgt);
+      orbit.target.copy(_desiredTgt);
+    } else if (viewMode === 'earth') {
       if (!userInteracted) {
         camera.position.lerp(_desiredPos, 0.15);
         orbit.target.lerp(_desiredTgt, 0.15);

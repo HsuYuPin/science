@@ -361,6 +361,9 @@ const SURFACE_MOON_PERIOD_SEC = SURFACE_EARTH_PERIOD_SEC * REV_RATIO;
 const SURFACE_MOON_SPEED = 360 / SURFACE_MOON_PERIOD_SEC;
 const SURFACE_EARTH_SPIN_RAD = (2 * Math.PI) / SURFACE_EARTH_PERIOD_SEC;
 
+const ORBIT_CAM_POS = new THREE.Vector3(12, 16, 24);
+const ORBIT_TARGET = new THREE.Vector3(0, 0, 0);
+
 /* =========================================================
    小工具
    ========================================================= */
@@ -383,6 +386,10 @@ function lunarName(d) {
   return '三十';
 }
 
+function easeInOutCubic(x) {
+  return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+}
+
 /* =========================================================
    場景 / 相機 / 渲染器
    ========================================================= */
@@ -390,7 +397,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x05070f);
 
 const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.01, 6000);
-camera.position.set(12, 16, 24);
+camera.position.copy(ORBIT_CAM_POS);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -398,7 +405,7 @@ renderer.setSize(innerWidth, innerHeight);
 document.getElementById('app').appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 0, 0);
+controls.target.copy(ORBIT_TARGET);
 controls.enableDamping = true;
 controls.dampingFactor = 0.08;
 controls.minDistance = 6;
@@ -872,25 +879,43 @@ function makeSmallLabel(text, color) {
   return sp;
 }
 
-// 箭头拉长，配合透视减小文字视觉效果
+// 箭头改为细长圆柱体 + 末端圆球
 const dirLen = 1.5;
-const arrowHeadLen = 0.3;
-const arrowHeadWidth = 0.15;
+const ballRadius = 0.06;
 
-const arrE = new THREE.ArrowHelper(obsLocalEast, new THREE.Vector3(0,0,0), dirLen, 0xff5555, arrowHeadLen, arrowHeadWidth);
-const arrW = new THREE.ArrowHelper(obsLocalEast.clone().negate(), new THREE.Vector3(0,0,0), dirLen, 0xaaaaaa, arrowHeadLen, arrowHeadWidth);
-const arrN = new THREE.ArrowHelper(obsLocalNorth, new THREE.Vector3(0,0,0), dirLen, 0x55ff55, arrowHeadLen, arrowHeadWidth);
-const arrS = new THREE.ArrowHelper(obsLocalNorth.clone().negate(), new THREE.Vector3(0,0,0), dirLen, 0xffff55, arrowHeadLen, arrowHeadWidth);
-compassGroup.add(arrE, arrW, arrN, arrS);
+function createCompassDir(dir, color) {
+  const group = new THREE.Group();
+  
+  // 1. 细长杆子
+  const cylGeo = new THREE.CylinderGeometry(0.012, 0.012, dirLen, 8);
+  const cylMat = new THREE.MeshBasicMaterial({ color: color });
+  const cyl = new THREE.Mesh(cylGeo, cylMat);
+  cyl.position.copy(dir).multiplyScalar(dirLen / 2);
+  cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+  
+  // 2. 末端圆球
+  const ballGeo = new THREE.SphereGeometry(ballRadius, 16, 16);
+  const ballMat = new THREE.MeshBasicMaterial({ color: color });
+  const ball = new THREE.Mesh(ballGeo, ballMat);
+  ball.position.copy(dir).multiplyScalar(dirLen);
+  
+  group.add(cyl, ball);
+  return group;
+}
 
-// 把文字标签放在箭头末端
+const groupE = createCompassDir(obsLocalEast, 0xff5555);
+const groupW = createCompassDir(obsLocalEast.clone().negate(), 0xaaaaaa);
+const groupN = createCompassDir(obsLocalNorth, 0x55ff55);
+const groupS = createCompassDir(obsLocalNorth.clone().negate(), 0xffff55);
+compassGroup.add(groupE, groupW, groupN, groupS);
+
 const lblE = makeSmallLabel('東', '#ff8888'); lblE.position.copy(obsLocalEast).multiplyScalar(dirLen + 0.1);
 const lblW = makeSmallLabel('西', '#cccccc'); lblW.position.copy(obsLocalEast).multiplyScalar(-(dirLen + 0.1));
 const lblN = makeSmallLabel('北', '#88ff88'); lblN.position.copy(obsLocalNorth).multiplyScalar(dirLen + 0.1);
 const lblS = makeSmallLabel('南', '#ffff88'); lblS.position.copy(obsLocalNorth).multiplyScalar(-(dirLen + 0.1));
 compassGroup.add(lblE, lblW, lblN, lblS);
 
-/* ── 天頂標記（圓點 + 文字） ── */
+/* ── 天頂標記 ── */
 const zenithGroup = new THREE.Group();
 zenithGroup.visible = false;
 earth.add(zenithGroup);
@@ -1127,6 +1152,19 @@ let playing = true;
 let isSurfaceView = false;
 let timeScale = 1;
 
+let transitioning = false;
+let transStartTime = 0;
+const TRANS_DURATION = 1.0;
+const transStartPos = new THREE.Vector3();
+const transStartUp = new THREE.Vector3();
+const transStartTarget = new THREE.Vector3();
+const transEndPos = new THREE.Vector3();
+const transEndUp = new THREE.Vector3();
+const transEndTarget = new THREE.Vector3();
+let transitioningWasPlaying = true;
+
+let jumpAnim = null;
+
 const lunarEl    = document.getElementById('lunar');
 const phaseEl    = document.getElementById('phaseName');
 const illumEl    = document.getElementById('illum');
@@ -1142,14 +1180,14 @@ let isDraggingSurface = false;
 let lastX = 0, lastY = 0;
 
 renderer.domElement.addEventListener('pointerdown', (e) => {
-  if (!isSurfaceView) return;
+  if (!isSurfaceView || jumpAnim || transitioning) return;
   isDraggingSurface = true;
   lastX = e.clientX;
   lastY = e.clientY;
 });
 
 window.addEventListener('pointermove', (e) => {
-  if (!isSurfaceView || !isDraggingSurface) return;
+  if (!isSurfaceView || !isDraggingSurface || jumpAnim || transitioning) return;
   const dx = e.clientX - lastX;
   const dy = e.clientY - lastY;
   lastX = e.clientX;
@@ -1167,45 +1205,139 @@ window.addEventListener('pointerup', () => {
 
 /* ── 切換地表視角 ── */
 surfaceBtn.addEventListener('click', () => {
-  isSurfaceView = !isSurfaceView;
-  if (isSurfaceView) {
+  if (jumpAnim || transitioning) return;
+  
+  if (!isSurfaceView) {
+    isSurfaceView = true;
     surfaceBtn.classList.add('active');
     surfaceBtn.textContent = '返回軌道視角';
     controls.enabled = false;
     markersGroup.visible = false;
-    
-    compassGroup.visible = true;
-    zenithGroup.visible = true;
-
     sunLight.intensity = 4.0;
     ambientLight.intensity = 0.6;
-
     speedPanel.style.display = 'flex';
     
-    surfaceYaw = 0;
-    surfacePitch = 0;
+    startTransitionToSurface();
   } else {
+    isSurfaceView = false;
     surfaceBtn.classList.remove('active');
     surfaceBtn.textContent = '地表的一天';
-    controls.enabled = true;
     markersGroup.visible = true;
-    
     compassGroup.visible = false;
     zenithGroup.visible = false;
-
     sunLight.intensity = 2.4;
     ambientLight.intensity = 0.25;
-
     speedPanel.style.display = 'none';
     timeScale = 1;
     speedBtns.forEach(b => b.classList.toggle('active', b.dataset.speed === '1'));
-
-    camera.up.set(0, 1, 0); 
-    camera.position.set(12, 16, 24);
-    controls.target.set(0, 0, 0);
-    controls.update();
+    
+    startTransitionToOrbit();
   }
 });
+
+function startTransitionToSurface() {
+  if (transitioning) return;
+  transitioning = true;
+  transitioningWasPlaying = playing;
+  setPlaying(false);
+  
+  transStartTime = performance.now() / 1000;
+  transStartPos.copy(camera.position);
+  transStartUp.copy(camera.up);
+  transStartTarget.copy(controls.target);
+  
+  earth.updateMatrixWorld(true);
+  const obsPos = obsLocalUp.clone().multiplyScalar(EARTH_R).applyMatrix4(earth.matrixWorld);
+  const tempQuat = earth.getWorldQuaternion(new THREE.Quaternion());
+  const worldUp = obsLocalUp.clone().applyQuaternion(tempQuat).normalize();
+  const worldEast = obsLocalEast.clone().applyQuaternion(tempQuat).normalize();
+  const worldNorth = obsLocalNorth.clone().applyQuaternion(tempQuat).normalize();
+  
+  const cosY = Math.cos(surfaceYaw);
+  const sinY = Math.sin(surfaceYaw);
+  const cosP = Math.cos(surfacePitch);
+  const sinP = Math.sin(surfacePitch);
+  const lookDir = new THREE.Vector3()
+    .addScaledVector(worldEast, cosY * cosP)
+    .addScaledVector(worldNorth, sinY * cosP)
+    .addScaledVector(worldUp, sinP)
+    .normalize();
+    
+  transEndPos.copy(obsPos).addScaledVector(worldUp, 0.03);
+  transEndUp.copy(worldUp);
+  transEndTarget.copy(transEndPos).add(lookDir);
+}
+
+function startTransitionToOrbit() {
+  if (transitioning) return;
+  transitioning = true;
+  transitioningWasPlaying = playing;
+  setPlaying(false);
+  
+  transStartTime = performance.now() / 1000;
+  transStartPos.copy(camera.position);
+  transStartUp.copy(camera.up);
+  transStartTarget.copy(controls.target);
+  
+  transEndPos.copy(ORBIT_CAM_POS);
+  transEndUp.set(0, 1, 0);
+  transEndTarget.copy(ORBIT_TARGET);
+}
+
+/* ── 2.5 秒快轉 ── */
+function startPhaseJump(targetDeg) {
+  if (jumpAnim || transitioning) return;
+  
+  const wasPlaying = playing;
+  
+  // 1. 計算月球基礎差值
+  let baseDeltaM = targetDeg - (angle % 360);
+  if (baseDeltaM <= 0) baseDeltaM += 360;
+  
+  // 多轉 1 圈，讓地球轉動圈數比例更精確
+  let totalDeltaM = baseDeltaM + 360 * 1; 
+  
+  // 2. 計算地球目標角度：由於目標時間 = 月升前 2 小時，即時角提前 2 小時 (-30°)
+  // 原本 12:00 對應 240°。提早 2 小時，角度變成 240 - 30 = 210° 左右。
+  let targetR_deg = targetDeg + 120;
+  
+  let curR_deg = (earth.rotation.y * 180 / Math.PI) % 360;
+  if (curR_deg < 0) curR_deg += 360;
+  
+  // 3. 依照 27.3:1 比例算出地球需要的總轉動角度
+  let desiredDeltaR = totalDeltaM * REV_RATIO;
+  
+  // 4. 對齊地球角度
+  let M = Math.round((desiredDeltaR - (targetR_deg - curR_deg)) / 360);
+  if (M < 0) M += 100; // 確保正向旋轉
+  
+  let actualDeltaR = (targetR_deg - curR_deg) + 360 * M;
+  
+  let finalAngle = angle + totalDeltaM;
+  let finalRotY = earth.rotation.y + actualDeltaR * Math.PI / 180;
+  
+  jumpAnim = {
+    startTime: performance.now() / 1000,
+    duration: 2.5,
+    startCamPos: camera.position.clone(),
+    startCamUp: camera.up.clone(),
+    startTarget: controls.target.clone(),
+    
+    startAngle: angle,
+    targetAngle: finalAngle,
+    startRotY: earth.rotation.y,
+    targetRotY: finalRotY,
+    
+    wasPlaying: wasPlaying,
+    finalSurfaceState: null
+  };
+  
+  // 隱藏指南針與天頂
+  compassGroup.visible = false;
+  zenithGroup.visible = false;
+
+  setPlaying(false);
+}
 
 /* ── 速率按鈕點擊 ── */
 speedBtns.forEach(btn => {
@@ -1236,7 +1368,10 @@ function setPlaying(v) {
   }
 }
 
-playBtn.addEventListener('click', () => setPlaying(!playing));
+playBtn.addEventListener('click', () => {
+  if (jumpAnim || transitioning) return;
+  setPlaying(!playing);
+});
 
 /* ── 全螢幕 ── */
 function updateFsIcon() {
@@ -1270,9 +1405,17 @@ setPlaying(true);
 /* ── 四個相位快捷按鈕 ── */
 document.querySelectorAll('.phase-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    angle = parseFloat(btn.dataset.angle);
-    setPlaying(false);
-    updateUI();
+    if (jumpAnim || transitioning) return;
+    
+    const targetDeg = parseFloat(btn.dataset.angle);
+    
+    if (isSurfaceView) {
+      startPhaseJump(targetDeg);
+    } else {
+      angle = targetDeg;
+      setPlaying(false);
+      updateUI();
+    }
   });
 });
 
@@ -1377,11 +1520,6 @@ function updateUI() {
 
   drawPhase(deg);
 
-  /* ── 計算課本標準的月升月落時間 ── */
-  // 朔(0度): 6:00 / 18:00
-  // 上弦(90度): 12:00 / 00:00
-  // 望(180度): 18:00 / 06:00
-  // 下弦(270度): 00:00 / 12:00
   let tRise = 6 + angle / 15;
   let tSet = 18 + angle / 15;
 
@@ -1405,63 +1543,171 @@ function animate() {
   requestAnimationFrame(animate);
   const dt = Math.min(clock.getDelta(), 0.05);
   
-  const currentTimeScale = isSurfaceView ? timeScale : 1;
-  const scaledDt = dt * currentTimeScale;
+  if (jumpAnim) {
+    const now = performance.now() / 1000;
+    const elapsed = now - jumpAnim.startTime;
+    const p = Math.min(elapsed / jumpAnim.duration, 1.0);
+    
+    let tMove = 0;
+    if (p <= 0.2) tMove = 0;
+    else if (p >= 0.8) tMove = 1;
+    else tMove = easeInOutCubic((p - 0.2) / 0.6);
+    
+    angle = jumpAnim.startAngle + (jumpAnim.targetAngle - jumpAnim.startAngle) * tMove;
+    earth.rotation.y = jumpAnim.startRotY + (jumpAnim.targetRotY - jumpAnim.startRotY) * tMove;
+    
+    earth.updateMatrixWorld(true);
+    const rad = angle * Math.PI / 180;
+    moon.position.set(ORBIT_R * Math.cos(rad), 0, -ORBIT_R * Math.sin(rad));
+    moon.rotation.y = rad;
+    
+    if (p <= 0.2) {
+      let t = easeInOutCubic(p / 0.2);
+      camera.position.lerpVectors(jumpAnim.startCamPos, ORBIT_CAM_POS, t);
+      camera.up.lerpVectors(jumpAnim.startCamUp, new THREE.Vector3(0,1,0), t).normalize();
+      controls.target.lerpVectors(jumpAnim.startTarget, ORBIT_TARGET, t);
+    } else if (p >= 0.8) {
+      let t = easeInOutCubic((p - 0.8) / 0.2);
+      
+      if (!jumpAnim.finalSurfaceState) {
+        const obsPos = obsLocalUp.clone().multiplyScalar(EARTH_R).applyMatrix4(earth.matrixWorld);
+        const tempQuat = earth.getWorldQuaternion(new THREE.Quaternion());
+        const worldUp = obsLocalUp.clone().applyQuaternion(tempQuat).normalize();
+        const worldEast = obsLocalEast.clone().applyQuaternion(tempQuat).normalize();
+        const worldNorth = obsLocalNorth.clone().applyQuaternion(tempQuat).normalize();
+        
+        // 轉場完成後，鏡頭方向朝東 (Yaw = 0)
+        const finalYaw = 0;
+        const cosY = Math.cos(finalYaw);
+        const sinY = Math.sin(finalYaw);
+        const cosP = Math.cos(surfacePitch);
+        const sinP = Math.sin(surfacePitch);
+        const lookDir = new THREE.Vector3()
+          .addScaledVector(worldEast, cosY * cosP)
+          .addScaledVector(worldNorth, sinY * cosP)
+          .addScaledVector(worldUp, sinP)
+          .normalize();
+          
+        const finalCamPos = obsPos.clone().addScaledVector(worldUp, 0.03);
+        const finalCamTarget = finalCamPos.clone().add(lookDir);
+        
+        jumpAnim.finalSurfaceState = {
+          camPos: finalCamPos,
+          camUp: worldUp,
+          target: finalCamTarget
+        };
+      }
+      
+      camera.position.lerpVectors(ORBIT_CAM_POS, jumpAnim.finalSurfaceState.camPos, t);
+      camera.up.lerpVectors(new THREE.Vector3(0,1,0), jumpAnim.finalSurfaceState.camUp, t).normalize();
+      controls.target.lerpVectors(ORBIT_TARGET, jumpAnim.finalSurfaceState.target, t);
+    } else {
+      camera.position.copy(ORBIT_CAM_POS);
+      camera.up.set(0, 1, 0);
+      controls.target.copy(ORBIT_TARGET);
+    }
+    
+    camera.lookAt(controls.target);
+    updateUI();
+    
+    if (p >= 1.0) {
+      const wasPlay = jumpAnim.wasPlaying;
+      jumpAnim = null;
+      setPlaying(wasPlay);
+      controls.enabled = false;
+      
+      // 完全回到地表後，才顯示指南針與天頂
+      compassGroup.visible = true;
+      zenithGroup.visible = true;
+      
+      // 將方向歸零（朝東）
+      surfaceYaw = 0;
+    }
+  } else if (transitioning) {
+    const now = performance.now() / 1000;
+    let p = (now - transStartTime) / TRANS_DURATION;
+    p = Math.min(p, 1.0);
+    const t = easeInOutCubic(p);
+    
+    camera.position.lerpVectors(transStartPos, transEndPos, t);
+    camera.up.lerpVectors(transStartUp, transEndUp, t).normalize();
+    controls.target.lerpVectors(transStartTarget, transEndTarget, t);
+    camera.lookAt(controls.target);
+    
+    if (p >= 1.0) {
+      transitioning = false;
+      setPlaying(transitioningWasPlaying);
+      
+      if (isSurfaceView) {
+        compassGroup.visible = true;
+        zenithGroup.visible = true;
+      } else {
+        compassGroup.visible = false;
+        zenithGroup.visible = false;
+        controls.enabled = true;
+        controls.update();
+      }
+    }
+    updateUI();
+  } else {
+    const currentTimeScale = isSurfaceView ? timeScale : 1;
+    const scaledDt = dt * currentTimeScale;
 
-  if (playing) {
-    const currentSpeed = isSurfaceView ? SURFACE_MOON_SPEED : SPEED;
-    angle += currentSpeed * scaledDt;
+    if (playing) {
+      const currentSpeed = isSurfaceView ? SURFACE_MOON_SPEED : SPEED;
+      angle += currentSpeed * scaledDt;
+
+      if (isSurfaceView) {
+        earth.rotation.y += SURFACE_EARTH_SPIN_RAD * scaledDt;
+      } else {
+        earth.rotation.y += ORBIT_EARTH_SPIN_RAD * scaledDt;
+      }
+    }
+
+    const rad = angle * Math.PI / 180;
+    const mx = ORBIT_R * Math.cos(rad);
+    const mz = -ORBIT_R * Math.sin(rad);
+    moon.position.set(mx, 0, mz);
+
+    moon.rotation.y = rad;
+
+    updateUI();
 
     if (isSurfaceView) {
-      earth.rotation.y += SURFACE_EARTH_SPIN_RAD * scaledDt;
+      earth.updateMatrixWorld(true);
+
+      const obsPos = obsLocalUp.clone().multiplyScalar(EARTH_R).applyMatrix4(earth.matrixWorld);
+
+      earth.getWorldQuaternion(tempQuat);
+      const worldUp = obsLocalUp.clone().applyQuaternion(tempQuat).normalize();
+      const worldEast = obsLocalEast.clone().applyQuaternion(tempQuat).normalize();
+      const worldNorth = obsLocalNorth.clone().applyQuaternion(tempQuat).normalize();
+
+      camera.position.copy(obsPos).addScaledVector(worldUp, 0.03);
+
+      const cosY = Math.cos(surfaceYaw);
+      const sinY = Math.sin(surfaceYaw);
+      const cosP = Math.cos(surfacePitch);
+      const sinP = Math.sin(surfacePitch);
+
+      const lookDir = new THREE.Vector3()
+        .addScaledVector(worldEast, cosY * cosP)
+        .addScaledVector(worldNorth, sinY * cosP)
+        .addScaledVector(worldUp, sinP)
+        .normalize();
+
+      camera.up.copy(worldUp);
+      camera.lookAt(camera.position.clone().add(lookDir));
+
+      // 更新右上角的地球時間
+      let timeVal = 12 + (earth.rotation.y * 180 / Math.PI - 240) / 15;
+      timeVal = ((timeVal % 24) + 24) % 24;
+      const hour = Math.floor(timeVal);
+      earthTimeEl.textContent = hour.toString().padStart(2, '0') + ':00';
+
     } else {
-      earth.rotation.y += ORBIT_EARTH_SPIN_RAD * scaledDt;
+      controls.update();
     }
-  }
-
-  const rad = angle * Math.PI / 180;
-  const mx = ORBIT_R * Math.cos(rad);
-  const mz = -ORBIT_R * Math.sin(rad);
-  moon.position.set(mx, 0, mz);
-
-  moon.rotation.y = rad;
-
-  updateUI();
-
-  if (isSurfaceView) {
-    earth.updateMatrixWorld(true);
-
-    const obsPos = obsLocalUp.clone().multiplyScalar(EARTH_R).applyMatrix4(earth.matrixWorld);
-
-    earth.getWorldQuaternion(tempQuat);
-    const worldUp = obsLocalUp.clone().applyQuaternion(tempQuat).normalize();
-    const worldEast = obsLocalEast.clone().applyQuaternion(tempQuat).normalize();
-    const worldNorth = obsLocalNorth.clone().applyQuaternion(tempQuat).normalize();
-
-    camera.position.copy(obsPos).addScaledVector(worldUp, 0.03);
-
-    const cosY = Math.cos(surfaceYaw);
-    const sinY = Math.sin(surfaceYaw);
-    const cosP = Math.cos(surfacePitch);
-    const sinP = Math.sin(surfacePitch);
-
-    const lookDir = new THREE.Vector3()
-      .addScaledVector(worldEast, cosY * cosP)
-      .addScaledVector(worldNorth, sinY * cosP)
-      .addScaledVector(worldUp, sinP)
-      .normalize();
-
-    camera.up.copy(worldUp);
-    camera.lookAt(camera.position.clone().add(lookDir));
-
-    // 更新右上角的地球時間
-    let timeVal = 12 + (earth.rotation.y * 180 / Math.PI - 240) / 15;
-    timeVal = ((timeVal % 24) + 24) % 24;
-    const hour = Math.floor(timeVal);
-    earthTimeEl.textContent = hour.toString().padStart(2, '0') + ':00';
-
-  } else {
-    controls.update();
   }
 
   renderer.render(scene, camera);

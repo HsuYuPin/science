@@ -1,0 +1,1496 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>月球繞地球公轉 3D 模擬</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #05070f; }
+  body {
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+    color: #e8eefc;
+    -webkit-font-smoothing: antialiased;
+  }
+  #app { position: fixed; inset: 0; }
+
+  /* ── 共用面板樣式 ── */
+  .panel {
+    background: rgba(10, 16, 30, 0.72);
+    border: 1px solid rgba(120, 165, 255, 0.20);
+    border-radius: 16px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+    user-select: none;
+    z-index: 10;
+  }
+
+  /* ── 左下方：月相資訊 ── */
+  #infoPanel {
+    position: fixed; bottom: 18px; left: 18px;
+    padding: 16px 18px 14px;
+    min-width: 232px;
+  }
+  #infoPanel .title {
+    font-size: 12px; letter-spacing: 3px; color: #7c92b8;
+    margin-bottom: 12px; font-weight: 600;
+  }
+  .moonrow { display: flex; align-items: center; gap: 14px; }
+  #phaseCanvas { width: 84px; height: 84px; flex: 0 0 auto; }
+  .moonrow .lunar {
+    font-size: 30px; font-weight: 800; line-height: 1.1;
+    background: linear-gradient(180deg, #ffffff, #9fc4ff);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .moonrow .phase { font-size: 13px; color: #9db4d8; margin-top: 4px; letter-spacing: 1px; }
+
+  .stats {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid rgba(120, 165, 255, 0.14);
+  }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat span { font-size: 10.5px; color: #6f84a8; letter-spacing: 1px; }
+  .stat b { font-size: 14px; font-weight: 700; color: #cfe0ff; }
+
+  /* ── 左上角容器 ── */
+  #topLeftContainer {
+    position: fixed; top: 18px; left: 18px;
+    display: flex; flex-direction: column; gap: 12px;
+    z-index: 10;
+    align-items: flex-start;
+  }
+
+  /* ── 左上方：控制面板 ── */
+  #controlPanel {
+    padding: 16px 18px;
+    min-width: 232px;
+    display: flex; flex-direction: column;
+  }
+  .plane-row {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .plane-label {
+    font-size: 10.5px; color: #7c92b8; letter-spacing: 1px;
+    flex: 0 0 auto;
+  }
+  .plane-row input[type="range"] {
+    flex: 1 1 auto; height: 3px;
+    -webkit-appearance: none; appearance: none;
+    background: linear-gradient(90deg, #3a6090, #7fb4ff);
+    border-radius: 2px;
+    outline: none; cursor: pointer;
+  }
+  .plane-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #a9d5ff; border: 2px solid #4a8fd4;
+    box-shadow: 0 0 6px rgba(120, 180, 255, 0.6);
+    cursor: pointer;
+  }
+  .plane-row input[type="range"]::-moz-range-thumb {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: #a9d5ff; border: 2px solid #4a8fd4;
+    cursor: pointer;
+  }
+  .plane-val {
+    font-size: 11px; color: #cfe0ff; font-weight: 600;
+    flex: 0 0 34px; text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .btn-row {
+    display: flex; gap: 8px;
+    margin-top: 12px; padding-top: 12px;
+    border-top: 1px solid rgba(120, 165, 255, 0.14);
+  }
+  .phase-btn {
+    flex: 1; min-width: 0;
+    background: rgba(60, 120, 200, 0.2);
+    border: 1px solid rgba(90, 150, 230, 0.45);
+    color: #cfe3ff;
+    font-size: 13px;
+    padding: 6px 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: .18s;
+    font-family: inherit;
+    text-align: center;
+  }
+  .phase-btn:hover {
+    background: rgba(80, 150, 240, 0.34);
+    border-color: rgba(120, 180, 255, 0.7);
+  }
+  .phase-btn:active {
+    transform: scale(0.96);
+  }
+  .surface-btn {
+    margin-top: 8px;
+    width: 100%;
+    font-size: 13px;
+    padding: 8px 0;
+    border-radius: 8px;
+    background: rgba(255, 160, 60, 0.2);
+    border: 1px solid rgba(255, 200, 100, 0.4);
+    color: #ffd580;
+    cursor: pointer;
+    transition: .18s;
+    font-family: inherit;
+  }
+  .surface-btn:hover {
+    background: rgba(255, 160, 60, 0.3);
+    border-color: rgba(255, 200, 100, 0.6);
+  }
+  .surface-btn:active {
+    transform: scale(0.98);
+  }
+  .surface-btn.active {
+    background: rgba(255, 180, 80, 0.4);
+    border-color: rgba(255, 220, 130, 0.8);
+    color: #fff;
+    box-shadow: 0 0 12px rgba(255, 200, 100, 0.4);
+  }
+
+  /* ── 速率面板 ── */
+  #speedPanel {
+    padding: 12px 14px;
+    display: none; flex-direction: column; gap: 10px;
+    min-width: 232px;
+  }
+  .speed-info-row {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .speed-title {
+    font-size: 10.5px; color: #7c92b8; letter-spacing: 1px;
+  }
+  .earth-time {
+    font-size: 18px; font-weight: 800; color: #ffe066;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 10px rgba(255, 224, 102, 0.4);
+  }
+  .speed-controls-row {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .speed-btn {
+    flex: 1 1 0;
+    background: rgba(60, 120, 200, 0.2);
+    border: 1px solid rgba(90, 150, 230, 0.45);
+    color: #cfe3ff;
+    font-size: 12px;
+    padding: 6px 0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: .18s;
+    font-family: inherit;
+    text-align: center;
+  }
+  .speed-btn:hover {
+    background: rgba(80, 150, 240, 0.34);
+    border-color: rgba(120, 180, 255, 0.7);
+  }
+  .speed-btn.active {
+    background: rgba(120, 190, 255, 0.38);
+    border-color: rgba(170, 225, 255, 0.85);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(120, 190, 255, 0.4);
+  }
+
+  /* ── 右上角控制按鈕 ── */
+  #ctrlBtns {
+    position: fixed; top: 18px; right: 18px;
+    display: flex; flex-direction: column; gap: 12px;
+    z-index: 10;
+  }
+  .icon-btn {
+    width: 52px; height: 52px;
+    padding: 0;
+    border-radius: 14px;
+    background: rgba(10, 16, 30, 0.72);
+    border: 1px solid rgba(120, 165, 255, 0.20);
+    color: #cfe0ff;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    transition: background .2s, border-color .2s, color .2s, transform .1s;
+  }
+  .icon-btn:hover {
+    background: rgba(30, 50, 90, 0.85);
+    border-color: rgba(120, 165, 255, 0.5);
+    color: #ffffff;
+  }
+  .icon-btn:active { transform: scale(0.94); }
+  .icon-btn svg { width: 24px; height: 24px; display: block; }
+
+  #playBtn.paused {
+    color: #ffce6a;
+    border-color: rgba(255, 200, 100, 0.30);
+    animation: glowPulse 1.8s ease-in-out infinite;
+  }
+  #playBtn.paused:hover {
+    background: rgba(60, 45, 15, 0.85);
+    border-color: rgba(255, 200, 100, 0.65);
+  }
+  @keyframes glowPulse {
+    0%, 100% { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 0 rgba(255, 181, 69, 0); }
+    50%      { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 22px rgba(255, 181, 69, 0.55); }
+  }
+
+  /* ── 手機板調整 ── */
+  @media (max-width: 560px) {
+    #infoPanel { bottom: 12px; left: 12px; padding: 12px 14px; min-width: 0; }
+    #topLeftContainer { top: 12px; left: 12px; gap: 8px; }
+    #controlPanel { padding: 12px 14px; min-width: 0; width: 210px; }
+    #speedPanel { padding: 10px 14px; min-width: 0; width: 210px; }
+    #phaseCanvas { width: 62px; height: 62px; }
+    .moonrow .lunar { font-size: 24px; }
+    #ctrlBtns { top: 12px; right: 12px; gap: 10px; }
+    .icon-btn { width: 44px; height: 44px; border-radius: 12px; }
+    .icon-btn svg { width: 20px; height: 20px; }
+    .phase-btn { font-size: 11px; }
+    .surface-btn { font-size: 11px; }
+    .speed-btn { font-size: 11px; padding: 4px 0; }
+    .earth-time { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<!-- 左下方：月相資訊 -->
+<div id="infoPanel" class="panel">
+  <div class="title">月 球 公 轉 模 擬</div>
+  <div class="moonrow">
+    <canvas id="phaseCanvas" width="176" height="176"></canvas>
+    <div>
+      <div class="lunar" id="lunar">初一</div>
+      <div class="phase" id="phaseName">朔月（新月）</div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><span>狀 態</span><b id="stateTxt">運行中</b></div>
+    <div class="stat"><span>照 亮</span><b id="illum">0 %</b></div>
+    <div class="stat"><span>月升時間</span><b id="moonriseTxt">06:00</b></div>
+    <div class="stat"><span>月落時間</span><b id="moonsetTxt">18:00</b></div>
+  </div>
+</div>
+
+<!-- 左上角：控制面板 + 速率面板 -->
+<div id="topLeftContainer">
+  <!-- 控制面板 -->
+  <div id="controlPanel" class="panel">
+    <div class="plane-row">
+      <span class="plane-label">軌道面</span>
+      <input type="range" id="planeOpacity" min="0" max="80" value="0" step="1">
+      <span class="plane-val" id="planeOpacityVal">0%</span>
+    </div>
+    <div class="btn-row">
+      <button class="phase-btn" data-angle="0">朔</button>
+      <button class="phase-btn" data-angle="90">上弦</button>
+      <button class="phase-btn" data-angle="180">望</button>
+      <button class="phase-btn" data-angle="270">下弦</button>
+    </div>
+    <button id="surfaceBtn" class="surface-btn">地表的一天</button>
+  </div>
+
+  <!-- 速率面板（預設隱藏） -->
+  <div id="speedPanel" class="panel">
+    <div class="speed-info-row">
+      <div class="speed-title">地球時間</div>
+      <div id="earthTime" class="earth-time">12:00</div>
+    </div>
+    <div class="speed-controls-row">
+      <button class="speed-btn active" data-speed="1">1×</button>
+      <button class="speed-btn" data-speed="2">2×</button>
+      <button class="speed-btn" data-speed="4">4×</button>
+      <button class="speed-btn" data-speed="8">8×</button>
+      <button class="speed-btn" data-speed="16">16×</button>
+    </div>
+  </div>
+</div>
+
+<!-- 右上角按鈕 -->
+<div id="ctrlBtns">
+  <button id="fsBtn" class="icon-btn" aria-label="全螢幕" title="全螢幕"></button>
+  <button id="playBtn" class="icon-btn" aria-label="暫停" title="暫停"></button>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* =========================================================
+   常數設定
+   ========================================================= */
+const EARTH_R   = 1.6;
+const MOON_R    = 0.45;
+const ORBIT_R   = 9.0;
+const SUN_DIST  = 58;
+const SUN_R     = 4.2;
+
+const MOON_PLANE_TILT_DEG = 5;
+const AXIAL_TILT_DEG      = 23.5;
+
+const PLANE_R     = ORBIT_R * 1.25;
+const ECLIPTIC_R  = SUN_DIST + ORBIT_R + 12;
+
+const SYNODIC   = 29.53;
+const SPEED     = 10;
+
+const EARTH_SIDEREAL_DAYS = 0.99727;
+const MOON_SIDEREAL_DAYS  = 27.32166;
+const REV_RATIO = MOON_SIDEREAL_DAYS / EARTH_SIDEREAL_DAYS;
+
+const ORBIT_MOON_PERIOD_SEC = 360 / SPEED;
+const ORBIT_EARTH_SPIN_RAD = (2 * Math.PI * REV_RATIO) / ORBIT_MOON_PERIOD_SEC;
+
+const SURFACE_EARTH_PERIOD_SEC = 30;
+const SURFACE_MOON_PERIOD_SEC = SURFACE_EARTH_PERIOD_SEC * REV_RATIO;
+const SURFACE_MOON_SPEED = 360 / SURFACE_MOON_PERIOD_SEC;
+const SURFACE_EARTH_SPIN_RAD = (2 * Math.PI) / SURFACE_EARTH_PERIOD_SEC;
+
+/* =========================================================
+   小工具
+   ========================================================= */
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const CN = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+function lunarName(d) {
+  d = Math.max(1, Math.min(30, d));
+  if (d <= 10) return '初' + CN[d];
+  if (d < 20)  return '十' + CN[d - 10];
+  if (d === 20) return '二十';
+  if (d < 30)  return '廿' + CN[d - 20];
+  return '三十';
+}
+
+/* =========================================================
+   場景 / 相機 / 渲染器
+   ========================================================= */
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05070f);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.01, 6000);
+camera.position.set(12, 16, 24);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+document.getElementById('app').appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 6;
+controls.maxDistance = 500;
+controls.maxPolarAngle = Math.PI * 0.92;
+controls.update();
+
+/* ── 星空 ── */
+(function stars() {
+  const N = 3000;
+  const pos = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const r  = 400 + Math.random() * 900;
+    const th = Math.random() * Math.PI * 2;
+    const ph = Math.acos(2 * Math.random() - 1);
+    pos[i * 3]     = r * Math.sin(ph) * Math.cos(th);
+    pos[i * 3 + 1] = r * Math.cos(ph);
+    pos[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({
+    color: 0xffffff, size: 1.6, sizeAttenuation: false,
+    transparent: true, opacity: 0.85
+  })));
+})();
+
+/* =========================================================
+   太陽
+   ========================================================= */
+const sunUniforms = { uTime: { value: 0 } };
+
+const sunMaterial = new THREE.ShaderMaterial({
+  uniforms: sunUniforms,
+  vertexShader: /* glsl */`
+    varying vec3 vLocalPos;
+    varying vec3 vWorldNormal;
+    varying vec3 vWorldPos;
+    void main() {
+      vLocalPos    = position;
+      vWorldNormal = normalize(mat3(modelMatrix) * normal);
+      vec4 wp      = modelMatrix * vec4(position, 1.0);
+      vWorldPos    = wp.xyz;
+      gl_Position  = projectionMatrix * viewMatrix * wp;
+    }
+  `,
+  fragmentShader: /* glsl */`
+    uniform float uTime;
+    varying vec3 vLocalPos;
+    varying vec3 vWorldNormal;
+    varying vec3 vWorldPos;
+
+    float hash31(vec3 p) {
+      p = fract(p * 0.3183099 + vec3(0.11, 0.17, 0.13));
+      p *= 17.0;
+      return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+    }
+    float noise3(vec3 x) {
+      vec3 i = floor(x);
+      vec3 f = fract(x);
+      f = f * f * (3.0 - 2.0 * f);
+      return mix(
+        mix(mix(hash31(i + vec3(0.0, 0.0, 0.0)), hash31(i + vec3(1.0, 0.0, 0.0)), f.x),
+            mix(hash31(i + vec3(0.0, 1.0, 0.0)), hash31(i + vec3(1.0, 1.0, 0.0)), f.x), f.y),
+        mix(mix(hash31(i + vec3(0.0, 0.0, 1.0)), hash31(i + vec3(1.0, 0.0, 1.0)), f.x),
+            mix(hash31(i + vec3(0.0, 1.0, 1.0)), hash31(i + vec3(1.0, 1.0, 1.0)), f.x), f.y),
+        f.z);
+    }
+    float fbm3(vec3 p) {
+      float v = 0.0;
+      float a = 0.5;
+      for (int i = 0; i < 4; i++) {
+        v += a * noise3(p);
+        p *= 2.03;
+        a *= 0.5;
+      }
+      return v;
+    }
+    void main() {
+      vec3  dir = normalize(vLocalPos);
+      float t   = uTime * 0.05;
+      float n1   = fbm3(dir * 3.5  + vec3(t, t * 0.6, -t * 0.4));
+      float n2   = fbm3(dir * 9.0  - vec3(t * 1.4, 0.0, t * 0.9));
+      float gran = fbm3(dir * 26.0 + n2 * 1.2);
+      float bright = 0.72 + 0.28 * smoothstep(0.30, 0.80, gran);
+      bright += 0.22 * (smoothstep(0.35, 0.85, n1) - 0.5);
+      bright += 0.10 * (smoothstep(0.40, 0.90, n2) - 0.5);
+      float spotField = fbm3(dir * 2.2 + 11.3);
+      float spot = smoothstep(0.60, 0.70, spotField) * smoothstep(0.45, 0.75, n1);
+      bright *= 1.0 - spot * 0.65;
+      vec3  N    = normalize(vWorldNormal);
+      vec3  V    = normalize(cameraPosition - vWorldPos);
+      float mu   = clamp(dot(N, V), 0.0, 1.0);
+      float limb = pow(mu, 0.55);
+      vec3 coreCol = vec3(1.00, 0.94, 0.80);
+      vec3 edgeCol = vec3(1.00, 0.46, 0.11);
+      vec3 col = mix(edgeCol, coreCol, limb);
+      col *= bright * 1.35;
+      col = mix(col, vec3(1.00, 0.32, 0.05), pow(1.0 - mu, 3.0) * 0.55);
+      gl_FragColor = vec4(col, 1.0);
+    }
+  `
+});
+
+const sun = new THREE.Mesh(new THREE.SphereGeometry(SUN_R, 96, 64), sunMaterial);
+sun.position.set(SUN_DIST, 0, 0);
+sun.onBeforeRender = () => {
+  sunUniforms.uTime.value = (performance.now() * 0.001) % 500;
+};
+scene.add(sun);
+
+function makeGlowTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+  g.addColorStop(0.00, 'rgba(255,245,205,1)');
+  g.addColorStop(0.18, 'rgba(255,205,95,0.55)');
+  g.addColorStop(0.45, 'rgba(255,150,40,0.18)');
+  g.addColorStop(1.00, 'rgba(255,120,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 256, 256);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+const sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: makeGlowTexture(), blending: THREE.AdditiveBlending,
+  transparent: true, depthWrite: false
+}));
+sunGlow.scale.set(32, 32, 1);
+sunGlow.position.set(SUN_DIST, 0, 0);
+scene.add(sunGlow);
+
+/* ── 光源 ── */
+const sunLight = new THREE.DirectionalLight(0xfff4e0, 2.4);
+sunLight.position.set(SUN_DIST, 0, 0);
+scene.add(sunLight);
+
+const ambientLight = new THREE.AmbientLight(0x152233, 0.25);
+scene.add(ambientLight);
+
+/* =========================================================
+   黃道面
+   ========================================================= */
+const eclipticMat = new THREE.MeshBasicMaterial({
+  color: 0xffe6a3,
+  transparent: true,
+  opacity: 0,
+  side: THREE.DoubleSide,
+  depthWrite: false
+});
+const eclipticPlane = new THREE.Mesh(
+  new THREE.CircleGeometry(ECLIPTIC_R, 128),
+  eclipticMat
+);
+eclipticPlane.rotation.x = -Math.PI / 2;
+eclipticPlane.position.set(SUN_DIST, -0.02, 0);
+eclipticPlane.renderOrder = -2;
+scene.add(eclipticPlane);
+
+const eclipticRing = (function () {
+  const pts = [];
+  const r = ECLIPTIC_R;
+  for (let i = 0; i <= 192; i++) {
+    const a = (i / 192) * Math.PI * 2;
+    pts.push(new THREE.Vector3(
+      SUN_DIST + r * Math.cos(a), -0.02, -r * Math.sin(a)
+    ));
+  }
+  const ring = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({ color: 0xffe6a3, transparent: true, opacity: 0 })
+  );
+  scene.add(ring);
+  return ring;
+})();
+
+/* =========================================================
+   地球貼圖
+   ========================================================= */
+function makeEarthTexture() {
+  const W = 4096, H = 2048;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+
+  const X = lon => ((lon + 180) / 360) * W;
+  const Y = lat => ((90 - lat) / 180) * H;
+
+  const og = ctx.createLinearGradient(0, 0, 0, H);
+  og.addColorStop(0.00, '#061428');
+  og.addColorStop(0.16, '#0a2648');
+  og.addColorStop(0.34, '#0d3867');
+  og.addColorStop(0.50, '#104880');
+  og.addColorStop(0.66, '#0d3867');
+  og.addColorStop(0.84, '#0a2648');
+  og.addColorStop(1.00, '#061428');
+  ctx.fillStyle = og;
+  ctx.fillRect(0, 0, W, H);
+
+  for (let i = 0; i < 3000; i++) {
+    const r = Math.random() * 70 + 20;
+    ctx.fillStyle = `rgba(110,180,255,${Math.random() * 0.022})`;
+    ctx.beginPath();
+    ctx.arc(Math.random() * W, Math.random() * H, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const LANDS = [
+    [
+      [-168,66],[-164,60],[-152,58],[-140,60],[-130,54],[-124,48],[-124,40],
+      [-117,32],[-110,25],[-104,20],[-99,16],[-92,14],[-87,13],[-82,9],[-78,8],
+      [-80,12],[-85,15],[-88,17],[-88,21],[-91,22],[-95,19],[-97,22],[-97,26],
+      [-91,29],[-84,30],[-82,25],[-80,28],[-80,32],[-75,35],[-70,42],[-66,45],
+      [-60,47],[-55,52],[-64,60],[-78,62],[-95,68],[-125,70],[-140,70],[-158,71]
+    ],
+    [
+      [-78,8],[-79,2],[-80,-3],[-81,-6],[-77,-12],[-71,-18],[-70,-23],[-71,-30],
+      [-73,-37],[-74,-44],[-75,-50],[-70,-55],[-66,-55],[-63,-49],[-62,-41],
+      [-57,-37],[-53,-34],[-48,-26],[-40,-21],[-38,-13],[-35,-7],[-42,-2],
+      [-50,0],[-51,4],[-60,8],[-68,11],[-75,10]
+    ],
+    [
+      [-17,15],[-17,21],[-12,29],[-6,35],[0,36],[10,37],[20,32],[30,31],[34,28],
+      [35,22],[38,17],[43,12],[48,12],[51,11],[45,3],[42,-2],[40,-10],[35,-19],
+      [33,-26],[28,-33],[20,-35],[16,-29],[12,-18],[9,-2],[3,5],[-5,5],[-10,7],[-14,11]
+    ],
+    [
+      [-9,37],[-9,43],[-1,44],[-1,48],[-4,49],[2,51],[7,54],[6,58],[5,62],
+      [12,65],[18,69],[28,70],[40,68],[55,70],[70,72],[85,75],[100,76],[115,76],
+      [130,73],[145,72],[160,70],[172,67],[180,65],[178,63],[170,60],[163,58],
+      [155,52],[148,46],[142,46],[135,44],[130,42],[128,38],[122,35],[120,30],
+      [122,25],[112,20],[108,15],[105,10],[103,1],[100,6],[98,12],[94,17],
+      [90,22],[87,21],[82,17],[80,13],[77,8],[73,17],[70,22],[68,24],[63,25],
+      [58,25],[57,22],[52,17],[48,13],[43,13],[38,17],[35,22],[33,28],[34,31],
+      [36,36],[30,36],[27,37],[23,38],[19,40],[16,42],[13,45],[8,44],[3,43],[-2,37],[-6,36]
+    ],
+    [
+      [-180,-70],[-150,-72],[-120,-73],[-90,-72],[-60,-68],[-30,-70],[0,-70],
+      [30,-68],[60,-66],[90,-66],[120,-66],[150,-68],[180,-70],
+      [180,-90],[-180,-90]
+    ],
+    [[-45,83],[-20,80],[-22,70],[-42,60],[-55,62],[-58,70],[-50,78]],
+    [
+      [114,-22],[113,-26],[115,-34],[120,-34],[129,-32],[137,-35],[141,-38],
+      [147,-38],[150,-37],[153,-28],[146,-19],[142,-11],[136,-12],[130,-11],
+      [126,-14],[122,-17]
+    ],
+    [[44,-16],[50,-15],[50,-25],[45,-25],[43,-20]],
+    [[131,-1],[141,-3],[150,-6],[147,-9],[138,-9],[132,-4]],
+    [[109,2],[117,4],[119,-1],[116,-4],[110,-3],[108,0]],
+    [[95,5],[105,-6],[103,-6],[95,3]],
+    [[105,-6],[114,-8],[114,-9],[105,-7]],
+    [[119,1],[125,1],[125,-5],[120,-5],[118,-2]],
+    [[120,18],[124,18],[126,10],[122,6],[120,12]],
+    [[130,32],[135,35],[140,40],[142,44],[145,44],[142,38],[138,35],[133,33]],
+    [[173,-35],[178,-38],[174,-41],[172,-44],[167,-46],[166,-45],[170,-42]],
+    [[-5,58],[-2,58],[0,53],[1,51],[-5,50],[-6,54]],
+    [[-10,54],[-6,55],[-6,52],[-10,52]],
+    [[-24,66],[-14,66],[-14,64],[-24,64]],
+    [[80,10],[82,8],[81,6],[80,7]],
+    [[-84,22],[-77,23],[-74,20],[-80,21]]
+  ];
+
+  const landPath = new Path2D();
+  LANDS.forEach(pts => {
+    const P = pts.map(([lon, lat]) => [X(lon), Y(lat)]);
+    const n = P.length;
+    landPath.moveTo((P[n-1][0] + P[0][0]) / 2, (P[n-1][1] + P[0][1]) / 2);
+    for (let i = 0; i < n; i++) {
+      const a = P[i];
+      const b = P[(i + 1) % n];
+      landPath.quadraticCurveTo(a[0], a[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+    }
+    landPath.closePath();
+  });
+
+  ctx.strokeStyle = 'rgba(130,195,205,0.22)';
+  ctx.lineWidth = 6;
+  ctx.lineJoin = 'round';
+  ctx.stroke(landPath);
+
+  ctx.save();
+  ctx.clip(landPath);
+
+  const lg = ctx.createLinearGradient(0, 0, 0, H);
+  lg.addColorStop(0.000, '#e9f2fa');
+  lg.addColorStop(0.055, '#c3cbbd');
+  lg.addColorStop(0.140, '#8f9779');
+  lg.addColorStop(0.220, '#4b6440');
+  lg.addColorStop(0.320, '#577b41');
+  lg.addColorStop(0.440, '#6d8b3e');
+  lg.addColorStop(0.500, '#417a33');
+  lg.addColorStop(0.560, '#6d8b3e');
+  lg.addColorStop(0.680, '#577b41');
+  lg.addColorStop(0.800, '#4b6440');
+  lg.addColorStop(0.880, '#8f9779');
+  lg.addColorStop(1.000, '#e9f2fa');
+  ctx.fillStyle = lg;
+  ctx.fillRect(0, 0, W, H);
+
+  function blob(lon, lat, rLon, rLat, rgb, a) {
+    const x = X(lon), y = Y(lat);
+    const rx = rLon / 360 * W;
+    const ry = rLat / 180 * H;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(rx, ry);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+    g.addColorStop(0.00, `rgba(${rgb},${a})`);
+    g.addColorStop(0.55, `rgba(${rgb},${a * 0.82})`);
+    g.addColorStop(1.00, `rgba(${rgb},0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  const DESERT = '212,183,116';
+  const FOREST = '28,72,30';
+  const BOREAL = '42,72,46';
+  const SAVAN  = '152,148,72';
+  const TUNDRA = '112,116,96';
+
+  blob(   8,  22, 30,  9, DESERT, 0.95);
+  blob(  45,  22, 11,  8, DESERT, 0.95);
+  blob(  57,  30, 11,  6, DESERT, 0.85);
+  blob(  92,  40, 22,  8, DESERT, 0.85);
+  blob(  22, -23,  9,  7, DESERT, 0.85);
+  blob( 133, -25, 19, 11, DESERT, 0.95);
+  blob( -69, -22,3.5,  8, DESERT, 0.85);
+  blob(-110,  33,  9,  6, DESERT, 0.80);
+  blob( -69, -46,  5,  7, DESERT, 0.60);
+
+  blob( -62,  -4, 19, 10, FOREST, 0.85);
+  blob(  22,   0, 14,  7, FOREST, 0.85);
+  blob( 112,   0, 20, 10, FOREST, 0.80);
+  blob(  75,  13,  5,  8, FOREST, 0.55);
+
+  blob(-100,  58, 45,  9, BOREAL, 0.80);
+  blob( 100,  60, 55,  9, BOREAL, 0.80);
+  blob(  25,  63, 12,  5, BOREAL, 0.70);
+
+  blob(  30,   8, 30,  8, SAVAN,  0.45);
+  blob( -60, -12, 22,  6, SAVAN,  0.40);
+
+  blob(  60,  70, 60,  7, TUNDRA, 0.60);
+  blob(-105,  68, 50,  7, TUNDRA, 0.60);
+
+  ctx.restore();
+
+  let ig = ctx.createLinearGradient(0, 0, 0, Y(64));
+  ig.addColorStop(0.00, 'rgba(245,250,255,1)');
+  ig.addColorStop(0.40, 'rgba(232,244,255,0.85)');
+  ig.addColorStop(0.75, 'rgba(225,240,255,0.45)');
+  ig.addColorStop(1.00, 'rgba(220,238,255,0)');
+  ctx.fillStyle = ig;
+  ctx.fillRect(0, 0, W, Y(64));
+
+  ig = ctx.createLinearGradient(0, Y(-58), 0, H);
+  ig.addColorStop(0.00, 'rgba(220,238,255,0)');
+  ig.addColorStop(0.30, 'rgba(228,242,255,0.70)');
+  ig.addColorStop(0.70, 'rgba(240,249,255,0.97)');
+  ig.addColorStop(1.00, 'rgba(252,254,255,1)');
+  ctx.fillStyle = ig;
+  ctx.fillRect(0, Y(-58), W, H - Y(-58));
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return tex;
+}
+
+/* =========================================================
+   地球物件（夏至傾角：向北極朝太陽方向傾斜 23.5 度）
+   ========================================================= */
+const earthTex = makeEarthTexture();
+const earth = new THREE.Mesh(
+  new THREE.SphereGeometry(EARTH_R, 96, 64),
+  new THREE.MeshPhongMaterial({
+    map: earthTex,
+    shininess: 14,
+    specular: new THREE.Color(0x2a3a4a),
+    emissive: new THREE.Color(0x3a4a66),
+    emissiveMap: earthTex,
+    emissiveIntensity: 0.20
+  })
+);
+
+const earthTiltGroup = new THREE.Group();
+earthTiltGroup.rotation.z = -THREE.MathUtils.degToRad(AXIAL_TILT_DEG);
+scene.add(earthTiltGroup);
+earthTiltGroup.add(earth);
+
+earth.rotation.y = 240 * Math.PI / 180;
+
+/* 自轉軸線 */
+const axisLineLen = EARTH_R * 1.7;
+const axisGeo = new THREE.BufferGeometry().setFromPoints([
+  new THREE.Vector3(0, -axisLineLen, 0),
+  new THREE.Vector3(0,  axisLineLen, 0)
+]);
+const axisLine = new THREE.Line(axisGeo, new THREE.LineBasicMaterial({
+  color: 0xff6a6a, transparent: true, opacity: 0.9
+}));
+earthTiltGroup.add(axisLine);
+
+/* 北極箭頭 */
+const arrowHead = new THREE.Mesh(
+  new THREE.ConeGeometry(0.16, 0.42, 20),
+  new THREE.MeshBasicMaterial({ color: 0xff8a8a })
+);
+arrowHead.position.set(0, axisLineLen + 0.21, 0);
+earthTiltGroup.add(arrowHead);
+
+/* ── 地表觀測點（北緯 23.5, 東經 120） ── */
+const obsPhi = (90 - 23.5) * Math.PI / 180;
+const obsTheta = (120 + 180) * Math.PI / 180;
+
+const obsLocalUp = new THREE.Vector3(
+  -Math.sin(obsPhi) * Math.cos(obsTheta),
+   Math.cos(obsPhi),
+   Math.sin(obsPhi) * Math.sin(obsTheta)
+).normalize();
+
+const obsLocalEast = new THREE.Vector3(
+   Math.sin(obsTheta), 0, Math.cos(obsTheta)
+).normalize();
+
+const obsLocalNorth = new THREE.Vector3()
+  .crossVectors(obsLocalUp, obsLocalEast)
+  .normalize();
+
+/* ── 地表方向指南針 ── */
+const compassGroup = new THREE.Group();
+compassGroup.position.copy(obsLocalUp).multiplyScalar(EARTH_R + 0.02);
+compassGroup.visible = false;
+earth.add(compassGroup);
+
+function makeSmallLabel(text, color) {
+  const fontSize = 48;
+  const pad = 10;
+  const measureCtx = document.createElement('canvas').getContext('2d');
+  measureCtx.font = `700 ${fontSize}px "Microsoft JhengHei","PingFang TC",sans-serif`;
+  const textW = measureCtx.measureText(text).width;
+
+  const W = Math.ceil(textW) + pad * 2;
+  const H = fontSize + pad * 2;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  ctx.font = `700 ${fontSize}px "Microsoft JhengHei","PingFang TC",sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  
+  ctx.shadowColor = 'rgba(0,0,0,0.6)';
+  ctx.shadowBlur = 4;
+  ctx.fillStyle = color;
+  ctx.fillText(text, W / 2, H / 2);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: tex, transparent: true, depthTest: false, depthWrite: false
+  }));
+  
+  const worldH = 0.15; 
+  sp.scale.set(worldH * W / H, worldH, 1);
+  return sp;
+}
+
+// 箭头拉长，配合透视减小文字视觉效果
+const dirLen = 1.5;
+const arrowHeadLen = 0.3;
+const arrowHeadWidth = 0.15;
+
+const arrE = new THREE.ArrowHelper(obsLocalEast, new THREE.Vector3(0,0,0), dirLen, 0xff5555, arrowHeadLen, arrowHeadWidth);
+const arrW = new THREE.ArrowHelper(obsLocalEast.clone().negate(), new THREE.Vector3(0,0,0), dirLen, 0xaaaaaa, arrowHeadLen, arrowHeadWidth);
+const arrN = new THREE.ArrowHelper(obsLocalNorth, new THREE.Vector3(0,0,0), dirLen, 0x55ff55, arrowHeadLen, arrowHeadWidth);
+const arrS = new THREE.ArrowHelper(obsLocalNorth.clone().negate(), new THREE.Vector3(0,0,0), dirLen, 0xffff55, arrowHeadLen, arrowHeadWidth);
+compassGroup.add(arrE, arrW, arrN, arrS);
+
+// 把文字标签放在箭头末端
+const lblE = makeSmallLabel('東', '#ff8888'); lblE.position.copy(obsLocalEast).multiplyScalar(dirLen + 0.1);
+const lblW = makeSmallLabel('西', '#cccccc'); lblW.position.copy(obsLocalEast).multiplyScalar(-(dirLen + 0.1));
+const lblN = makeSmallLabel('北', '#88ff88'); lblN.position.copy(obsLocalNorth).multiplyScalar(dirLen + 0.1);
+const lblS = makeSmallLabel('南', '#ffff88'); lblS.position.copy(obsLocalNorth).multiplyScalar(-(dirLen + 0.1));
+compassGroup.add(lblE, lblW, lblN, lblS);
+
+/* ── 天頂標記（圓點 + 文字） ── */
+const zenithGroup = new THREE.Group();
+zenithGroup.visible = false;
+earth.add(zenithGroup);
+
+const zenDist = EARTH_R + 2.4; 
+
+const zenithDot = new THREE.Mesh(
+  new THREE.SphereGeometry(0.08, 16, 16),
+  new THREE.MeshBasicMaterial({ color: 0xffff55, depthTest: false })
+);
+zenithDot.position.copy(obsLocalUp).multiplyScalar(zenDist);
+zenithGroup.add(zenithDot);
+
+const zenithLabel = makeSmallLabel('天頂', '#ffff55');
+zenithLabel.position.copy(obsLocalUp).multiplyScalar(zenDist).add(new THREE.Vector3(0.25, 0.25, 0));
+zenithGroup.add(zenithLabel);
+
+
+/* =========================================================
+   月球貼圖
+   ========================================================= */
+function makeMoonTexture() {
+  const W = 512, H = 256;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+
+  ctx.fillStyle = '#a9a9a3';
+  ctx.fillRect(0, 0, W, H);
+
+  const rnd = mulberry32(777);
+
+  for (let i = 0; i < 9; i++) {
+    const cx = rnd() * W, cy = 40 + rnd() * (H - 80);
+    const R  = 22 + rnd() * 46;
+    ctx.fillStyle = 'rgba(128,128,126,0.55)';
+    ctx.beginPath();
+    for (let a = 0; a <= Math.PI * 2 + 0.001; a += 0.15) {
+      const r = R * (1 + 0.22 * Math.sin(3 * a + i) + 0.12 * Math.sin(6 * a));
+      const x = cx + Math.cos(a) * r * 1.4;
+      const y = cy + Math.sin(a) * r;
+      if (a === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  for (let i = 0; i < 200; i++) {
+    const x = rnd() * W, y = rnd() * H, r = 0.8 + rnd() * 6.5;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, 6.283);
+    ctx.fillStyle = 'rgba(118,118,114,0.55)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x - r * 0.22, y - r * 0.22, r * 0.78, 0, 6.283);
+    ctx.fillStyle = 'rgba(205,205,198,0.22)';
+    ctx.fill();
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
+
+const moon = new THREE.Mesh(
+  new THREE.SphereGeometry(MOON_R, 48, 48),
+  new THREE.MeshPhongMaterial({ map: makeMoonTexture(), shininess: 2 })
+);
+
+/* =========================================================
+   白道面群組（法線朝太陽方向傾斜 5 度）
+   ========================================================= */
+const moonPlaneGroup = new THREE.Group();
+moonPlaneGroup.rotation.z = -THREE.MathUtils.degToRad(MOON_PLANE_TILT_DEG);
+scene.add(moonPlaneGroup);
+
+moonPlaneGroup.add(moon);
+
+const lunarMat = new THREE.MeshBasicMaterial({
+  color: 0xa78bfa,
+  transparent: true,
+  opacity: 0,
+  side: THREE.DoubleSide,
+  depthWrite: false
+});
+const lunarPlane = new THREE.Mesh(
+  new THREE.CircleGeometry(PLANE_R, 96),
+  lunarMat
+);
+lunarPlane.rotation.x = -Math.PI / 2;
+lunarPlane.renderOrder = -1;
+moonPlaneGroup.add(lunarPlane);
+
+const lunarRing = (function () {
+  const pts = [];
+  const r = PLANE_R;
+  for (let i = 0; i <= 128; i++) {
+    const a = (i / 128) * Math.PI * 2;
+    pts.push(new THREE.Vector3(r * Math.cos(a), 0, -r * Math.sin(a)));
+  }
+  const ring = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({ color: 0xc4a9ff, transparent: true, opacity: 0 })
+  );
+  moonPlaneGroup.add(ring);
+  return ring;
+})();
+
+/* ── 滑桿 ── */
+const planeOpacitySlider = document.getElementById('planeOpacity');
+const planeOpacityVal    = document.getElementById('planeOpacityVal');
+
+function applyPlaneOpacity(v) {
+  const op = v / 100;
+  eclipticMat.opacity = op;
+  lunarMat.opacity    = op;
+  eclipticRing.material.opacity = op * 1.1;
+  lunarRing.material.opacity    = op * 1.1;
+  planeOpacityVal.textContent = v + '%';
+}
+
+planeOpacitySlider.addEventListener('input', () => {
+  applyPlaneOpacity(parseInt(planeOpacitySlider.value, 10));
+});
+
+applyPlaneOpacity(0);
+
+/* =========================================================
+   月球軌道環
+   ========================================================= */
+(function orbitRing() {
+  const pts = [];
+  for (let i = 0; i <= 256; i++) {
+    const a = (i / 256) * Math.PI * 2;
+    pts.push(new THREE.Vector3(ORBIT_R * Math.cos(a), 0, -ORBIT_R * Math.sin(a)));
+  }
+  const line = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({ color: 0x5f86c4, transparent: true, opacity: 0.38 })
+  );
+  moonPlaneGroup.add(line);
+})();
+
+/* =========================================================
+   文字標籤
+   ========================================================= */
+function makeLabel(text) {
+  const fontSize = 40;
+  const pad = 20;
+
+  const measureCtx = document.createElement('canvas').getContext('2d');
+  measureCtx.font = `700 ${fontSize}px "Microsoft JhengHei","PingFang TC",sans-serif`;
+  const textW = measureCtx.measureText(text).width;
+
+  const W = Math.ceil(textW) + pad * 2;
+  const H = fontSize + pad * 2;
+
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  ctx.font = `700 ${fontSize}px "Microsoft JhengHei","PingFang TC",sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(0,0,0,0.9)';
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = '#cfe2ff';
+  ctx.fillText(text, W / 2, H / 2);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: tex, transparent: true, depthTest: false, depthWrite: false
+  }));
+  const worldH = 1.15;
+  sp.scale.set(worldH * W / H, worldH, 1);
+  return sp;
+}
+
+/* =========================================================
+   四個關鍵位置
+   ========================================================= */
+const markersGroup = new THREE.Group();
+moonPlaneGroup.add(markersGroup);
+
+const KEY_POINTS = [
+  { deg: 0,   label: '朔月 · 初一',        color: 0x6f7fa0 },
+  { deg: 90,  label: '上弦月 · 初七、初八', color: 0x8fb2ff },
+  { deg: 180, label: '望月 · 十五',        color: 0xffe9a8 },
+  { deg: 270, label: '下弦月 · 廿二、廿三', color: 0x8fb2ff }
+];
+
+KEY_POINTS.forEach(k => {
+  const a = k.deg * Math.PI / 180;
+  const x = ORBIT_R * Math.cos(a);
+  const z = -ORBIT_R * Math.sin(a);
+
+  const dot = new THREE.Mesh(
+    new THREE.SphereGeometry(0.16, 16, 16),
+    new THREE.MeshBasicMaterial({ color: k.color })
+  );
+  dot.position.set(x, 0, z);
+  markersGroup.add(dot);
+
+  const lbl = makeLabel(k.label);
+  const ox = x === 0 ? 0 : (x > 0 ? 2.6 : -2.6);
+  const oz = z === 0 ? 0 : (z > 0 ? 2.6 : -2.6);
+  lbl.position.set(x + ox, 1.6, z + oz);
+  markersGroup.add(lbl);
+});
+
+const linkGeo = new THREE.BufferGeometry().setFromPoints([
+  new THREE.Vector3(), new THREE.Vector3()
+]);
+const linkLine = new THREE.Line(linkGeo, new THREE.LineBasicMaterial({
+  color: 0x7fb4ff, transparent: true, opacity: 0.35
+}));
+moonPlaneGroup.add(linkLine);
+
+/* =========================================================
+   按鈕圖示
+   ========================================================= */
+const SVG_PLAY = '<svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19" fill="currentColor"/></svg>';
+const SVG_PAUSE = '<svg viewBox="0 0 24 24"><rect x="6.8" y="5" width="3.6" height="14" rx="1.2" fill="currentColor"/><rect x="13.6" y="5" width="3.6" height="14" rx="1.2" fill="currentColor"/></svg>';
+const SVG_FS_ENTER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>';
+const SVG_FS_EXIT  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>';
+
+const playBtn = document.getElementById('playBtn');
+const fsBtn   = document.getElementById('fsBtn');
+const surfaceBtn = document.getElementById('surfaceBtn');
+const speedPanel = document.getElementById('speedPanel');
+const speedBtns = document.querySelectorAll('.speed-btn[data-speed]');
+const earthTimeEl = document.getElementById('earthTime');
+const moonriseEl = document.getElementById('moonriseTxt');
+const moonsetEl = document.getElementById('moonsetTxt');
+
+/* =========================================================
+   狀態
+   ========================================================= */
+let angle = 0;
+let playing = true;
+let isSurfaceView = false;
+let timeScale = 1;
+
+const lunarEl    = document.getElementById('lunar');
+const phaseEl    = document.getElementById('phaseName');
+const illumEl    = document.getElementById('illum');
+const stateEl    = document.getElementById('stateTxt');
+
+const phaseCanvas = document.getElementById('phaseCanvas');
+const pctx = phaseCanvas.getContext('2d');
+
+/* ── 地表視角拖曳控制 ── */
+let surfaceYaw = 0;
+let surfacePitch = 0;
+let isDraggingSurface = false;
+let lastX = 0, lastY = 0;
+
+renderer.domElement.addEventListener('pointerdown', (e) => {
+  if (!isSurfaceView) return;
+  isDraggingSurface = true;
+  lastX = e.clientX;
+  lastY = e.clientY;
+});
+
+window.addEventListener('pointermove', (e) => {
+  if (!isSurfaceView || !isDraggingSurface) return;
+  const dx = e.clientX - lastX;
+  const dy = e.clientY - lastY;
+  lastX = e.clientX;
+  lastY = e.clientY;
+
+  surfaceYaw -= dx * 0.005;
+  surfacePitch -= dy * 0.005;
+  
+  surfacePitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, surfacePitch));
+});
+
+window.addEventListener('pointerup', () => {
+  isDraggingSurface = false;
+});
+
+/* ── 切換地表視角 ── */
+surfaceBtn.addEventListener('click', () => {
+  isSurfaceView = !isSurfaceView;
+  if (isSurfaceView) {
+    surfaceBtn.classList.add('active');
+    surfaceBtn.textContent = '返回軌道視角';
+    controls.enabled = false;
+    markersGroup.visible = false;
+    
+    compassGroup.visible = true;
+    zenithGroup.visible = true;
+
+    sunLight.intensity = 4.0;
+    ambientLight.intensity = 0.6;
+
+    speedPanel.style.display = 'flex';
+    
+    surfaceYaw = 0;
+    surfacePitch = 0;
+  } else {
+    surfaceBtn.classList.remove('active');
+    surfaceBtn.textContent = '地表的一天';
+    controls.enabled = true;
+    markersGroup.visible = true;
+    
+    compassGroup.visible = false;
+    zenithGroup.visible = false;
+
+    sunLight.intensity = 2.4;
+    ambientLight.intensity = 0.25;
+
+    speedPanel.style.display = 'none';
+    timeScale = 1;
+    speedBtns.forEach(b => b.classList.toggle('active', b.dataset.speed === '1'));
+
+    camera.up.set(0, 1, 0); 
+    camera.position.set(12, 16, 24);
+    controls.target.set(0, 0, 0);
+    controls.update();
+  }
+});
+
+/* ── 速率按鈕點擊 ── */
+speedBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    speedBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    timeScale = parseFloat(btn.dataset.speed);
+  });
+});
+
+/* =========================================================
+   更新 UI 與功能
+   ========================================================= */
+function setPlaying(v) {
+  playing = v;
+  if (playing) {
+    playBtn.innerHTML = SVG_PAUSE;
+    playBtn.classList.remove('paused');
+    playBtn.setAttribute('aria-label', '暫停');
+    playBtn.setAttribute('title', '暫停');
+    stateEl.textContent = '運行中';
+  } else {
+    playBtn.innerHTML = SVG_PLAY;
+    playBtn.classList.add('paused');
+    playBtn.setAttribute('aria-label', '播放');
+    playBtn.setAttribute('title', '播放');
+    stateEl.textContent = '暫停';
+  }
+}
+
+playBtn.addEventListener('click', () => setPlaying(!playing));
+
+/* ── 全螢幕 ── */
+function updateFsIcon() {
+  if (document.fullscreenElement) {
+    fsBtn.innerHTML = SVG_FS_EXIT;
+    fsBtn.setAttribute('aria-label', '離開全螢幕');
+    fsBtn.setAttribute('title', '離開全螢幕');
+  } else {
+    fsBtn.innerHTML = SVG_FS_ENTER;
+    fsBtn.setAttribute('aria-label', '全螢幕');
+    fsBtn.setAttribute('title', '全螢幕');
+  }
+}
+fsBtn.addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    (document.documentElement.requestFullscreen ||
+     document.documentElement.webkitRequestFullscreen ||
+     function(){}).call(document.documentElement);
+  } else {
+    (document.exitFullscreen ||
+     document.webkitExitFullscreen ||
+     function(){}).call(document);
+  }
+});
+document.addEventListener('fullscreenchange', updateFsIcon);
+document.addEventListener('webkitfullscreenchange', updateFsIcon);
+
+fsBtn.innerHTML = SVG_FS_ENTER;
+setPlaying(true);
+
+/* ── 四個相位快捷按鈕 ── */
+document.querySelectorAll('.phase-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    angle = parseFloat(btn.dataset.angle);
+    setPlaying(false);
+    updateUI();
+  });
+});
+
+/* =========================================================
+   2D 月相繪製
+   ========================================================= */
+function drawPhase(deg) {
+  const W = phaseCanvas.width, H = phaseCanvas.height;
+  const cx = W / 2, cy = H / 2, r = Math.min(W, H) / 2 - 10;
+  pctx.clearRect(0, 0, W, H);
+
+  const rad  = deg * Math.PI / 180;
+  const cosT = Math.cos(rad);
+
+  pctx.beginPath();
+  pctx.arc(cx, cy, r, 0, Math.PI * 2);
+  pctx.fillStyle = '#0d1424';
+  pctx.fill();
+  pctx.beginPath();
+  pctx.arc(cx, cy, r, 0, Math.PI * 2);
+  pctx.strokeStyle = 'rgba(120,150,200,0.28)';
+  pctx.lineWidth = 2;
+  pctx.stroke();
+
+  const lit = (1 - cosT) / 2;
+  if (lit < 0.001) return;
+
+  const waxing = Math.sin(rad) >= 0;
+  const a = r * Math.abs(cosT);
+
+  pctx.beginPath();
+
+  if (waxing) {
+    pctx.arc(cx, cy, r, -Math.PI / 2, Math.PI / 2, false);
+    if (cosT >= 0) {
+      if (a < 0.5) pctx.lineTo(cx, cy - r);
+      else pctx.ellipse(cx, cy, a, r, 0, Math.PI / 2, -Math.PI / 2, true);
+    } else {
+      pctx.ellipse(cx, cy, a, r, 0, Math.PI / 2, 3 * Math.PI / 2, false);
+    }
+  } else {
+    pctx.arc(cx, cy, r, Math.PI / 2, 3 * Math.PI / 2, false);
+    if (cosT >= 0) {
+      if (a < 0.5) pctx.lineTo(cx, cy - r);
+      else pctx.ellipse(cx, cy, a, r, 0, 3 * Math.PI / 2, Math.PI / 2, true);
+    } else {
+      pctx.ellipse(cx, cy, a, r, 0, 3 * Math.PI / 2, Math.PI / 2, false);
+    }
+  }
+
+  pctx.closePath();
+  pctx.fillStyle = '#d8e3f5';
+  pctx.fill();
+
+  const grd = pctx.createRadialGradient(
+    cx - r * 0.28, cy - r * 0.28, r * 0.05,
+    cx, cy, r * 1.05
+  );
+  grd.addColorStop(0, 'rgba(255,255,255,0.16)');
+  grd.addColorStop(1, 'rgba(0,0,0,0.08)');
+  pctx.globalCompositeOperation = 'source-atop';
+  pctx.beginPath();
+  pctx.arc(cx, cy, r, 0, Math.PI * 2);
+  pctx.fillStyle = grd;
+  pctx.fill();
+  pctx.globalCompositeOperation = 'source-over';
+}
+
+/* =========================================================
+   更新 UI
+   ========================================================= */
+function updateUI() {
+  const deg = ((angle % 360) + 360) % 360;
+  const rad = deg * Math.PI / 180;
+
+  const age      = (deg / 360) * SYNODIC;
+  const lunarDay = Math.floor(age) + 1;
+  const illum    = (1 - Math.cos(rad)) / 2;
+
+  let phaseName;
+  if (lunarDay === 1) {
+    phaseName = '朔月（新月）';
+  } else if (lunarDay >= 2 && lunarDay <= 6) {
+    phaseName = '蛾眉月';
+  } else if (lunarDay === 7 || lunarDay === 8) {
+    phaseName = '上弦月';
+  } else if (lunarDay >= 9 && lunarDay <= 14) {
+    phaseName = '盈凸月';
+  } else if (lunarDay === 15) {
+    phaseName = '望月（滿月）';
+  } else if (lunarDay >= 16 && lunarDay <= 21) {
+    phaseName = '虧凸月';
+  } else if (lunarDay === 22 || lunarDay === 23) {
+    phaseName = '下弦月';
+  } else {
+    phaseName = '殘月';
+  }
+
+  lunarEl.textContent  = lunarName(lunarDay);
+  phaseEl.textContent  = phaseName;
+  illumEl.textContent  = Math.round(illum * 100) + ' %';
+
+  drawPhase(deg);
+
+  /* ── 計算課本標準的月升月落時間 ── */
+  // 朔(0度): 6:00 / 18:00
+  // 上弦(90度): 12:00 / 00:00
+  // 望(180度): 18:00 / 06:00
+  // 下弦(270度): 00:00 / 12:00
+  let tRise = 6 + angle / 15;
+  let tSet = 18 + angle / 15;
+
+  tRise = ((tRise % 24) + 24) % 24;
+  tSet = ((tSet % 24) + 24) % 24;
+
+  const hRise = Math.floor(tRise);
+  const hSet = Math.floor(tSet);
+
+  moonriseEl.textContent = hRise.toString().padStart(2, '0') + ':00';
+  moonsetEl.textContent = hSet.toString().padStart(2, '0') + ':00';
+}
+
+/* =========================================================
+   主迴圈
+   ========================================================= */
+const clock = new THREE.Clock();
+const tempQuat = new THREE.Quaternion();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  
+  const currentTimeScale = isSurfaceView ? timeScale : 1;
+  const scaledDt = dt * currentTimeScale;
+
+  if (playing) {
+    const currentSpeed = isSurfaceView ? SURFACE_MOON_SPEED : SPEED;
+    angle += currentSpeed * scaledDt;
+
+    if (isSurfaceView) {
+      earth.rotation.y += SURFACE_EARTH_SPIN_RAD * scaledDt;
+    } else {
+      earth.rotation.y += ORBIT_EARTH_SPIN_RAD * scaledDt;
+    }
+  }
+
+  const rad = angle * Math.PI / 180;
+  const mx = ORBIT_R * Math.cos(rad);
+  const mz = -ORBIT_R * Math.sin(rad);
+  moon.position.set(mx, 0, mz);
+
+  moon.rotation.y = rad;
+
+  const pos = linkLine.geometry.attributes.position.array;
+  pos[0] = 0; pos[1] = 0; pos[2] = 0;
+  pos[3] = mx; pos[4] = 0; pos[5] = mz;
+  linkLine.geometry.attributes.position.needsUpdate = true;
+
+  updateUI();
+
+  if (isSurfaceView) {
+    earth.updateMatrixWorld(true);
+
+    const obsPos = obsLocalUp.clone().multiplyScalar(EARTH_R).applyMatrix4(earth.matrixWorld);
+
+    earth.getWorldQuaternion(tempQuat);
+    const worldUp = obsLocalUp.clone().applyQuaternion(tempQuat).normalize();
+    const worldEast = obsLocalEast.clone().applyQuaternion(tempQuat).normalize();
+    const worldNorth = obsLocalNorth.clone().applyQuaternion(tempQuat).normalize();
+
+    camera.position.copy(obsPos).addScaledVector(worldUp, 0.03);
+
+    const cosY = Math.cos(surfaceYaw);
+    const sinY = Math.sin(surfaceYaw);
+    const cosP = Math.cos(surfacePitch);
+    const sinP = Math.sin(surfacePitch);
+
+    const lookDir = new THREE.Vector3()
+      .addScaledVector(worldEast, cosY * cosP)
+      .addScaledVector(worldNorth, sinY * cosP)
+      .addScaledVector(worldUp, sinP)
+      .normalize();
+
+    camera.up.copy(worldUp);
+    camera.lookAt(camera.position.clone().add(lookDir));
+
+    // 更新右上角的地球時間
+    let timeVal = 12 + (earth.rotation.y * 180 / Math.PI - 240) / 15;
+    timeVal = ((timeVal % 24) + 24) % 24;
+    const hour = Math.floor(timeVal);
+    earthTimeEl.textContent = hour.toString().padStart(2, '0') + ':00';
+
+  } else {
+    controls.update();
+  }
+
+  renderer.render(scene, camera);
+}
+
+/* =========================================================
+   視窗縮放 & 啟動
+   ========================================================= */
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+updateUI();
+animate();
+</script>
+</body>
+</html>

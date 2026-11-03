@@ -1102,14 +1102,6 @@ KEY_POINTS.forEach(k => {
   markersGroup.add(lbl);
 });
 
-const linkGeo = new THREE.BufferGeometry().setFromPoints([
-  new THREE.Vector3(), new THREE.Vector3()
-]);
-const linkLine = new THREE.Line(linkGeo, new THREE.LineBasicMaterial({
-  color: 0x7fb4ff, transparent: true, opacity: 0.35
-}));
-moonPlaneGroup.add(linkLine);
-
 /* =========================================================
    按鈕圖示
    ========================================================= */
@@ -1433,11 +1425,6 @@ function animate() {
   moon.position.set(mx, 0, mz);
 
   moon.rotation.y = rad;
-
-  const pos = linkLine.geometry.attributes.position.array;
-  pos[0] = 0; pos[1] = 0; pos[2] = 0;
-  pos[3] = mx; pos[4] = 0; pos[5] = mz;
-  linkLine.geometry.attributes.position.needsUpdate = true;
 
   updateUI();
 

@@ -239,16 +239,30 @@
     50%      { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 22px rgba(255, 181, 69, 0.55); }
   }
 
-  /* ── 手機板調整 ── */
-  @media (max-width: 560px) {
-    /* 【修改】將資訊框移至右下角 */
-    #infoPanel { bottom: 12px; right: 12px; left: auto; padding: 12px 14px; min-width: 0; }
+  /* ── 手機與橫版調整 ── */
+  @media (max-width: 768px), (max-height: 600px) {
+    /* 【修正】資訊框固定於右下角 */
+    #infoPanel { 
+      bottom: 12px; 
+      right: 12px; 
+      left: auto; 
+      padding: 12px 14px; 
+      min-width: 0; 
+    }
     #topLeftContainer { top: 12px; left: 12px; gap: 8px; }
     #controlPanel { padding: 12px 14px; min-width: 0; width: 210px; }
     #speedPanel { padding: 10px 14px; min-width: 0; width: 210px; }
     #phaseCanvas { width: 62px; height: 62px; }
     .moonrow .lunar { font-size: 24px; }
-    #ctrlBtns { top: 12px; right: 12px; gap: 10px; }
+    
+    /* 【修正】按鈕水平排列，且讓暫停鍵在左（row-reverse） */
+    #ctrlBtns { 
+      top: 12px; 
+      right: 12px; 
+      gap: 10px; 
+      flex-direction: row-reverse; 
+    }
+    
     .icon-btn { width: 44px; height: 44px; border-radius: 12px; }
     .icon-btn svg { width: 20px; height: 20px; }
     .phase-btn { font-size: 11px; }

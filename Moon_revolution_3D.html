@@ -782,7 +782,7 @@ function makeEarthTexture() {
 }
 
 /* =========================================================
-   地球物件（夏至傾角：向北極朝太陽方向傾斜 23.5 度）
+   地球物件（春分傾角：向北極朝軌道前方傾斜 23.5 度）
    ========================================================= */
 const earthTex = makeEarthTexture();
 const earth = new THREE.Mesh(
@@ -798,7 +798,8 @@ const earth = new THREE.Mesh(
 );
 
 const earthTiltGroup = new THREE.Group();
-earthTiltGroup.rotation.z = -THREE.MathUtils.degToRad(AXIAL_TILT_DEG);
+// 【修改】春分傾角：繞 X 軸傾斜，自轉軸不朝向太陽(+X)也不背向，而是朝向軌道前方(+Z)
+earthTiltGroup.rotation.x = -THREE.MathUtils.degToRad(AXIAL_TILT_DEG);
 scene.add(earthTiltGroup);
 earthTiltGroup.add(earth);
 
@@ -1576,7 +1577,6 @@ function animate() {
         const worldEast = obsLocalEast.clone().applyQuaternion(tempQuat).normalize();
         const worldNorth = obsLocalNorth.clone().applyQuaternion(tempQuat).normalize();
         
-        // 轉場完成後，鏡頭方向朝東 (Yaw = 0)
         const finalYaw = 0;
         const cosY = Math.cos(finalYaw);
         const sinY = Math.sin(finalYaw);
@@ -1616,11 +1616,9 @@ function animate() {
       setPlaying(wasPlay);
       controls.enabled = false;
       
-      // 完全回到地表後，才顯示指南針與天頂
       compassGroup.visible = true;
       zenithGroup.visible = true;
       
-      // 將方向歸零（朝東）
       surfaceYaw = 0;
     }
   } else if (transitioning) {

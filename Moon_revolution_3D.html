@@ -241,7 +241,8 @@
 
   /* ── 手機板調整 ── */
   @media (max-width: 560px) {
-    #infoPanel { bottom: 12px; left: 12px; padding: 12px 14px; min-width: 0; }
+    /* 【修改】將資訊框移至右下角 */
+    #infoPanel { bottom: 12px; right: 12px; left: auto; padding: 12px 14px; min-width: 0; }
     #topLeftContainer { top: 12px; left: 12px; gap: 8px; }
     #controlPanel { padding: 12px 14px; min-width: 0; width: 210px; }
     #speedPanel { padding: 10px 14px; min-width: 0; width: 210px; }
@@ -879,21 +880,18 @@ function makeSmallLabel(text, color) {
   return sp;
 }
 
-// 箭头改为细长圆柱体 + 末端圆球
 const dirLen = 1.5;
 const ballRadius = 0.06;
 
 function createCompassDir(dir, color) {
   const group = new THREE.Group();
   
-  // 1. 细长杆子
   const cylGeo = new THREE.CylinderGeometry(0.012, 0.012, dirLen, 8);
   const cylMat = new THREE.MeshBasicMaterial({ color: color });
   const cyl = new THREE.Mesh(cylGeo, cylMat);
   cyl.position.copy(dir).multiplyScalar(dirLen / 2);
   cyl.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
   
-  // 2. 末端圆球
   const ballGeo = new THREE.SphereGeometry(ballRadius, 16, 16);
   const ballMat = new THREE.MeshBasicMaterial({ color: color });
   const ball = new THREE.Mesh(ballGeo, ballMat);

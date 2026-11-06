@@ -575,7 +575,12 @@ orbit.onUserInteract = () => {
   if (viewMode === 'earth') userInteracted = true;
 };
 
-/* ==================== 星空 ==================== */
+/* ==================== 星空（保留參考，嘉義模式會依天色淡出） ==================== */
+const STAR_BASE_OPACITY = 0.85;
+const starMat = new THREE.PointsMaterial({
+  color: 0xffffff, size: 1.6, sizeAttenuation: true,
+  transparent: true, opacity: STAR_BASE_OPACITY, depthWrite: false
+});
 (function buildStars() {
   const COUNT = 3500;
   const pos = new Float32Array(COUNT * 3);
@@ -589,10 +594,8 @@ orbit.onUserInteract = () => {
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  scene.add(new THREE.Points(g, new THREE.PointsMaterial({
-    color: 0xffffff, size: 1.6, sizeAttenuation: true,
-    transparent: true, opacity: 0.85, depthWrite: false
-  })));
+  const starField = new THREE.Points(g, starMat);
+  scene.add(starField);
 })();
 
 /* ==================== 太陽 ==================== */
@@ -705,7 +708,8 @@ scene.add(glow);
 const sunLight = new THREE.PointLight(0xfff4e0, 3.8, 0, 0);
 sunLight.position.copy(SUN_OFFSET);
 scene.add(sunLight);
-scene.add(new THREE.AmbientLight(0x152233, 0.15));
+const ambientLight = new THREE.AmbientLight(0x152233, 0.15);
+scene.add(ambientLight);
 
 /* ==================== 黃道面 ==================== */
 const eclipticDisk = new THREE.Mesh(
@@ -1618,6 +1622,174 @@ function onResize() {
 
 addEventListener('resize', onResize);
 
+/* ==================== 嘉義地表晝夜天空 ==================== */
+/* 只在嘉義日出日落模式（相機貼近地表）出現；離開後淡出，恢復原本全黑星空 */
+const SKY_R          = 1800;   // 穹頂半徑（< camera.far 4000，且大於星點 420–1120）
+const SKY_NEAR_FULL  = 2.4;    // 相機距地心 <= 此值：天空全開（地表 1.73）
+const SKY_NEAR_ZERO  = 5.0;    // 相機距地心 >= 此值：天空全關（地球視角 9.35）
+const AMB_BASE_COLOR = 0x152233;
+const AMB_BASE_INTENSITY = 0.15;
+
+const C_DAY_ZENITH   = new THREE.Color(0x2f7ad6);
+const C_DAY_HORIZON  = new THREE.Color(0xbcd9f2);
+const C_DAY_GROUND   = new THREE.Color(0x46586b);
+const C_NGT_ZENITH   = new THREE.Color(0x02040b);
+const C_NGT_HORIZON  = new THREE.Color(0x0a1428);
+const C_NGT_GROUND   = new THREE.Color(0x020308);
+const C_DUSK_HORIZON = new THREE.Color(0xff8a3c);
+const C_SUN_DAY      = new THREE.Color(0xfff3d0);
+const C_SUN_DUSK     = new THREE.Color(0xffa050);
+const C_AMB_NIGHT    = new THREE.Color(0x0a1626);
+const C_AMB_DAY      = new THREE.Color(0x8fb4dc);
+const C_AMB_DUSK     = new THREE.Color(0xc08a52);
+const C_RESTORE_AMB  = new THREE.Color(AMB_BASE_COLOR);
+
+const skyUniforms = {
+  uUp:      { value: new THREE.Vector3(0, 1, 0) },
+  uSunDir:  { value: new THREE.Vector3(0, 0, 1) },
+  uZenith:  { value: new THREE.Color(0x02040b) },
+  uHorizon: { value: new THREE.Color(0x0a1428) },
+  uGround:  { value: new THREE.Color(0x010205) },
+  uSunTint: { value: new THREE.Color(0xffa050) },
+  uDusk:    { value: new THREE.Color(0xff8a3c) },
+  uDuskStr: { value: 0 },
+  uGlow:    { value: 0 },
+  uAlpha:   { value: 0 }
+};
+
+const skyMat = new THREE.ShaderMaterial({
+  uniforms: skyUniforms,
+  side: THREE.BackSide,
+  transparent: true,
+  depthWrite: false,
+  vertexShader: /* glsl */`
+    varying vec3 vDir;
+    void main() {
+      vDir = position;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: /* glsl */`
+    uniform vec3  uUp;
+    uniform vec3  uSunDir;
+    uniform vec3  uZenith;
+    uniform vec3  uHorizon;
+    uniform vec3  uGround;
+    uniform vec3  uSunTint;
+    uniform vec3  uDusk;
+    uniform float uDuskStr;
+    uniform float uGlow;
+    uniform float uAlpha;
+    varying vec3  vDir;
+
+    void main() {
+      vec3  dir = normalize(vDir);
+      float h   = dot(dir, uUp);
+      float up  = clamp(h, 0.0, 1.0);
+      vec3  col = mix(uHorizon, uZenith, pow(up, 0.55));
+      col += uHorizon * 0.10 * pow(1.0 - up, 6.0);
+      col  = mix(col, uGround, smoothstep(0.0, 1.0, clamp(-h * 3.0, 0.0, 1.0)));
+      // 日出／日落：暖色集中在貼近地平線的一圈，天頂仍保持藍
+      col += uDusk * uDuskStr * pow(1.0 - clamp(abs(h), 0.0, 1.0), 4.0);
+
+      float sd    = max(dot(dir, uSunDir), 0.0);
+      float halo  = pow(sd, 6.0) * 0.55 + pow(sd, 48.0) * 0.85;
+      float nearH = 1.0 - smoothstep(0.0, 0.55, abs(h));
+      col += uSunTint * halo * uGlow * (0.35 + 0.9 * nearH);
+
+      // three r160：THREE.Color 內部是 linear 值，這裡轉回 sRGB 再輸出，
+      // 讓畫面顏色與色票（sRGB）一致。
+      vec3 outc = clamp(col, 0.0, 1.0);
+      outc = mix(outc * 12.92,
+                 1.055 * pow(outc, vec3(1.0 / 2.4)) - 0.055,
+                 step(vec3(0.0031308), outc));
+      gl_FragColor = vec4(outc, uAlpha);
+    }
+  `
+});
+
+const skyDome = new THREE.Mesh(new THREE.SphereGeometry(SKY_R, 48, 32), skyMat);
+skyDome.frustumCulled = false;
+skyDome.renderOrder = -100;
+skyDome.visible = false;
+scene.add(skyDome);
+
+const _skyEarthPos = new THREE.Vector3();
+const _skyUp       = new THREE.Vector3();
+const _skyQuat     = new THREE.Quaternion();
+const _skySunDir   = new THREE.Vector3();
+const _skyZenith   = new THREE.Color();
+const _skyHorizon  = new THREE.Color();
+const _skyGround   = new THREE.Color();
+const _skyTint     = new THREE.Color();
+const _skyAmbColor = new THREE.Color();
+let skyActive = false;
+
+function hideSky() {
+  if (!skyActive) return;
+  skyActive = false;
+  skyDome.visible = false;
+  starMat.opacity = STAR_BASE_OPACITY;
+  ambientLight.color.setHex(AMB_BASE_COLOR);
+  ambientLight.intensity = AMB_BASE_INTENSITY;
+}
+
+function updateSky() {
+  earthSystem.updateMatrixWorld(true);
+  earth.getWorldPosition(_skyEarthPos);
+
+  const dist = camera.position.distanceTo(_skyEarthPos);
+  const prox = 1 - THREE.MathUtils.smoothstep(dist, SKY_NEAR_FULL, SKY_NEAR_ZERO);
+
+  if (prox <= 0.002) {
+    hideSky();
+    return;
+  }
+  skyActive = true;
+
+  /* 嘉義觀測點的當地鉛垂方向（世界座標） */
+  chiayiMarker.getWorldQuaternion(_skyQuat);
+  _skyUp.copy(chiayiLocalUp).applyQuaternion(_skyQuat).normalize();
+
+  /* 太陽方向（由嘉義看向太陽） */
+  _skySunDir.copy(sun.position).sub(camera.position).normalize();
+  const sinElev = THREE.MathUtils.clamp(_skySunDir.dot(_skyUp), -1, 1);
+  const elevDeg = Math.asin(sinElev) * 180 / Math.PI;
+
+  const dayK  = THREE.MathUtils.smoothstep(elevDeg, -6, 12);
+  const duskK = Math.exp(-Math.pow((elevDeg + 1) / 6, 2));
+  const starK = 1 - THREE.MathUtils.smoothstep(elevDeg, -10, -1);
+  const ambK  = THREE.MathUtils.smoothstep(elevDeg, -8, 10);
+
+  _skyZenith.copy(C_NGT_ZENITH).lerp(C_DAY_ZENITH, dayK);
+  _skyHorizon.copy(C_NGT_HORIZON).lerp(C_DAY_HORIZON, dayK);
+  _skyGround.copy(C_NGT_GROUND).lerp(C_DAY_GROUND, dayK);
+  _skyTint.copy(C_SUN_DAY).lerp(C_SUN_DUSK, duskK);
+
+  skyUniforms.uUp.value.copy(_skyUp);
+  skyUniforms.uSunDir.value.copy(_skySunDir);
+  skyUniforms.uZenith.value.copy(_skyZenith);
+  skyUniforms.uHorizon.value.copy(_skyHorizon);
+  skyUniforms.uGround.value.copy(_skyGround);
+  skyUniforms.uSunTint.value.copy(_skyTint);
+  skyUniforms.uDusk.value.copy(C_DUSK_HORIZON);
+  skyUniforms.uDuskStr.value = 0.85 * duskK;
+  skyUniforms.uGlow.value = 0.35 * dayK + 1.45 * duskK;
+  skyUniforms.uAlpha.value = prox;
+
+  skyDome.position.copy(camera.position);
+  skyDome.visible = true;
+
+  /* 星星依天色淡出 */
+  starMat.opacity = STAR_BASE_OPACITY * (1 - prox * (1 - starK));
+
+  /* 環境光：白天亮、夜晚暗、黃昏偏暖 */
+  _skyAmbColor.copy(C_AMB_NIGHT).lerp(C_AMB_DAY, dayK).lerp(C_AMB_DUSK, 0.35 * duskK);
+  ambientLight.color.copy(_skyAmbColor).lerp(C_RESTORE_AMB, 1 - prox);
+  const skyIntensity = 0.10 + 0.75 * ambK + 0.10 * duskK;
+  ambientLight.intensity = THREE.MathUtils.lerp(AMB_BASE_INTENSITY, skyIntensity, prox);
+}
+
 /* ==================== 動畫迴圈 ==================== */
 const SPIN_ANGLE_PER_SEC     = (Math.PI * 2) / SPIN_PERIOD;
 const SUN_SPIN_ANGLE_PER_SEC = (Math.PI * 2) / SUN_SPIN_PERIOD;
@@ -1759,6 +1931,7 @@ function animate() {
     }
   }
 
+  updateSky();
   renderer.render(scene, camera);
 }
 

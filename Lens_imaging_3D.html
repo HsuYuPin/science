@@ -279,6 +279,8 @@ h1 span {
   display: flex;
   align-items: center;
   gap: 9px;
+  white-space: nowrap;
+  flex-shrink: 0;
   color: #dff5fa;
   font-size: 14px;
   font-weight: 700;
@@ -937,11 +939,11 @@ body.is-eye .topbar { justify-content: flex-end; }
 
       <div class="lens-switch" role="group" aria-label="透鏡類型">
         <button class="lens-btn on" id="convexBtn" type="button" data-lens="convex" aria-pressed="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.6 3c2.7 3.2 2.7 14.8 0 18"/><path d="M14.4 3c-2.7 3.2-2.7 14.8 0 18"/><path d="M9.6 3h4.8"/><path d="M9.6 21h4.8"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.6 3c-1.9 3.2-1.9 14.8 0 18"/><path d="M14.4 3c1.9 3.2 1.9 14.8 0 18"/><path d="M9.6 3h4.8"/><path d="M9.6 21h4.8"/></svg>
           凸透鏡
         </button>
         <button class="lens-btn" id="concaveBtn" type="button" data-lens="concave" aria-pressed="false">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.6 3c-1.9 3.2-1.9 14.8 0 18"/><path d="M14.4 3c1.9 3.2 1.9 14.8 0 18"/><path d="M9.6 3h4.8"/><path d="M9.6 21h4.8"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.6 3c2.7 3.2 2.7 14.8 0 18"/><path d="M14.4 3c-2.7 3.2-2.7 14.8 0 18"/><path d="M9.6 3h4.8"/><path d="M9.6 21h4.8"/></svg>
           凹透鏡
         </button>
       </div>
@@ -952,8 +954,8 @@ body.is-eye .topbar { justify-content: flex-end; }
             <label for="uRange">物距 u</label>
             <output id="uOutput" for="uRange">60 cm</output>
           </div>
-          <input id="uRange" type="range" min="5" max="100" step="1" value="60" aria-label="物距，蠟燭到透鏡的距離" />
-          <div class="range-scale"><span>5 cm</span><span>100 cm</span></div>
+          <input id="uRange" type="range" min="10" max="120" step="1" value="60" aria-label="物距，蠟燭到透鏡的距離" />
+          <div class="range-scale"><span>10 cm</span><span>120 cm</span></div>
         </div>
 
         <div class="control">
@@ -961,8 +963,8 @@ body.is-eye .topbar { justify-content: flex-end; }
             <label for="fRange">焦距 f</label>
             <output id="fOutput" for="fRange">30 cm</output>
           </div>
-          <input id="fRange" type="range" min="5" max="100" step="1" value="30" aria-label="焦距" />
-          <div class="range-scale"><span>5 cm</span><span>100 cm</span></div>
+          <input id="fRange" type="range" min="10" max="120" step="1" value="30" aria-label="焦距" />
+          <div class="range-scale"><span>10 cm</span><span>120 cm</span></div>
         </div>
       </div>
 
@@ -2636,7 +2638,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     ui.readoutText.textContent = buildReadout();
 
     ui.screenBtn.disabled = eyeView;
-    ui.screenBtn.title = eyeView ? '請先按「回2D」再裝回螢幕' : '撤掉或裝回螢幕';
+    ui.screenBtn.title = eyeView ? '請先按「回3D」再裝回螢幕' : '撤掉或裝回螢幕';
     ui.screenBtnLabel.textContent = params.screenInstalled ? '撤掉螢幕' : '裝回螢幕';
     ui.screenBtn.classList.toggle('on', params.screenInstalled);
     ui.screenBtn.setAttribute('aria-pressed', String(params.screenInstalled));
@@ -2657,8 +2659,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     ui.eyeBtn.disabled = transitioning || (!eyeView && none);
     ui.eyeBtn.classList.toggle('on', eyeView);
     ui.eyeBtn.setAttribute('aria-pressed', String(eyeView));
-    ui.eyeBtnLabel.textContent = eyeView ? '回2D' : '透過透鏡';
-    ui.eyeBtn.title = eyeView ? '回到 2D 視角' : none ? '先讓透鏡能成像' : '撤掉螢幕，切到透鏡另一端觀看';
+    ui.eyeBtnLabel.textContent = eyeView ? '回3D' : '透過透鏡';
+    ui.eyeBtn.title = eyeView ? '回到 3D 視角' : none ? '先讓透鏡能成像' : '撤掉螢幕，切到透鏡另一端觀看';
 
     ui.viewBtn.disabled = eyeView || transitioning;
     ui.viewBtn.classList.toggle('on', sideLock);
@@ -2693,7 +2695,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
   function updateModelBox() {
     if (eyeView) {
-      const zOff = eyeObjectZ || 36;
+      const zOff = eyeObjectZ;
       modelBox.min.set(-params.u - 8, 20, -zOff - 8);
       modelBox.max.set(8, 108, 30);
       return;
@@ -2904,11 +2906,11 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     const areaCenter = (area.top + area.bottom) / 2;
     const pxPerUnit = rect.height / (2 * d * tanHalf);
     const targetY = clamp(AXIS_Y - (viewCenter - areaCenter) / Math.max(0.1, pxPerUnit), 8, 96);
-    // Put the real candle just outside the projected aperture so the
-    // inside/outside split is visible for both real and virtual images.
-    const zOff = clamp((1.25 * LENS_R * (d + params.u)) / d + 4, 26, 80);
-    eyeObjectZ = zOff;
-    objectGroup.position.z = -zOff;
+    // Keep the real candle exactly at its true position directly behind the
+    // lens (z = 0): the lens covers the candle, so only the refracted image
+    // is seen inside; the stand below the aperture remains directly visible.
+    eyeObjectZ = 0;
+    objectGroup.position.z = 0;
     cameraTarget.set(0, targetY, 0);
     view.targetTheta = Math.PI / 2;
     view.targetPhi = 1.5;
@@ -3006,7 +3008,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   function setScreen(on) {
     if (transitioning) return;
     // While looking through the lens the screen stays off; only the explicit
-    // "回2D" action leaves this mode.
+    // "回3D" action leaves this mode.
     if (eyeView) return;
     if (on === params.screenInstalled) return;
     params.screenInstalled = on;
@@ -3116,10 +3118,15 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     };
     const doExit = () => {
       eyeView = false;
-      view.targetTheta = sideView.theta;
-      view.targetPhi = sideView.phi;
-      view.targetRadius = sideView.radius;
-      cameraTarget.copy(sideView.target);
+      // The eye view always returns to the 3D view. If it was entered from
+      // the locked 2D view, restore the 3D camera saved before that lock.
+      const base = (sideLock && sideLockSaved) ? sideLockSaved : sideView;
+      sideLock = false;
+      sideLockSaved = null;
+      view.targetTheta = base.theta;
+      view.targetPhi = base.phi;
+      view.targetRadius = base.radius;
+      cameraTarget.copy(base.target);
       updateCamera(true);
       syncSeen();
       updateVisibility();
@@ -3179,7 +3186,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
     if (keepEye) {
       // Looking through the lens is sticky: reset the optics but stay in the
-      // eye view. Only the explicit "回2D" action leaves it.
+      // eye view. Only the explicit "回3D" action leaves it.
       params.screenInstalled = false;
       screenX = DEFAULT_SCREEN_X;
       screenSlide = 1;
@@ -3210,8 +3217,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   }
 
   function onRangeInput() {
-    params.u = clamp(Math.round(Number(ui.uRange.value)), 5, 100);
-    params.f = clamp(Math.round(Number(ui.fRange.value)), 5, 100);
+    params.u = clamp(Math.round(Number(ui.uRange.value)), 10, 120);
+    params.f = clamp(Math.round(Number(ui.fRange.value)), 10, 120);
     refreshAll();
   }
 
@@ -3508,8 +3515,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
   function setParams(next) {
     if (!next || typeof next !== 'object') return getState();
-    if (next.u !== undefined) params.u = clamp(Math.round(Number(next.u)), 5, 100);
-    if (next.f !== undefined) params.f = clamp(Math.round(Number(next.f)), 5, 100);
+    if (next.u !== undefined) params.u = clamp(Math.round(Number(next.u)), 10, 120);
+    if (next.f !== undefined) params.f = clamp(Math.round(Number(next.f)), 10, 120);
     if (next.lens !== undefined && (next.lens === 'convex' || next.lens === 'concave')) {
       params.lens = next.lens;
     }

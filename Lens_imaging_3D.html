@@ -1836,6 +1836,11 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   const objectLabel = makeLabel('物體', { color: '#ffe6bd', accent: '#ffc46b', height: 7, fontScale: 0.9 });
   scene.add(objectLabel.sprite);
 
+  const referenceLabel = makeLabel('參照物', { color: '#ffe6bd', accent: '#ffc46b', height: 6.2, fontScale: 0.86 });
+  referenceLabel.sprite.visible = false;
+  referenceLabel.sprite.position.set(0, 27, 0);
+  objectGroup.add(referenceLabel.sprite);
+
   /* -------------------------------------------------------------
      Lens (convex + concave) and holder
      ------------------------------------------------------------- */
@@ -2906,11 +2911,12 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     const areaCenter = (area.top + area.bottom) / 2;
     const pxPerUnit = rect.height / (2 * d * tanHalf);
     const targetY = clamp(AXIS_Y - (viewCenter - areaCenter) / Math.max(0.1, pxPerUnit), 8, 96);
-    // Keep the real candle exactly at its true position directly behind the
-    // lens (z = 0): the lens covers the candle, so only the refracted image
-    // is seen inside; the stand below the aperture remains directly visible.
-    eyeObjectZ = 0;
-    objectGroup.position.z = 0;
+    // Put the real candle just outside the projected aperture as a size
+    // reference, matching the earlier through-lens composition. The lens
+    // still shows only the image inside its aperture.
+    const zOff = clamp((1.25 * LENS_R * (d + params.u)) / d + 4, 26, 80);
+    eyeObjectZ = zOff;
+    objectGroup.position.z = -zOff;
     cameraTarget.set(0, targetY, 0);
     view.targetTheta = Math.PI / 2;
     view.targetPhi = 1.5;
@@ -2934,6 +2940,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     axisLine.visible = !eyeView;
     lensLabel.sprite.visible = !eyeView;
     objectLabel.sprite.visible = !eyeView && result.imageType !== 'virtual';
+    referenceLabel.sprite.visible = eyeView;
     screenLabel.sprite.visible = !eyeView && params.screenInstalled;
     screenInfoLabel.sprite.visible = !eyeView && params.screenInstalled;
     uGuide.line.visible = !eyeView;

@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>化學反應 3D 動畫 — 質量守恆與原子重新排列</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #06070d; }
+  body { font-family: "Noto Sans TC", "Microsoft JhengHei", -apple-system, sans-serif; }
+  canvas { display: block; }
+
+  #ui {
+    position: fixed; top: 22px; left: 24px; z-index: 10;
+    color: #e8eeff; max-width: min(640px, 74vw);
+  }
+  #ui h1 {
+    font-size: 19px; font-weight: 700; letter-spacing: .5px; margin-bottom: 12px;
+    text-shadow: 0 0 22px rgba(90,140,255,.55);
+    pointer-events: none;
+  }
+  #ui h1 .name { color: #e8eeff; }
+  #ui h1 .eq { color: #6fa8ff; font-weight: 600; margin-left: 10px; }
+
+  /* ===== 反應切換按鈕 ===== */
+  #reactionTabs {
+    display: flex; gap: 9px; margin-bottom: 10px; flex-wrap: wrap;
+  }
+  #reactionTabs button {
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: .4px;
+    padding: 8px 16px;
+    border-radius: 9px;
+    border: 1px solid rgba(110, 150, 230, .3);
+    background: rgba(16, 24, 44, .6);
+    color: #9fb0d0;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: background .18s, border-color .18s, color .18s, box-shadow .18s, transform .12s;
+  }
+  #reactionTabs button:hover {
+    border-color: rgba(120, 170, 255, .6);
+    color: #dce8ff;
+  }
+  #reactionTabs button:active { transform: scale(.96); }
+  #reactionTabs button.active {
+    background: linear-gradient(135deg, rgba(70, 130, 255, .85), rgba(45, 90, 200, .85));
+    border-color: rgba(140, 185, 255, .9);
+    color: #fff;
+    box-shadow: 0 0 18px rgba(70, 130, 255, .45);
+  }
+  #reactionTabs button:focus-visible { outline: 2px solid #4a8dff; outline-offset: 2px; }
+
+  #phase {
+    font-size: 15px; line-height: 1.55; color: #b9c8e8;
+    background: rgba(16, 24, 44, .62);
+    border: 1px solid rgba(110, 150, 230, .28);
+    border-left: 3px solid #4a8dff;
+    border-radius: 8px; padding: 10px 14px;
+    backdrop-filter: blur(8px);
+    transition: color .3s;
+    pointer-events: none;
+  }
+  #phase b { color: #7fd0ff; }
+
+  /* ===== 右上角控制按鈕 ===== */
+  #controls {
+    position: fixed; top: 22px; right: 24px; z-index: 20;
+    display: flex; gap: 10px;
+  }
+  #controls button {
+    width: 42px; height: 42px; border-radius: 11px;
+    display: grid; place-items: center;
+    background: rgba(16, 24, 44, .62);
+    border: 1px solid rgba(110, 150, 230, .28);
+    color: #cfdcf5;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: background .18s, border-color .18s, transform .12s, color .18s;
+    padding: 0;
+  }
+  #controls button:hover {
+    background: rgba(40, 70, 130, .78);
+    border-color: rgba(120, 170, 255, .65);
+    color: #fff;
+  }
+  #controls button:active { transform: scale(.92); }
+  #controls button:focus-visible { outline: 2px solid #4a8dff; outline-offset: 2px; }
+  #controls svg { display: block; pointer-events: none; }
+
+  #legend {
+    position: fixed; bottom: 22px; left: 24px; z-index: 10;
+    display: flex; gap: 18px; flex-wrap: wrap; color: #9fb0d0; font-size: 13.5px;
+    background: rgba(16, 24, 44, .55);
+    border: 1px solid rgba(110, 150, 230, .22);
+    border-radius: 10px; padding: 10px 16px;
+    backdrop-filter: blur(8px);
+    pointer-events: none;
+    max-width: min(520px, 60vw);
+  }
+  #legend div { display: flex; align-items: center; gap: 8px; }
+  #legend i {
+    width: 15px; height: 15px; border-radius: 50%; display: inline-block;
+    box-shadow: inset -3px -3px 6px rgba(0,0,0,.55), 0 0 8px rgba(120,170,255,.25);
+  }
+  #count {
+    position: fixed; bottom: 22px; right: 24px; z-index: 10;
+    color: #8fa4c8; font-size: 13px; text-align: right; line-height: 1.7;
+    pointer-events: none; text-shadow: 0 1px 8px #000;
+  }
+  #count b { color: #cfdcf5; }
+
+  /* ===== 分子標牌（CSS2D） ===== */
+  .mol-label {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .6px;
+    color: #e2ecff;
+    padding: 4px 11px;
+    border-radius: 8px;
+    background: rgba(12, 20, 38, .8);
+    border: 1px solid rgba(110, 150, 230, .5);
+    box-shadow: 0 0 16px rgba(70, 130, 255, .32), inset 0 0 12px rgba(80, 140, 255, .12);
+    white-space: nowrap;
+    user-select: none;
+    pointer-events: none;
+    text-shadow: 0 0 10px rgba(120, 180, 255, .45);
+  }
+  .mol-label::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    width: 1px;
+    height: 9px;
+    background: linear-gradient(rgba(130, 175, 255, .75), rgba(130, 175, 255, 0));
+    transform: translateX(-50%);
+  }
+</style>
+</head>
+<body>
+
+<div id="ui">
+  <h1>
+    <span class="name" id="rname">甲烷燃燒</span>
+    <span class="eq" id="equation">CH₄ + 2 O₂ → CO₂ + 2 H₂O</span>
+  </h1>
+  <div id="reactionTabs">
+    <button type="button" class="active" data-key="methane">甲烷燃燒</button>
+    <button type="button" data-key="hydrogen">氫氣燃燒</button>
+    <button type="button" data-key="ammonia">氨氣製作</button>
+  </div>
+  <div id="phase"></div>
+</div>
+
+<!-- 右上角：暫停 / 全螢幕（僅圖示） -->
+<div id="controls">
+  <button id="pauseBtn" type="button" title="暫停" aria-label="暫停">
+    <svg id="pauseIcon" viewBox="0 0 24 24" width="19" height="19" fill="currentColor" aria-hidden="true">
+      <rect x="6" y="4.5" width="4" height="15" rx="1.3"/>
+      <rect x="14" y="4.5" width="4" height="15" rx="1.3"/>
+    </svg>
+  </button>
+  <button id="fsBtn" type="button" title="全螢幕" aria-label="全螢幕">
+    <svg id="fsIcon" viewBox="0 0 24 24" width="19" height="19" fill="none"
+         stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
+      <path d="M16 3h3a2 2 0 0 1 2 2v3"/>
+      <path d="M21 16v3a2 2 0 0 1-2 2h-3"/>
+      <path d="M3 16v3a2 2 0 0 0 2 2h3"/>
+    </svg>
+  </button>
+</div>
+
+<div id="legend">
+  <div><i style="background:#2a2a2a; border:1px solid #555;"></i>碳 C</div>
+  <div><i style="background:#ff4d5a;"></i>氮 N</div>
+  <div><i style="background:#ffffff;"></i>氧 O</div>
+  <div><i style="background:#2f7bff;"></i>氫 H</div>
+</div>
+
+<div id="count"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+/* ============ 基本場景 ============ */
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+document.body.appendChild(renderer.domElement);
+
+/* ============ CSS2D 標牌渲染器 ============ */
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(window.innerWidth, window.innerHeight);
+labelRenderer.domElement.style.position = 'fixed';
+labelRenderer.domElement.style.top = '0';
+labelRenderer.domElement.style.left = '0';
+labelRenderer.domElement.style.pointerEvents = 'none';
+labelRenderer.domElement.style.zIndex = '5';
+document.body.appendChild(labelRenderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x06070d);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(0, 5, 20);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.07;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.45;
+controls.minDistance = 9;
+controls.maxDistance = 45;
+controls.target.set(0, 0, 0);
+
+/* ============ 光源 ============ */
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 2.6);
+keyLight.position.set(9, 15, 16);
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0x86aaff, 1.3);
+fillLight.position.set(-15, -5, -10);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xbfd4ff, 1.0);
+rimLight.position.set(0, -13, 9);
+scene.add(rimLight);
+
+/* ============ 元素設定 ============ */
+const ELEM = {
+  C: { color: 0x1c1c1c, radius: 0.62, roughness: 0.34, metalness: 0.22 },
+  N: { color: 0xff4d5a, radius: 0.56, roughness: 0.36, metalness: 0.10 },
+  O: { color: 0xffffff, radius: 0.52, roughness: 0.34, metalness: 0.05 },
+  H: { color: 0x2f7bff, radius: 0.34, roughness: 0.34, metalness: 0.10 }
+};
+
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+
+/* ============ 共用幾何 ============ */
+const sphereGeo = new THREE.SphereGeometry(1, 36, 26);
+const bondGeo = new THREE.CylinderGeometry(1, 1, 1, 10, 1, false);
+
+/* ============ 鍵結規則 ============ */
+const BOND_MAX = {
+  'C-H': 1.85,
+  'C-O': 2.15,
+  'H-O': 1.82,
+  'O-O': 1.78,
+  'H-H': 1.92,
+  'N-N': 1.85,
+  'H-N': 1.85,
+  'C-C': 0
+};
+const BOND_ORDER = {
+  'C-H': 1,
+  'C-O': 2,   // CO₂ 雙鍵
+  'H-O': 1,
+  'O-O': 2,   // O₂ 雙鍵
+  'H-H': 1,
+  'N-N': 3,   // N₂ 三鍵
+  'H-N': 1
+};
+const REACTANT_BONDS = new Set(['C-H', 'O-O', 'H-H', 'N-N']);
+const PRODUCT_BONDS  = new Set(['C-O', 'H-O', 'H-N']);
+
+const bondKey = (a, b) => (a < b ? a + '-' + b : b + '-' + a);
+
+/* ============ 時間軸 ============ */
+const T_HIT        = 1.70;
+const T_BURST_END  = 2.35;
+const T_FREE_END   = 2.90;
+const T_ASSEMBLE   = 4.50;
+const T_TOTAL      = 6.50;
+
+/* ============ 緩動 ============ */
+const clamp01 = x => x < 0 ? 0 : (x > 1 ? 1 : x);
+const smoothstep = (e0, e1, x) => {
+  const k = clamp01((x - e0) / (e1 - e0));
+  return k * k * (3 - 2 * k);
+};
+const easeInQuad     = x => x * x;
+const easeOutCubic   = x => 1 - Math.pow(1 - x, 3);
+const easeInOutCubic = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+
+/* =====================================================================
+   反應一：甲烷燃燒 CH₄ + 2 O₂ → CO₂ + 2 H₂O
+   ===================================================================== */
+function buildMethaneDef() {
+  const s0 = new Array(9);
+  const s1 = [
+    V(0.1, 0.2, 0.1),
+    V(1.5, 0.9, 0.6),
+    V(1.2, -1.1, 0.8),
+    V(-1.4, 0.8, -1.0),
+    V(-1.1, -1.0, 0.9),
+    V(1.0, 1.7, -1.3),
+    V(-1.6, 1.4, 1.1),
+    V(1.8, -1.4, -0.9),
+    V(-0.9, -1.8, -1.1)
+  ];
+  const s3 = new Array(9);
+
+  /* S0 反應物 */
+  const cC = V(-9, 0.5, 0);
+  s0[0] = cC.clone();
+  const tet = [V(1,1,1), V(1,-1,-1), V(-1,1,-1), V(-1,-1,1)].map(v => v.normalize());
+  for (let i = 0; i < 4; i++) s0[1 + i] = cC.clone().addScaledVector(tet[i], 1.75);
+
+  const o1 = V(8.8, 3.6, 1.0);
+  const ax1 = V(1, 0.35, 0).normalize();
+  s0[5] = o1.clone().addScaledVector(ax1, 0.7);
+  s0[6] = o1.clone().addScaledVector(ax1, -0.7);
+
+  const o2 = V(8.8, -3.6, -1.0);
+  const ax2 = V(1, -0.35, 0).normalize();
+  s0[7] = o2.clone().addScaledVector(ax2, 0.7);
+  s0[8] = o2.clone().addScaledVector(ax2, -0.7);
+
+  /* S3 產物 */
+  s3[0] = V(-6, 0, 0);
+  s3[5] = V(-8.0, 0, 0);
+  s3[6] = V(-4.0, 0, 0);
+
+  const half = THREE.MathUtils.degToRad(52.25);
+  const dx = 1.55 * Math.sin(half);
+  const dy = 1.55 * Math.cos(half);
+
+  const oA = V(6, 3.5, 0);
+  s3[7] = oA.clone();
+  s3[1] = V(oA.x - dx, oA.y + dy, 0);
+  s3[2] = V(oA.x + dx, oA.y + dy, 0);
+
+  const oB = V(6, -3.5, 0);
+  s3[8] = oB.clone();
+  s3[3] = V(oB.x - dx, oB.y - dy, 0);
+  s3[4] = V(oB.x + dx, oB.y - dy, 0);
+
+  return {
+    name: '甲烷燃燒',
+    equation: 'CH₄ + 2 O₂ → CO₂ + 2 H₂O',
+    countText: '反應前：<b>C×1　H×4　O×4</b><br>反應後：<b>C×1　H×4　O×4</b>',
+    atoms: ['C', 'H', 'H', 'H', 'H', 'O', 'O', 'O', 'O'],
+    s0, s1, s3,
+    reactantGroups: [
+      { atoms: [0, 1, 2, 3, 4], center: s0[0].clone(), axis: V(0.4, 1, 0.3).normalize(), speed: 1.6 },
+      { atoms: [5, 6], center: s0[5].clone().add(s0[6]).multiplyScalar(0.5), axis: V(0, 1, 0.4).normalize(), speed: 2.2 },
+      { atoms: [7, 8], center: s0[7].clone().add(s0[8]).multiplyScalar(0.5), axis: V(0.3, 1, -0.4).normalize(), speed: -1.9 }
+    ],
+    productGroups: [
+      { atoms: [0, 5, 6], center: s3[0].clone(), axis: V(0, 1, 0.12).normalize(), speed: 0.55 },
+      { atoms: [7, 1, 2], center: s3[7].clone(), axis: V(0.12, 1, 0).normalize(), speed: 0.85 },
+      { atoms: [8, 3, 4], center: s3[8].clone(), axis: V(-0.12, 1, 0).normalize(), speed: -0.75 }
+    ],
+    reactantLabels: [
+      { idxs: [0, 1, 2, 3, 4], text: 'CH₄', offset: 2.35 },
+      { idxs: [5, 6], text: 'O₂', offset: 1.75 },
+      { idxs: [7, 8], text: 'O₂', offset: 1.75 }
+    ],
+    productLabels: [
+      { idxs: [0, 5, 6], text: 'CO₂', offset: 1.55 },
+      { idxs: [7, 1, 2], text: 'H₂O', offset: 1.55 },
+      { idxs: [8, 3, 4], text: 'H₂O', offset: 1.55 }
+    ],
+    phaseTexts: [
+      '① <b>反應物接近</b>：1 個甲烷分子（CH₄）與 2 個氧氣分子（O₂）旋轉著靠近。',
+      '② <b>碰撞！</b> 化學鍵斷裂，原子四散飛開（原子本身沒有消失、也沒有變成別種原子）。',
+      '③ <b>重新排列組合</b>：碳、氫、氧原子依新的方式重新結合。',
+      '④ <b>產物生成</b>：CO₂（O=C=O 雙鍵）與 2 個 H₂O。原子種類與數量前後完全相同 → <b>質量守恆</b>。'
+    ]
+  };
+}
+
+/* =====================================================================
+   反應二：氫氣燃燒 2 H₂ + O₂ → 2 H₂O
+   ===================================================================== */
+function buildHydrogenDef() {
+  const s0 = new Array(6);
+  const s1 = [
+    V(-1.30, 1.10, 0.40),
+    V(-0.20, 1.80, -0.60),
+    V(1.20, 1.00, 0.80),
+    V(1.50, -0.90, -0.30),
+    V(-1.10, -1.20, 0.60),
+    V(0.40, -0.60, -1.50)
+  ];
+  const s3 = new Array(6);
+
+  /* S0 反應物：2 個 H₂ + 1 個 O₂ */
+  const h1c = V(-9.5, 3.6, 0.5);
+  const h1ax = V(0.25, 1, 0.2).normalize();
+  s0[0] = h1c.clone().addScaledVector(h1ax, 0.72);
+  s0[1] = h1c.clone().addScaledVector(h1ax, -0.72);
+
+  const h2c = V(-9.5, -3.6, -0.5);
+  const h2ax = V(0.2, 1, -0.25).normalize();
+  s0[2] = h2c.clone().addScaledVector(h2ax, 0.72);
+  s0[3] = h2c.clone().addScaledVector(h2ax, -0.72);
+
+  const o2c = V(8.8, 0, 0);
+  const o2ax = V(1, 0.08, 0).normalize();
+  s0[4] = o2c.clone().addScaledVector(o2ax, 0.72);
+  s0[5] = o2c.clone().addScaledVector(o2ax, -0.72);
+
+  /* S3 產物：2 個 H₂O */
+  const half = THREE.MathUtils.degToRad(52.25);
+  const dx = 1.55 * Math.sin(half);
+  const dy = 1.55 * Math.cos(half);
+
+  const oA = V(-3.5, 4.0, 0);
+  s3[4] = oA.clone();
+  s3[0] = V(oA.x - dx, oA.y + dy, 0);
+  s3[1] = V(oA.x + dx, oA.y + dy, 0);
+
+  const oB = V(3.5, -4.0, 0);
+  s3[5] = oB.clone();
+  s3[2] = V(oB.x - dx, oB.y - dy, 0);
+  s3[3] = V(oB.x + dx, oB.y - dy, 0);
+
+  return {
+    name: '氫氣燃燒',
+    equation: '2 H₂ + O₂ → 2 H₂O',
+    countText: '反應前：<b>H×4　O×2</b><br>反應後：<b>H×4　O×2</b>',
+    atoms: ['H', 'H', 'H', 'H', 'O', 'O'],
+    s0, s1, s3,
+    reactantGroups: [
+      { atoms: [0, 1], center: h1c.clone(), axis: V(0.3, 1, 0.2).normalize(), speed: 2.4 },
+      { atoms: [2, 3], center: h2c.clone(), axis: V(-0.2, 1, 0.3).normalize(), speed: -2.2 },
+      { atoms: [4, 5], center: o2c.clone(), axis: V(0, 1, 0.35).normalize(), speed: 2.0 }
+    ],
+    productGroups: [
+      { atoms: [4, 0, 1], center: s3[4].clone(), axis: V(0.1, 1, 0.12).normalize(), speed: 0.8 },
+      { atoms: [5, 2, 3], center: s3[5].clone(), axis: V(-0.1, 1, -0.12).normalize(), speed: -0.7 }
+    ],
+    reactantLabels: [
+      { idxs: [0, 1], text: 'H₂', offset: 1.55 },
+      { idxs: [2, 3], text: 'H₂', offset: 1.55 },
+      { idxs: [4, 5], text: 'O₂', offset: 1.80 }
+    ],
+    productLabels: [
+      { idxs: [4, 0, 1], text: 'H₂O', offset: 1.60 },
+      { idxs: [5, 2, 3], text: 'H₂O', offset: 1.60 }
+    ],
+    phaseTexts: [
+      '① <b>反應物接近</b>：2 個氫氣分子（H₂）與 1 個氧氣分子（O₂）旋轉著靠近。',
+      '② <b>碰撞！</b> H–H 與 O=O 化學鍵斷裂，原子四散飛開（原子本身沒有消失）。',
+      '③ <b>重新排列組合</b>：氫原子與氧原子依新的方式重新結合。',
+      '④ <b>產物生成</b>：2 個 H₂O。原子種類與數量前後完全相同 → <b>質量守恆</b>。'
+    ]
+  };
+}
+
+/* =====================================================================
+   反應三：氨氣製作 N₂ + 3 H₂ → 2 NH₃
+   ===================================================================== */
+function buildAmmoniaDef() {
+  const s0 = new Array(8);
+  const s1 = [
+    V(0.10, 0.30, 0.10),
+    V(-1.50, 0.90, -0.60),
+    V(1.40, 0.70, 0.80),
+    V(0.90, -1.40, -0.90),
+    V(-1.10, -1.20, 0.70),
+    V(1.70, 1.50, -0.70),
+    V(-1.80, 1.10, 0.90),
+    V(-0.40, -1.80, -1.00)
+  ];
+  const s3 = new Array(8);
+
+  /* --- S0 反應物：1 個 N₂（三鍵）+ 3 個 H₂ --- */
+  const n2c = V(-9.0, 0.3, 0);
+  const n2ax = V(1, 0.22, 0.15).normalize();
+  s0[0] = n2c.clone().addScaledVector(n2ax, 0.75);
+  s0[1] = n2c.clone().addScaledVector(n2ax, -0.75);
+
+  const h2cs = [
+    V(8.8, 4.2, 0.8),
+    V(9.8, 0.0, -0.6),
+    V(8.8, -4.2, 0.8)
+  ];
+  const h2axes = [
+    V(0.2, 1, 0.15).normalize(),
+    V(0.15, 1, -0.2).normalize(),
+    V(-0.2, 1, 0.15).normalize()
+  ];
+  for (let k = 0; k < 3; k++) {
+    s0[2 + k * 2]     = h2cs[k].clone().addScaledVector(h2axes[k], 0.72);
+    s0[2 + k * 2 + 1] = h2cs[k].clone().addScaledVector(h2axes[k], -0.72);
+  }
+
+  /* --- S3 產物：2 個 NH₃（三角錐） --- */
+  const L = 1.55;                                    // N–H 鍵長
+  const theta = THREE.MathUtils.degToRad(68.1);      // 與對稱軸夾角（H–N–H ≈ 107°）
+  const r = L * Math.sin(theta);                     // 水平半徑
+  const h = L * Math.cos(theta);                     // 高度
+  const phis = [Math.PI / 2, Math.PI * 7 / 6, Math.PI * 11 / 6]; // 90°, 210°, 330°
+
+  const nA = V(-4.6, 2.3, 0);
+  s3[0] = nA.clone();
+  for (let k = 0; k < 3; k++) {                      // 氫在 N 下方（錐朝下）
+    const phi = phis[k];
+    s3[2 + k] = V(nA.x + r * Math.cos(phi), nA.y - h, nA.z + r * Math.sin(phi));
+  }
+
+  const nB = V(4.6, -2.3, 0);
+  s3[1] = nB.clone();
+  for (let k = 0; k < 3; k++) {                      // 氫在 N 上方（錐朝上）
+    const phi = phis[k];
+    s3[5 + k] = V(nB.x + r * Math.cos(phi), nB.y + h, nB.z + r * Math.sin(phi));
+  }
+
+  return {
+    name: '氨氣製作',
+    equation: 'N₂ + 3 H₂ → 2 NH₃',
+    countText: '反應前：<b>N×2　H×6</b><br>反應後：<b>N×2　H×6</b>',
+    atoms: ['N', 'N', 'H', 'H', 'H', 'H', 'H', 'H'],
+    s0, s1, s3,
+    reactantGroups: [
+      { atoms: [0, 1], center: n2c.clone(), axis: V(0, 1, 0.25).normalize(), speed: 1.5 },
+      { atoms: [2, 3], center: h2cs[0].clone(), axis: V(0.3, 1, 0.2).normalize(), speed: 2.5 },
+      { atoms: [4, 5], center: h2cs[1].clone(), axis: V(-0.2, 1, 0.3).normalize(), speed: -2.3 },
+      { atoms: [6, 7], center: h2cs[2].clone(), axis: V(0.25, 1, -0.2).normalize(), speed: 2.1 }
+    ],
+    productGroups: [
+      { atoms: [0, 2, 3, 4], center: nA.clone(), axis: V(0.08, 1, 0.10).normalize(), speed: 0.60 },
+      { atoms: [1, 5, 6, 7], center: nB.clone(), axis: V(-0.08, 1, -0.10).normalize(), speed: -0.55 }
+    ],
+    reactantLabels: [
+      { idxs: [0, 1], text: 'N₂', offset: 1.85 },
+      { idxs: [2, 3], text: 'H₂', offset: 1.55 },
+      { idxs: [4, 5], text: 'H₂', offset: 1.55 },
+      { idxs: [6, 7], text: 'H₂', offset: 1.55 }
+    ],
+    productLabels: [
+      { idxs: [0, 2, 3, 4], text: 'NH₃', offset: 2.20 },
+      { idxs: [1, 5, 6, 7], text: 'NH₃', offset: 2.20 }
+    ],
+    phaseTexts: [
+      '① <b>反應物接近</b>：1 個氮氣分子（N₂，N≡N 三鍵）與 3 個氫氣分子（H₂）旋轉著靠近。',
+      '② <b>碰撞！</b> N≡N 與 H–H 化學鍵斷裂，原子四散飛開（原子本身沒有消失）。',
+      '③ <b>重新排列組合</b>：氮原子與氫原子依新的方式重新結合。',
+      '④ <b>產物生成</b>：2 個 NH₃（氨）。原子種類與數量前後完全相同 → <b>質量守恆</b>。'
+    ]
+  };
+}
+
+const REACTION_DEFS = {
+  methane: buildMethaneDef(),
+  hydrogen: buildHydrogenDef(),
+  ammonia: buildAmmoniaDef()
+};
+
+/* =====================================================================
+   建立 / 清除反應場景
+   ===================================================================== */
+let current = null;
+
+function makeLabel(text) {
+  const div = document.createElement('div');
+  div.className = 'mol-label';
+  div.textContent = text;
+  div.style.opacity = '0';
+  const obj = new CSS2DObject(div);
+  obj.visible = false;
+  scene.add(obj);
+  return { obj, div };
+}
+
+const BOND_RADIUS_SINGLE = 0.085;
+const BOND_RADIUS_DOUBLE = 0.055;
+const BOND_RADIUS_TRIPLE = 0.048;
+const DOUBLE_GAP = 0.105;
+const TRIPLE_GAP = 0.115;
+
+function buildReaction(def) {
+  const N = def.atoms.length;
+
+  /* --- 原子球 --- */
+  const atomMeshes = [];
+  for (let i = 0; i < N; i++) {
+    const cfg = ELEM[def.atoms[i]];
+    const mat = new THREE.MeshStandardMaterial({
+      color: cfg.color,
+      roughness: cfg.roughness,
+      metalness: cfg.metalness
+    });
+    const mesh = new THREE.Mesh(sphereGeo, mat);
+    mesh.scale.setScalar(cfg.radius);
+    scene.add(mesh);
+    atomMeshes.push(mesh);
+  }
+
+  /* --- 原子對（化學鍵） --- */
+  const pairs = [];
+  for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) pairs.push([i, j]);
+
+  const bondObjs = pairs.map(([i, j]) => {
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x9aa8c8,
+      roughness: 0.55,
+      metalness: 0.0,
+      transparent: true,
+      opacity: 0
+    });
+    const m1 = new THREE.Mesh(bondGeo, mat);
+    const m2 = new THREE.Mesh(bondGeo, mat);
+    const m3 = new THREE.Mesh(bondGeo, mat);
+    m1.visible = m2.visible = m3.visible = false;
+    scene.add(m1, m2, m3);
+    return { i, j, mat, m1, m2, m3, key: bondKey(def.atoms[i], def.atoms[j]) };
+  });
+
+  /* --- 飛散位置 S2（隨機化） --- */
+  const s2 = def.s1.map(v => {
+    const s = 1.7 + Math.random() * 0.9;
+    return v.clone().multiplyScalar(s).add(V(
+      (Math.random() - 0.5) * 1.2,
+      (Math.random() - 0.5) * 1.2,
+      (Math.random() - 0.5) * 1.2
+    ));
+  });
+
+  /* --- 弧線 / 漂移方向 --- */
+  const arcDirs = [];
+  const driftDirs = [];
+  for (let i = 0; i < N; i++) {
+    arcDirs.push(V(Math.sin(i * 2.3 + 1), Math.cos(i * 1.7 + 0.5), Math.sin(i * 3.1 + 2)).normalize());
+    driftDirs.push(V(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize());
+  }
+
+  /* --- 反應物旋轉群組對照表 --- */
+  const atomGroupMap = {};
+  def.reactantGroups.forEach(g => g.atoms.forEach(i => { atomGroupMap[i] = g; }));
+
+  /* --- 標牌 --- */
+  const reactantLabels = def.reactantLabels.map(d => Object.assign({}, d, makeLabel(d.text)));
+  const productLabels  = def.productLabels.map(d => Object.assign({}, d, makeLabel(d.text)));
+
+  /* --- 位置快取 --- */
+  const positions = [];
+  for (let i = 0; i < N; i++) positions.push(new THREE.Vector3());
+
+  current = {
+    def, N, atomMeshes, bondObjs, s2, arcDirs, driftDirs,
+    atomGroupMap, reactantLabels, productLabels, positions
+  };
+}
+
+function clearReaction() {
+  if (!current) return;
+  current.atomMeshes.forEach(m => { scene.remove(m); m.material.dispose(); });
+  current.bondObjs.forEach(b => {
+    scene.remove(b.m1);
+    scene.remove(b.m2);
+    scene.remove(b.m3);
+    b.mat.dispose();
+  });
+  current.reactantLabels.forEach(L => scene.remove(L.obj));
+  current.productLabels.forEach(L => scene.remove(L.obj));
+  current = null;
+}
+
+/* =====================================================================
+   位置計算
+   ===================================================================== */
+const tmpQ = new THREE.Quaternion();
+const tmpV = new THREE.Vector3();
+
+function getRotatedStart(i, t) {
+  const g = current.atomGroupMap[i];
+  const s0 = current.def.s0;
+  if (!g) return s0[i].clone();
+  tmpQ.setFromAxisAngle(g.axis, g.speed * t);
+  return s0[i].clone().sub(g.center).applyQuaternion(tmpQ).add(g.center);
+}
+
+function computePositions(t) {
+  const { def, N, s2, arcDirs, driftDirs, positions } = current;
+  const S1 = def.s1, S3 = def.s3;
+
+  if (t < T_HIT) {
+    const p = easeInQuad(clamp01(t / T_HIT));
+    for (let i = 0; i < N; i++) {
+      positions[i].copy(getRotatedStart(i, t)).lerp(S1[i], p);
+    }
+  } else if (t < T_BURST_END) {
+    const p = easeOutCubic(clamp01((t - T_HIT) / (T_BURST_END - T_HIT)));
+    for (let i = 0; i < N; i++) {
+      positions[i].copy(S1[i]).lerp(s2[i], p);
+    }
+  } else if (t < T_FREE_END) {
+    const k = clamp01((t - T_BURST_END) / (T_FREE_END - T_BURST_END));
+    const drift = 0.35 * k;
+    for (let i = 0; i < N; i++) {
+      positions[i].copy(s2[i]).addScaledVector(driftDirs[i], drift);
+    }
+  } else if (t < T_ASSEMBLE) {
+    const p = easeInOutCubic(clamp01((t - T_FREE_END) / (T_ASSEMBLE - T_FREE_END)));
+    for (let i = 0; i < N; i++) {
+      tmpV.copy(s2[i]).addScaledVector(driftDirs[i], 0.35);
+      positions[i].copy(tmpV).lerp(S3[i], p);
+      positions[i].addScaledVector(arcDirs[i], Math.sin(Math.PI * p) * 0.9);
+    }
+  } else {
+    const tau = t - T_ASSEMBLE;
+    for (let i = 0; i < N; i++) positions[i].copy(S3[i]);
+    for (const g of def.productGroups) {
+      tmpQ.setFromAxisAngle(g.axis, g.speed * tau);
+      for (const i of g.atoms) {
+        positions[i].sub(g.center).applyQuaternion(tmpQ).add(g.center);
+      }
+    }
+  }
+}
+
+/* =====================================================================
+   化學鍵更新（單鍵 / 雙鍵 / 三鍵）
+   ===================================================================== */
+const UP = new THREE.Vector3(0, 1, 0);
+const viewDir = new THREE.Vector3();
+const perpAxis = new THREE.Vector3();
+const midPoint = new THREE.Vector3();
+const bondDir = new THREE.Vector3();
+const bondQuat = new THREE.Quaternion();
+const offsetTmp = new THREE.Vector3();
+
+function bondPhaseFactor(key, t) {
+  if (REACTANT_BONDS.has(key)) {
+    return 1 - smoothstep(T_HIT - 0.12, T_HIT + 0.28, t);
+  }
+  if (PRODUCT_BONDS.has(key)) {
+    return smoothstep(T_FREE_END - 0.05, T_FREE_END + 0.85, t);
+  }
+  return 1;
+}
+
+function placeBondSegment(mesh, center, quat, length, radius) {
+  mesh.visible = true;
+  mesh.position.copy(center);
+  mesh.quaternion.copy(quat);
+  mesh.scale.set(radius, length, radius);
+}
+
+function updateBonds(t) {
+  const { bondObjs, positions } = current;
+
+  for (const b of bondObjs) {
+    const a = positions[b.i];
+    const c = positions[b.j];
+    const dist = a.distanceTo(c);
+
+    const maxLen = BOND_MAX[b.key] || 0;
+    if (maxLen <= 0) { b.m1.visible = b.m2.visible = b.m3.visible = false; continue; }
+
+    let alpha = clamp01((maxLen + 0.30 - dist) / 0.30);
+    alpha *= bondPhaseFactor(b.key, t);
+
+    if (alpha <= 0.02) {
+      b.m1.visible = b.m2.visible = b.m3.visible = false;
+      b.mat.opacity = 0;
+      continue;
+    }
+
+    midPoint.copy(a).add(c).multiplyScalar(0.5);
+    bondDir.subVectors(c, a).normalize();
+
+    /* 垂直於鍵、且盡量面向相機的偏移軸 */
+    viewDir.subVectors(camera.position, midPoint).normalize();
+    perpAxis.crossVectors(bondDir, viewDir);
+    if (perpAxis.lengthSq() < 0.01) perpAxis.crossVectors(bondDir, UP);
+    perpAxis.normalize();
+
+    bondQuat.setFromUnitVectors(UP, bondDir);
+    const order = BOND_ORDER[b.key] || 1;
+
+    if (order === 3) {
+      /* 三鍵：三根平行細圓柱（-gap, 0, +gap） */
+      offsetTmp.copy(perpAxis).multiplyScalar(TRIPLE_GAP);
+      placeBondSegment(b.m1, midPoint.clone().add(offsetTmp), bondQuat, dist, BOND_RADIUS_TRIPLE);
+      placeBondSegment(b.m3, midPoint.clone(), bondQuat, dist, BOND_RADIUS_TRIPLE);
+      placeBondSegment(b.m2, midPoint.clone().sub(offsetTmp), bondQuat, dist, BOND_RADIUS_TRIPLE);
+    } else if (order === 2) {
+      /* 雙鍵：兩根平行細圓柱 */
+      offsetTmp.copy(perpAxis).multiplyScalar(DOUBLE_GAP);
+      placeBondSegment(b.m1, midPoint.clone().add(offsetTmp), bondQuat, dist, BOND_RADIUS_DOUBLE);
+      placeBondSegment(b.m2, midPoint.clone().sub(offsetTmp), bondQuat, dist, BOND_RADIUS_DOUBLE);
+      b.m3.visible = false;
+    } else {
+      /* 單鍵：一根圓柱 */
+      placeBondSegment(b.m1, midPoint.clone(), bondQuat, dist, BOND_RADIUS_SINGLE);
+      b.m2.visible = false;
+      b.m3.visible = false;
+    }
+
+    b.mat.opacity = alpha * 0.9;
+  }
+}
+
+/* =====================================================================
+   標牌更新
+   ===================================================================== */
+const _centroid = new THREE.Vector3();
+
+function centroidOf(idxs) {
+  _centroid.set(0, 0, 0);
+  for (let k = 0; k < idxs.length; k++) _centroid.add(current.positions[idxs[k]]);
+  _centroid.multiplyScalar(1 / idxs.length);
+  return _centroid;
+}
+
+function updateLabels(t) {
+  /* 反應物標牌：碰撞前淡出、循環開頭淡入 */
+  let ro = 1;
+  if (t < 0.30) ro = t / 0.30;
+  ro *= 1 - smoothstep(T_HIT - 0.55, T_HIT - 0.16, t);
+  ro = clamp01(ro);
+
+  for (const L of current.reactantLabels) {
+    if (ro <= 0.01) { L.obj.visible = false; continue; }
+    const c = centroidOf(L.idxs);
+    L.obj.position.set(c.x, c.y + L.offset, c.z);
+    L.obj.visible = true;
+    L.div.style.opacity = ro.toFixed(3);
+  }
+
+  /* 產物標牌：重組後淡入，循環結束前淡出 */
+  const fin  = clamp01(smoothstep(T_ASSEMBLE + 0.18, T_ASSEMBLE + 0.85, t));
+  const fout = 1 - smoothstep(T_TOTAL - 0.55, T_TOTAL - 0.12, t);
+  const po = clamp01(fin * fout);
+
+  for (const L of current.productLabels) {
+    if (po <= 0.01) { L.obj.visible = false; continue; }
+    const c = centroidOf(L.idxs);
+    L.obj.position.set(c.x, c.y + L.offset, c.z);
+    L.obj.visible = true;
+    L.div.style.opacity = po.toFixed(3);
+  }
+}
+
+/* =====================================================================
+   碰撞特效：火花
+   ===================================================================== */
+const SPARK_COUNT = 110;
+const sparkPositions = new Float32Array(SPARK_COUNT * 3);
+const sparkVelocities = [];
+const sparkGeo = new THREE.BufferGeometry();
+sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPositions, 3));
+
+const sparkMat = new THREE.PointsMaterial({
+  color: 0x9fccff,
+  size: 0.17,
+  transparent: true,
+  opacity: 0,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  sizeAttenuation: true
+});
+const sparks = new THREE.Points(sparkGeo, sparkMat);
+scene.add(sparks);
+
+let sparkTimer = -1;
+
+function triggerSparks() {
+  sparkTimer = 0;
+  for (let i = 0; i < SPARK_COUNT; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const speed = 3 + Math.random() * 7;
+    sparkVelocities[i] = new THREE.Vector3(
+      Math.sin(phi) * Math.cos(theta) * speed,
+      Math.sin(phi) * Math.sin(theta) * speed,
+      Math.cos(phi) * speed
+    );
+    sparkPositions[i * 3]     = (Math.random() - 0.5) * 0.6;
+    sparkPositions[i * 3 + 1] = (Math.random() - 0.5) * 0.6;
+    sparkPositions[i * 3 + 2] = (Math.random() - 0.5) * 0.6;
+  }
+  sparkGeo.attributes.position.needsUpdate = true;
+  sparkMat.opacity = 1;
+}
+
+function updateSparks(dt) {
+  if (sparkTimer < 0) return;
+  sparkTimer += dt;
+  const life = 0.85;
+  if (sparkTimer > life) {
+    sparkTimer = -1;
+    sparkMat.opacity = 0;
+    return;
+  }
+  const k = sparkTimer / life;
+  sparkMat.opacity = (1 - k) * 0.95;
+  for (let i = 0; i < SPARK_COUNT; i++) {
+    sparkPositions[i * 3]     += sparkVelocities[i].x * dt;
+    sparkPositions[i * 3 + 1] += sparkVelocities[i].y * dt;
+    sparkPositions[i * 3 + 2] += sparkVelocities[i].z * dt;
+    sparkVelocities[i].multiplyScalar(0.955);
+  }
+  sparkGeo.attributes.position.needsUpdate = true;
+}
+
+/* =====================================================================
+   碰撞特效：衝擊波
+   ===================================================================== */
+const shockGeo = new THREE.SphereGeometry(1, 32, 24);
+const shockMat = new THREE.MeshBasicMaterial({
+  color: 0x88bbff,
+  transparent: true,
+  opacity: 0,
+  blending: THREE.AdditiveBlending,
+  side: THREE.DoubleSide,
+  depthWrite: false
+});
+const shockMesh = new THREE.Mesh(shockGeo, shockMat);
+scene.add(shockMesh);
+
+let shockTimer = -1;
+
+function triggerShock() {
+  shockTimer = 0;
+  shockMesh.scale.setScalar(0.5);
+}
+
+function updateShock(dt) {
+  if (shockTimer < 0) return;
+  shockTimer += dt;
+  const life = 0.7;
+  if (shockTimer > life) {
+    shockTimer = -1;
+    shockMat.opacity = 0;
+    return;
+  }
+  const k = shockTimer / life;
+  const s = 0.5 + k * 9.5;
+  shockMesh.scale.setScalar(s);
+  shockMat.opacity = (1 - k) * 0.5;
+}
+
+/* =====================================================================
+   UI：階段文字 / 標題 / 計數
+   ===================================================================== */
+const phaseEl = document.getElementById('phase');
+const rnameEl = document.getElementById('rname');
+const eqEl = document.getElementById('equation');
+const countEl = document.getElementById('count');
+let lastPhase = -1;
+
+function updatePhase(t) {
+  let idx;
+  if (t < T_HIT) idx = 0;
+  else if (t < T_FREE_END) idx = 1;
+  else if (t < T_ASSEMBLE) idx = 2;
+  else idx = 3;
+
+  if (idx !== lastPhase) {
+    lastPhase = idx;
+    phaseEl.innerHTML = current.def.phaseTexts[idx];
+  }
+}
+
+/* =====================================================================
+   反應切換
+   ===================================================================== */
+const tabs = Array.from(document.querySelectorAll('#reactionTabs button'));
+
+function switchReaction(key) {
+  const def = REACTION_DEFS[key];
+  if (!def) return;
+
+  clearReaction();
+  buildReaction(def);
+
+  simTime = 0;
+  lastPhase = -1;
+
+  /* 重置特效 */
+  sparkTimer = -1;
+  shockTimer = -1;
+  sparkMat.opacity = 0;
+  shockMat.opacity = 0;
+  shockMesh.scale.setScalar(0.5);
+
+  /* 更新 UI */
+  rnameEl.textContent = def.name;
+  eqEl.textContent = def.equation;
+  countEl.innerHTML = def.countText;
+  phaseEl.innerHTML = def.phaseTexts[0];
+
+  tabs.forEach(btn => btn.classList.toggle('active', btn.dataset.key === key));
+}
+
+tabs.forEach(btn => {
+  btn.addEventListener('click', () => switchReaction(btn.dataset.key));
+});
+
+/* =====================================================================
+   右上角按鈕：暫停 / 全螢幕
+   ===================================================================== */
+const pauseBtn = document.getElementById('pauseBtn');
+const fsBtn = document.getElementById('fsBtn');
+const pauseIcon = document.getElementById('pauseIcon');
+const fsIcon = document.getElementById('fsIcon');
+
+const ICON_PAUSE = '<rect x="6" y="4.5" width="4" height="15" rx="1.3"/><rect x="14" y="4.5" width="4" height="15" rx="1.3"/>';
+const ICON_PLAY  = '<path d="M7.5 4.6v14.8l12.4-7.4z"/>';
+const ICON_FS_ENTER = `
+  <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
+  <path d="M16 3h3a2 2 0 0 1 2 2v3"/>
+  <path d="M21 16v3a2 2 0 0 1-2 2h-3"/>
+  <path d="M3 16v3a2 2 0 0 0 2 2h3"/>`;
+const ICON_FS_EXIT = `
+  <path d="M8 3v3a2 2 0 0 1-2 2H3"/>
+  <path d="M16 3v3a2 2 0 0 0 2 2h3"/>
+  <path d="M21 16h-3a2 2 0 0 0-2 2v3"/>
+  <path d="M3 16h3a2 2 0 0 1 2 2v3"/>`;
+
+let paused = false;
+
+function setPaused(v) {
+  paused = v;
+  pauseBtn.title = paused ? '繼續播放' : '暫停';
+  pauseBtn.setAttribute('aria-label', pauseBtn.title);
+  pauseIcon.innerHTML = paused ? ICON_PLAY : ICON_PAUSE;
+}
+
+pauseBtn.addEventListener('click', () => setPaused(!paused));
+
+function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+}
+function requestFS() {
+  const el = document.documentElement;
+  const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+  if (fn) fn.call(el);
+}
+function exitFS() {
+  const fn = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+  if (fn) fn.call(document);
+}
+function updateFsIcon() {
+  const on = isFullscreen();
+  fsIcon.innerHTML = on ? ICON_FS_EXIT : ICON_FS_ENTER;
+  fsBtn.title = on ? '退出全螢幕' : '全螢幕';
+  fsBtn.setAttribute('aria-label', fsBtn.title);
+}
+fsBtn.addEventListener('click', () => { if (isFullscreen()) exitFS(); else requestFS(); });
+['fullscreenchange', 'webkitfullscreenchange', 'msfullscreenchange'].forEach(ev =>
+  document.addEventListener(ev, updateFsIcon)
+);
+updateFsIcon();
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    setPaused(!paused);
+  }
+});
+
+/* =====================================================================
+   主迴圈
+   ===================================================================== */
+let simTime = 0;
+let lastTime = performance.now();
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const now = performance.now();
+  let dt = (now - lastTime) / 1000;
+  lastTime = now;
+  if (dt > 0.1) dt = 0.1;
+
+  if (current && !paused) {
+    const oldT = simTime;
+    simTime += dt;
+    if (simTime >= T_TOTAL) simTime -= T_TOTAL;
+
+    if (oldT < T_HIT && simTime >= T_HIT) {
+      triggerSparks();
+      triggerShock();
+    }
+    if (simTime < oldT) {
+      sparkTimer = -1;
+      shockTimer = -1;
+      sparkMat.opacity = 0;
+      shockMat.opacity = 0;
+    }
+  }
+
+  const t = simTime;
+  const animDt = (current && !paused) ? dt : 0;
+
+  if (current) {
+    computePositions(t);
+
+    /* 碰撞瞬間的原子縮放脈衝 */
+    let pulseScale = 1;
+    if (t > T_HIT - 0.10 && t < T_HIT + 0.35) {
+      const k = (t - (T_HIT - 0.10)) / 0.45;
+      pulseScale = 1 + 0.30 * Math.sin(Math.PI * k);
+    }
+
+    /* 套用到原子球（含輕微漂浮） */
+    for (let i = 0; i < current.N; i++) {
+      const m = current.atomMeshes[i];
+      m.position.copy(current.positions[i]);
+      m.position.x += Math.cos(t * 1.4 + i * 0.9) * 0.028;
+      m.position.y += Math.sin(t * 1.8 + i * 1.3) * 0.040;
+      m.scale.setScalar(ELEM[current.def.atoms[i]].radius * pulseScale);
+    }
+
+    updateBonds(t);
+    updateLabels(t);
+    updatePhase(t);
+  }
+
+  updateSparks(animDt);
+  updateShock(animDt);
+
+  controls.update();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+}
+
+/* 初始化：先顯示甲烷燃燒 */
+switchReaction('methane');
+animate();
+
+/* ============ 視窗大小變化 ============ */
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  labelRenderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>

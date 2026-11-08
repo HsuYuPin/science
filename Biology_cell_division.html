@@ -1,0 +1,1839 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>細胞分裂：染色體的變化</title>
+
+<script>
+(function () {
+  function detectMode() {
+    var ua = navigator.userAgent || '';
+    var iPad = /Macintosh/i.test(ua) && (navigator.maxTouchPoints || 0) > 1;
+    var uaMobile = /Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(ua) ||
+      (navigator.userAgentData && navigator.userAgentData.mobile === true) || iPad;
+    var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    var minSide = Math.min(window.innerWidth || 0, window.innerHeight || 0);
+    if (uaMobile) return 'mobile';
+    if (coarse && minSide < 1050) return 'mobile';
+    if (minSide < 600) return 'mobile';
+    return 'desktop';
+  }
+  window.__detectMode = detectMode;
+  document.documentElement.classList.toggle('mobile', detectMode() === 'mobile');
+})();
+</script>
+<style>
+  :root {
+    --bg: #03060c;
+    --ink: #eaf3ff;
+    --muted: #8fa8c6;
+    --dim: #6b819c;
+    --cyan: #7fe3ff;
+    --line: rgba(130, 190, 255, 0.18);
+    --font: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    background: var(--bg);
+    overflow: hidden;
+    font-family: var(--font);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #stage {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1920px;
+    height: 1080px;
+    transform-origin: top left;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    background:
+      radial-gradient(1100px 780px at 50% 46%, rgba(28, 66, 128, 0.34), transparent 68%),
+      radial-gradient(1400px 1000px at 50% 50%, #0a1526 0%, #060d18 55%, #04070d 100%);
+  }
+
+  #stage::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image: radial-gradient(rgba(150, 205, 255, 0.055) 1px, transparent 1.1px);
+    background-size: 32px 32px;
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  #cv {
+    position: absolute;
+    inset: 0;
+    width: 1920px;
+    height: 1080px;
+    z-index: 1;
+    display: block;
+  }
+
+  .hud {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  header.hud {
+    left: 84px;
+    top: 50px;
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+  }
+
+  .accent {
+    width: 5px;
+    height: 66px;
+    margin-top: 3px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, #9fefff, #3ddc84);
+    box-shadow: 0 0 20px rgba(127, 227, 255, 0.55);
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 56px;
+    line-height: 1.06;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #f2f9ff;
+  }
+
+  @supports ((background-clip: text) or (-webkit-background-clip: text)) {
+    h1 {
+      background: linear-gradient(180deg, #ffffff 10%, #b9e4ff 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+  }
+
+  .sub {
+    margin: 10px 0 0;
+    font-size: 24px;
+    letter-spacing: 3px;
+    color: #7f99b8;
+    font-weight: 500;
+  }
+
+  .legend {
+    right: 84px;
+    top: 50px;
+    text-align: right;
+  }
+
+  .legend-title {
+    font-size: 17px;
+    letter-spacing: 3px;
+    color: #6f87a6;
+    font-weight: 600;
+    margin-bottom: 14px;
+  }
+
+  .legend-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    font-size: 22px;
+    line-height: 1;
+    margin-bottom: 11px;
+    color: #d8e8f9;
+    font-weight: 500;
+  }
+
+  .swatch {
+    width: 32px;
+    height: 11px;
+    border-radius: 6px;
+    background: var(--c);
+    box-shadow: 0 0 12px var(--c);
+    opacity: 0.9;
+  }
+
+  .legend-note {
+    margin-top: 16px;
+    font-size: 17px;
+    line-height: 1.65;
+    letter-spacing: 0.5px;
+    color: #657d99;
+  }
+
+  .caption {
+    left: 0;
+    right: 0;
+    bottom: 174px;
+    text-align: center;
+    font-size: 38px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    text-shadow: 0 2px 24px rgba(0, 0, 0, 0.55);
+  }
+
+  .cap-phase { color: var(--cyan); }
+  .cap-sep { color: #4c6583; margin: 0 12px; font-weight: 400; }
+  .cap-desc { color: #e9f2ff; font-weight: 500; }
+
+  .phases {
+    left: 50%;
+    bottom: 92px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 4px;
+    pointer-events: auto;
+  }
+
+  .phase-btn {
+    font-family: var(--font);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: #7087a3;
+    background: transparent;
+    border: 1px solid transparent;
+    padding: 9px 17px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s, box-shadow 0.2s;
+  }
+
+  .phase-btn:hover {
+    color: #d6ecff;
+    background: rgba(120, 190, 255, 0.07);
+  }
+
+  .phase-btn.done { color: #a9c0d9; }
+
+  .phase-btn.active {
+    color: #04121c;
+    background: var(--cyan);
+    box-shadow: 0 0 26px rgba(127, 227, 255, 0.32);
+  }
+
+  .controls {
+    right: 84px;
+    bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    pointer-events: auto;
+  }
+
+  .ctrl {
+    font-family: var(--font);
+    border: 1px solid var(--line);
+    background: rgba(12, 24, 42, 0.72);
+    color: #d3e9ff;
+    border-radius: 999px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  }
+
+  .ctrl:hover {
+    border-color: rgba(127, 227, 255, 0.55);
+    background: rgba(20, 40, 70, 0.9);
+  }
+
+  .ctrl:active { transform: scale(0.96); }
+
+  .ctrl svg {
+    width: 22px;
+    height: 22px;
+    display: block;
+  }
+
+  .ctrl-play {
+    width: 58px;
+    height: 58px;
+    border: none;
+    background: var(--cyan);
+    color: #04121c;
+    box-shadow: 0 0 30px rgba(127, 227, 255, 0.36);
+  }
+
+  .ctrl-play:hover { background: #a9eeff; }
+
+  .ctrl-sm { width: 46px; height: 46px; }
+
+  .ctrl-speed {
+    width: 76px;
+    height: 46px;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+</style>
+
+<style id="mobile-overrides">
+#cell-area { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.legend-mobile { display: none; }
+
+html.mobile body {
+  background:
+    radial-gradient(900px 700px at 50% 18%, rgba(26, 60, 118, 0.35), transparent 70%),
+    #04070d;
+}
+
+html.mobile #stage {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+  grid-template-areas:
+    "header"
+    "legend"
+    "canvas"
+    "caption"
+    "phases"
+    "controls";
+  gap: 6px;
+  padding:
+    max(8px, env(safe-area-inset-top))
+    max(12px, env(safe-area-inset-right))
+    max(8px, env(safe-area-inset-bottom))
+    max(12px, env(safe-area-inset-left));
+  background: none;
+  overflow: hidden;
+}
+
+html.mobile #stage::before { display: none; }
+
+html.mobile header.hud {
+  position: static;
+  left: auto;
+  top: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  grid-area: header;
+  min-width: 0;
+  z-index: auto;
+}
+
+html.mobile .accent {
+  width: 4px;
+  height: 36px;
+  margin-top: 0;
+  border-radius: 3px;
+}
+
+html.mobile .titles { min-width: 0; }
+
+html.mobile h1 {
+  font-size: clamp(19px, 4.6vw, 24px);
+  line-height: 1.15;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #f2f9ff;
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: currentColor;
+}
+
+html.mobile .sub {
+  margin: 2px 0 0;
+  font-size: 11px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html.mobile .legend {
+  position: static;
+  right: auto;
+  top: auto;
+  text-align: left;
+  grid-area: legend;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  z-index: auto;
+}
+
+html.mobile .legend-desktop { display: none; }
+
+html.mobile .legend-mobile {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+html.mobile .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(130, 190, 255, 0.16);
+  background: rgba(12, 24, 42, 0.5);
+  font-size: 11.5px;
+  color: #cfe0f5;
+  white-space: nowrap;
+}
+
+html.mobile .chip i {
+  width: 14px;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--c);
+  box-shadow: 0 0 8px var(--c);
+}
+
+html.mobile #cell-area {
+  position: relative;
+  inset: auto;
+  grid-area: canvas;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  background: radial-gradient(60% 60% at 50% 48%, rgba(28, 66, 128, 0.32), transparent 72%);
+  box-shadow:
+    inset 0 0 0 1px rgba(130, 190, 255, 0.07),
+    inset 0 0 60px rgba(0, 0, 0, 0.25);
+  z-index: auto;
+  pointer-events: none;
+}
+
+html.mobile #cv {
+  position: static;
+  width: 100%;
+  height: 100%;
+  z-index: auto;
+}
+
+html.mobile .caption {
+  position: static;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  grid-area: caption;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 42px;
+  padding: 0 4px;
+  font-size: initial;
+  white-space: normal;
+  text-align: center;
+  text-shadow: none;
+  z-index: auto;
+}
+
+html.mobile .cap-phase {
+  font-size: 11px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  color: var(--cyan);
+}
+
+html.mobile .cap-sep { display: none; }
+
+html.mobile .cap-desc {
+  font-size: clamp(14px, 3.9vw, 16px);
+  line-height: 1.4;
+  color: #e9f2ff;
+  font-weight: 500;
+  max-width: 34em;
+  text-wrap: balance;
+}
+
+html.mobile #phases {
+  position: static;
+  left: auto;
+  bottom: auto;
+  transform: none;
+  grid-area: phases;
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 1px 0;
+  z-index: auto;
+}
+
+html.mobile #phases::-webkit-scrollbar { display: none; }
+
+html.mobile .phase-btn {
+  font-size: clamp(11px, 2.9vw, 13px);
+  letter-spacing: 0.5px;
+  padding: 6px 8px;
+  min-height: 32px;
+}
+
+html.mobile .phase-btn.active {
+  box-shadow: 0 0 18px rgba(127, 227, 255, 0.32);
+}
+
+html.mobile .controls {
+  position: static;
+  right: auto;
+  bottom: auto;
+  grid-area: controls;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: auto;
+}
+
+html.mobile .ctrl { touch-action: manipulation; }
+html.mobile .ctrl svg { width: 20px; height: 20px; }
+
+html.mobile .ctrl-play {
+  width: 50px;
+  height: 50px;
+  border: none;
+  background: var(--cyan);
+  color: #04121c;
+  box-shadow: 0 0 22px rgba(127, 227, 255, 0.36);
+}
+
+html.mobile .ctrl-sm { width: 42px; height: 42px; }
+
+html.mobile .ctrl-speed {
+  width: 58px;
+  height: 42px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+@media (orientation: landscape) and (min-width: 560px) {
+  html.mobile #stage {
+    grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "canvas header"
+      "canvas legend"
+      "canvas caption"
+      "canvas phases"
+      "canvas controls";
+    gap: 6px 14px;
+    padding:
+      max(8px, env(safe-area-inset-top))
+      max(14px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(14px, env(safe-area-inset-left));
+  }
+
+  html.mobile header.hud { align-self: start; }
+  html.mobile h1 { font-size: clamp(18px, 2.6vw, 22px); }
+
+  html.mobile .chip {
+    font-size: 10.5px;
+    padding: 2px 6px;
+    gap: 4px;
+  }
+
+  html.mobile .chip i { width: 12px; height: 6px; }
+
+  html.mobile .cap-phase { font-size: 10px; }
+  html.mobile .cap-desc { font-size: 13.5px; }
+
+  html.mobile .caption {
+    align-self: center;
+    min-height: 0;
+    padding: 0;
+  }
+
+  html.mobile #phases { justify-content: flex-start; }
+  html.mobile .phase-btn { font-size: 11px; padding: 5px 6px; }
+
+  html.mobile .controls {
+    justify-content: flex-start;
+    padding-left: 2px;
+  }
+}
+
+@media (max-width: 340px) {
+  html.mobile #stage {
+    gap: 5px;
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+  }
+
+  html.mobile h1 { font-size: 18px; }
+  html.mobile .chip { font-size: 10.5px; padding: 3px 6px; }
+  html.mobile .phase-btn { font-size: 11px; padding: 5px 6px; }
+  html.mobile .cap-desc { font-size: 14px; }
+  html.mobile .ctrl-play { width: 48px; height: 48px; }
+  html.mobile .ctrl-sm { width: 40px; height: 40px; }
+  html.mobile .ctrl-speed { width: 54px; height: 40px; font-size: 15px; }
+  html.mobile .controls { gap: 8px; }
+}
+</style>
+
+<style id="v4-additions">
+.mode-switch {
+  position: absolute;
+  left: 50%;
+  top: 46px;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(10, 22, 40, 0.72);
+  border: 1px solid rgba(130, 190, 255, 0.2);
+  pointer-events: auto;
+}
+
+.mode-btn {
+  font-family: var(--font);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #8fa8c6;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  padding: 8px 18px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.2s, background 0.2s, box-shadow 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.mode-btn.active {
+  color: #04121c;
+  background: var(--cyan);
+  box-shadow: 0 0 18px rgba(127, 227, 255, 0.3);
+}
+
+.purpose {
+  margin: 14px 0 0 auto;
+  max-width: 320px;
+  font-size: 18px;
+  line-height: 1.5;
+  color: #8fa8c6;
+  text-align: right;
+}
+
+.purpose b {
+  color: var(--cyan);
+  font-weight: 700;
+}
+
+html.mobile .mode-switch {
+  position: static;
+  left: auto;
+  top: auto;
+  transform: none;
+  grid-area: mode;
+  justify-self: center;
+  padding: 3px;
+  gap: 2px;
+  z-index: auto;
+}
+
+html.mobile .mode-btn {
+  font-size: 11.5px;
+  padding: 5px 10px;
+  letter-spacing: 0.5px;
+}
+
+html.mobile .purpose {
+  margin: 2px 0 0;
+  flex: 0 0 100%;
+  max-width: none;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #9fb4cc;
+  text-align: left;
+}
+
+html.mobile #phases {
+  justify-content: safe center;
+}
+
+html.mobile .phase-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+html.mobile #stage {
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto;
+  grid-template-areas:
+    "header"
+    "legend"
+    "mode"
+    "canvas"
+    "caption"
+    "phases"
+    "controls";
+}
+
+@media (orientation: landscape) and (min-width: 560px) {
+  html.mobile #stage {
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "canvas header"
+      "canvas legend"
+      "canvas mode"
+      "canvas caption"
+      "canvas phases"
+      "canvas controls";
+  }
+}
+
+@media (max-width: 340px) {
+  html.mobile .mode-btn { font-size: 10.5px; padding: 4px 8px; }
+  html.mobile .purpose { font-size: 10.5px; }
+}
+</style>
+</head>
+<body>
+<div id="stage">
+  <main id="cell-area"><canvas id="cv" width="1920" height="1080"></canvas></main>
+
+  <header class="hud">
+    <span class="accent"></span>
+    <div class="titles">
+      <h1>細胞分裂：染色體的變化</h1>
+      <p class="sub">2n = 6 ｜ 3 對同源染色體</p>
+    </div>
+  </header>
+
+  <aside class="hud legend">
+    <div class="legend-desktop">
+      <div class="legend-title">同源染色體（3 對）</div>
+      <div class="legend-row"><span class="swatch" style="--c:#ff4d6d"></span>第 1 對 · 長</div>
+      <div class="legend-row"><span class="swatch" style="--c:#4d9dff"></span>第 2 對 · 中</div>
+      <div class="legend-row"><span class="swatch" style="--c:#3ddc84"></span>第 3 對 · 短</div>
+      <div class="legend-note">同源染色體大小、形態相同，成對存在</div>
+    </div>
+    <div class="legend-mobile">
+      <span class="chip"><i style="--c:#ff4d6d"></i>第 1 對 · 長</span>
+      <span class="chip"><i style="--c:#4d9dff"></i>第 2 對 · 中</span>
+      <span class="chip"><i style="--c:#3ddc84"></i>第 3 對 · 短</span>
+    </div>
+    <div class="purpose" id="purpose"><b>目的</b>：產生 2 個與母細胞相同的細胞（生長、修復、無性生殖）</div>
+  </aside>
+
+  <div class="mode-switch" id="mode-switch" role="group" aria-label="分裂方式">
+    <button type="button" class="mode-btn active" data-division="mitosis" aria-pressed="true">有絲分裂</button>
+    <button type="button" class="mode-btn" data-division="meiosis" aria-pressed="false">減數分裂</button>
+  </div>
+
+  <div class="hud caption">
+    <span class="cap-phase">間期</span><span class="cap-sep">｜</span><span class="cap-desc">細胞內有 3 對同源染色體，每條染色體含 1 個 DNA 分子</span>
+  </div>
+
+  <nav class="hud phases" id="phases" aria-label="分裂階段"></nav>
+
+  <div class="hud controls">
+    <button id="play" class="ctrl ctrl-play" type="button" aria-label="播放" title="播放／暫停（空白鍵）">
+      <svg class="icon-play" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+      <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="display:none"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>
+    </button>
+    <button id="replay" class="ctrl ctrl-sm" type="button" aria-label="重播" title="重播（R）">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+    </button>
+    <button id="speed" class="ctrl ctrl-speed" type="button" aria-label="播放速度" title="播放速度">1×</button>
+    <button id="fullscreen" class="ctrl ctrl-sm" type="button" aria-label="全螢幕" title="全螢幕">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  const W = 1920;
+  const H = 1080;
+  const CX = 960;
+  const CY = 508;
+  const MITOSIS_PHASES = [
+    { name: '間期', start: 0,    end: 4.5,  desc: '細胞內有 3 對同源染色體，每條染色體含 1 個 DNA 分子' },
+    { name: '複製', start: 4.5,  end: 9.5,  desc: '每條染色體複製成 2 條姐妹染色單體，呈 X 形' },
+    { name: '前期', start: 9.5,  end: 14,   desc: '核膜消失，紡錘絲出現，染色體向細胞中央移動' },
+    { name: '中期', start: 14,   end: 20,   desc: '著絲粒整齊排列在細胞中央的赤道板上' },
+    { name: '後期', start: 20,   end: 25.5, desc: '著絲粒分裂，姐妹染色單體分別移向細胞兩極' },
+    { name: '末期', start: 25.5, end: 30,   desc: '染色體到達兩極，核膜重建，細胞膜從中央縊裂' },
+    { name: '完成', start: 30,   end: 35,   desc: '形成 2 個子細胞，各有與母細胞相同的 3 對染色體' },
+  ];
+
+  const MEIOSIS_PHASES = [
+    { name: '間期', start: 0,    end: 4.5,  desc: '細胞內有 3 對同源染色體（2n = 6），每條含 1 個 DNA 分子' },
+    { name: '複製', start: 4.5,  end: 9,    desc: '每條染色體複製成 2 條姐妹染色單體，形成 6 個 X' },
+    { name: '前期 I', start: 9,    end: 14.5, desc: '同源染色體配對（聯會），形成 3 對四分體' },
+    { name: '中期 I', start: 14.5, end: 19.5, desc: '3 對同源染色體成對排列在赤道板兩側' },
+    { name: '後期 I', start: 19.5, end: 25,   desc: '同源染色體分離，分別移向兩極；姐妹染色單體仍相連' },
+    { name: '末期 I', start: 25,   end: 29.5, desc: '形成 2 個次級細胞，每個有 3 條 X 形染色體（n = 3）' },
+    { name: '中期 II', start: 29.5, end: 34.5, desc: '兩個次級細胞的染色體，各自排列在赤道板上' },
+    { name: '後期 II', start: 34.5, end: 39.5, desc: '著絲粒分裂，姐妹染色單體分開，移向四個極' },
+    { name: '完成', start: 39.5, end: 44,   desc: '形成 4 個單倍體細胞，每個有 3 條染色體（n = 3）' },
+  ];
+
+  const DIVISIONS = {
+    mitosis: {
+      total: 35,
+      phases: MITOSIS_PHASES,
+      purpose: '產生 2 個與母細胞相同的細胞（生長、修復、無性生殖）',
+    },
+    meiosis: {
+      total: 44,
+      phases: MEIOSIS_PHASES,
+      purpose: '產生 4 個單倍體配子（n = 3），用於有性生殖並增加遺傳多樣性',
+    },
+  };
+
+  let activePhases = DIVISIONS.mitosis.phases;
+  let activeTotal = DIVISIONS.mitosis.total;
+
+  // 三對同源染色體：紅（長）、藍（中）、綠（短）
+  // 長度差距刻意拉大（135 : 95 : 60），讓學生一眼就能分辨三對
+  const PAIRS = [
+    { base: '#ff4d6d', light: '#ffb3c1', glow: '255,77,109', len: 135, width: 26 },
+    { base: '#4d9dff', light: '#b8dcff', glow: '77,157,255', len: 95,  width: 21 },
+    { base: '#3ddc84', light: '#baf7cf', glow: '61,220,132', len: 60,  width: 16 },
+  ];
+
+  // 間期時 6 條染色體在核內的位置與角度（相對細胞中心）
+  // 以核內六個方向散開，確保複製成 X 形後仍不會互相重疊
+  const REST = [
+    { x: -145, y:  70,  a:  20 },
+    { x:  150, y:  78,  a: -30 },
+    { x: -150, y: -70,  a:  55 },
+    { x:  140, y: -80,  a: -20 },
+    { x:    5, y: 170,  a:  80 },
+    { x:  -10, y:-170,  a: -60 },
+  ];
+
+  // 中期赤道板上的六個縱向位置。依間期的上下順序分配，
+  // 讓每條染色體移動最短距離、彼此不穿越。
+  const PLATE_Y = (() => {
+    const slots = [270, 158, 46, -46, -158, -270];
+    const order = [0, 1, 2, 3, 4, 5].sort((a, b) => REST[b].y - REST[a].y);
+    const map = new Array(6);
+    order.forEach((idx, k) => { map[idx] = slots[k]; });
+    return map;
+  })();
+
+  const chromatids = [];
+  for (let i = 0; i < 6; i += 1) {
+    const pair = Math.floor(i / 2);
+    for (let s = 0; s < 2; s += 1) {
+      chromatids.push({
+        i,
+        pair,
+        s,
+        pole: s === 0 ? -1 : 1,
+        len: PAIRS[pair].len,
+        width: PAIRS[pair].width,
+      });
+    }
+  }
+
+  const state = { t: 0, playing: true, speed: 1, division: 'mitosis' };
+
+  const stage = document.getElementById('stage');
+  const canvas = document.getElementById('cv');
+  const ctx = canvas.getContext('2d');
+  const phaseNav = document.getElementById('phases');
+  const captionPhase = document.querySelector('.cap-phase');
+  const captionDesc = document.querySelector('.cap-desc');
+  const playBtn = document.getElementById('play');
+  const iconPlay = playBtn.querySelector('.icon-play');
+  const iconPause = playBtn.querySelector('.icon-pause');
+  const replayBtn = document.getElementById('replay');
+  const speedBtn = document.getElementById('speed');
+  const fsBtn = document.getElementById('fullscreen');
+  const purposeEl = document.getElementById('purpose');
+  const modeButtons = Array.from(document.querySelectorAll('.mode-btn'));
+  const cellArea = document.getElementById('cell-area');
+  let mode = document.documentElement.classList.contains('mobile') ? 'mobile' : 'desktop';
+  let forcedMode = null;
+  const detectMode = () => forcedMode || (typeof window.__detectMode === 'function' ? window.__detectMode() : mode);
+  if (!document.documentElement.requestFullscreen) fsBtn.style.display = 'none';
+
+  const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+  const smoothstep = (a, b, x) => {
+    const t = clamp01((x - a) / (b - a));
+    return t * t * (3 - 2 * t);
+  };
+  const lerp = (a, b, t) => a + (b - a) * t;
+
+  const rgbCache = new Map();
+  function hexToRgb(hex) {
+    if (rgbCache.has(hex)) return rgbCache.get(hex);
+    const v = parseInt(hex.slice(1), 16);
+    const rgb = [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+    rgbCache.set(hex, rgb);
+    return rgb;
+  }
+  const WHITE = [255, 255, 255];
+  function mixRgb(a, b, t) {
+    return [
+      lerp(a[0], b[0], t),
+      lerp(a[1], b[1], t),
+      lerp(a[2], b[2], t),
+    ];
+  }
+  function css(rgb) {
+    return 'rgb(' + Math.round(rgb[0]) + ',' + Math.round(rgb[1]) + ',' + Math.round(rgb[2]) + ')';
+  }
+
+  // ---------- 細胞形狀：兩個圓的聯集（d = 圓心距） ----------
+  function cellGeom(t) {
+    if (t < 25.5) {
+      return { cx: CX, cy: CY, d: 160 * smoothstep(20.5, 25.5, t), r: 330 };
+    }
+    const p = smoothstep(25.5, 30.0, t);
+    return { cx: CX, cy: CY, d: 160 + 340 * p, r: 330 - 100 * p };
+  }
+
+  function traceCell(g) {
+    const cx = g.cx;
+    const cy = g.cy;
+    const d = g.d;
+    const r = g.r;
+    ctx.beginPath();
+    if (d < 0.5) {
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      return;
+    }
+    if (d >= 2 * r - 0.5) {
+      ctx.arc(cx - d / 2, cy, r, 0, Math.PI * 2);
+      ctx.moveTo(cx + d / 2 + r, cy);
+      ctx.arc(cx + d / 2, cy, r, 0, Math.PI * 2);
+      return;
+    }
+    const h = d / 2;
+    const a = Math.sqrt(Math.max(0, r * r - h * h));
+    const phi = Math.atan2(a, h);
+    ctx.arc(cx - h, cy, r, -phi, phi - Math.PI * 2, true);
+    ctx.arc(cx + h, cy, r, Math.PI - phi, -Math.PI + phi, true);
+    ctx.closePath();
+  }
+
+  function drawCellFill(g) {
+    ctx.save();
+    traceCell(g);
+    const grad = ctx.createRadialGradient(g.cx, g.cy, g.r * 0.12, g.cx, g.cy, g.r + g.d / 2);
+    grad.addColorStop(0, 'rgba(44,94,168,0.30)');
+    grad.addColorStop(0.55, 'rgba(25,56,108,0.22)');
+    grad.addColorStop(1, 'rgba(9,22,46,0.10)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawCellStroke(g) {
+    ctx.save();
+    traceCell(g);
+    ctx.strokeStyle = 'rgba(126,201,255,0.58)';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = 'rgba(80,170,255,0.55)';
+    ctx.shadowBlur = 24;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawNucleus(x, y, r, alpha) {
+    if (alpha <= 0.01) return;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    const grad = ctx.createRadialGradient(x, y, r * 0.18, x, y, r);
+    grad.addColorStop(0, 'rgba(96,160,255,0.055)');
+    grad.addColorStop(0.8, 'rgba(96,160,255,0.032)');
+    grad.addColorStop(1, 'rgba(132,192,255,0.085)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(152,212,255,0.30)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(152,212,255,0.10)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(x, y, r - 7, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawNuclei(t, g) {
+    drawNucleus(CX, CY, 240, 1 - smoothstep(9.8, 11.8, t));
+    const a = smoothstep(28.6, 30.0, t);
+    if (a > 0.01) {
+      const dx = g.d / 2;
+      drawNucleus(CX - dx, CY, 180, a);
+      drawNucleus(CX + dx, CY, 180, a);
+    }
+  }
+
+  function drawEquator(t) {
+    const a = smoothstep(14.0, 15.2, t) * (1 - smoothstep(20.0, 21.2, t));
+    if (a <= 0.01) return;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.strokeStyle = 'rgba(184,226,255,0.22)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([9, 11]);
+    ctx.beginPath();
+    ctx.moveTo(CX, CY - 315);
+    ctx.lineTo(CX, CY + 315);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  function drawCentrosome(x, y, a) {
+    if (a <= 0.01) return;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.shadowColor = 'rgba(150,225,255,0.85)';
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = '#e7f9ff';
+    ctx.beginPath();
+    ctx.arc(x, y, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(160,220,255,0.40)';
+    ctx.lineWidth = 1.3;
+    for (let k = 0; k < 8; k += 1) {
+      const ang = k * Math.PI / 4 + 0.23;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(ang) * 10, y + Math.sin(ang) * 10);
+      ctx.lineTo(x + Math.cos(ang) * 19, y + Math.sin(ang) * 19);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // ---------- 每條染色單體的狀態 ----------
+  function chromatidState(ch, t) {
+    const rest = REST[ch.i];
+    const plateY = PLATE_Y[ch.i];
+
+    // 排列分兩段：先縱向就位（形成橫排），再橫向滑入赤道板
+    const pLift = smoothstep(12.8, 15.6, t);
+    const pSlide = smoothstep(15.6, 17.2, t);
+
+    let x = lerp(rest.x, rest.x * 0.6, pLift);
+    let y = lerp(rest.y, plateY, pLift);
+    x = lerp(x, 0, pSlide);
+
+    // 間期～前期的輕微漂浮，排列後歸零
+    const drift = 3.2 * (1 - pLift);
+    x += Math.sin(t * 0.9 + ch.i * 2.1 + ch.s * 1.7) * drift;
+    y += Math.cos(t * 0.7 + ch.i * 1.4 + ch.s * 0.9) * drift * 0.8;
+
+    // 後期：姐妹染色單體分向左右兩極
+    const pAna = smoothstep(20.2, 24.8, t);
+    if (pAna > 0) x = lerp(x, ch.pole * 205, pAna);
+
+    // 末期：進入兩個子細胞
+    const pTelo = smoothstep(25.5, 28.2, t);
+    if (pTelo > 0) {
+      const targetX = ch.pole * 250 + rest.x * 0.75;
+      const targetY = rest.y * 0.75;
+      x = lerp(x, targetX, pTelo);
+      y = lerp(y, targetY, pTelo);
+    }
+
+    // 角度：間期散亂 → 前期轉正 → 中期 X 形 → 後期平移 → 末期就位後再散開
+    const pRep = smoothstep(4.8, 9.0, t);
+    const pAlign = smoothstep(13.5, 16.8, t);
+    const theta = rest.a * (1 - pAlign);
+    const alpha = 50 * pRep;
+    let angle = ch.s === 0 ? theta - alpha : theta + alpha;
+    const pFan = smoothstep(28.2, 30.0, t);
+    if (pFan > 0) {
+      angle = lerp(ch.s === 0 ? -50 : 50, rest.a, pFan);
+    }
+
+    const bAlpha = smoothstep(4.6, 5.8, t);
+    const opacity = ch.s === 0 ? 1 : bAlpha;
+    const mix = ch.s === 0 ? 0 : 0.12 * smoothstep(4.8, 6.0, t) * (1 - smoothstep(27.5, 30.0, t));
+
+    return {
+      x: CX + x,
+      y: CY + y,
+      angle,
+      len: ch.len,
+      width: ch.width,
+      opacity,
+      mix,
+      pair: ch.pair,
+      s: ch.s,
+      i: ch.i,
+      pole: ch.pole,
+    };
+  }
+
+  // 一條染色體 = 兩個圓角膠囊狀的臂，在中間用窄頸黏起來；
+  // 窄頸就是著絲粒／節點。複製後兩條姐妹染色單體交叉，形成四臂 X。
+  function buildChromatidPath(st) {
+    const L = st.len;
+    const W = st.width;
+    const half = L / 2;
+    const w = W / 2;
+    const blend = 0.12;
+    const capStart = 1 - W / L;
+    const steps = 32;
+
+    const hw = (t) => {
+      if (t < blend) {
+        const s = smoothstep(0, blend, t);
+        return w * (0.42 + 0.58 * s);
+      }
+      if (t <= capStart) return w;
+      const y = t * half;
+      const cy = half - w;
+      const dy = y - cy;
+      return Math.sqrt(Math.max(0, w * w - dy * dy));
+    };
+
+    const path = new Path2D();
+    path.moveTo(0, -half);
+    for (let i = 1; i <= steps; i += 1) {
+      const t = 1 - i / steps;
+      path.lineTo(hw(t), -half * t);
+    }
+    for (let i = 1; i <= steps; i += 1) {
+      const t = i / steps;
+      path.lineTo(hw(t), half * t);
+    }
+    for (let i = 1; i <= steps; i += 1) {
+      const t = 1 - i / steps;
+      path.lineTo(-hw(t), half * t);
+    }
+    for (let i = 1; i <= steps; i += 1) {
+      const t = i / steps;
+      path.lineTo(-hw(t), -half * t);
+    }
+    path.closePath();
+    return path;
+  }
+
+  function strokeChromatid(st) {
+    if (st.opacity <= 0.01) return;
+    const pair = PAIRS[st.pair];
+    const outline = mixRgb(hexToRgb(pair.base), WHITE, 0.45);
+    ctx.save();
+    ctx.globalAlpha = st.opacity;
+    ctx.translate(st.x, st.y);
+    ctx.rotate(st.angle * Math.PI / 180);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = css(outline);
+    ctx.lineWidth = Math.max(3.4, st.width * 0.13);
+    ctx.shadowColor = 'rgba(' + pair.glow + ',0.60)';
+    ctx.shadowBlur = 14;
+    ctx.stroke(st.path);
+    ctx.restore();
+  }
+
+  function fillChromatid(st) {
+    if (st.opacity <= 0.01) return;
+    const pair = PAIRS[st.pair];
+    const baseRgb = hexToRgb(pair.base);
+    const lightRgb = hexToRgb(pair.light);
+    const base = st.mix > 0.001 ? mixRgb(baseRgb, lightRgb, st.mix) : baseRgb;
+    const center = mixRgb(base, WHITE, 0.18);
+    const mid = mixRgb(base, WHITE, 0.04);
+    ctx.save();
+    ctx.globalAlpha = st.opacity;
+    ctx.translate(st.x, st.y);
+    ctx.rotate(st.angle * Math.PI / 180);
+    const grad = ctx.createRadialGradient(0, 0, st.width * 0.15, 0, 0, st.len / 2);
+    grad.addColorStop(0, css(center));
+    grad.addColorStop(0.55, css(mid));
+    grad.addColorStop(1, css(base));
+    ctx.fillStyle = grad;
+    ctx.fill(st.path);
+    ctx.restore();
+  }
+
+  function poleDist(t) {
+    if (t < 9.5) return 0;
+    if (t < 12.5) return 290 * smoothstep(9.5, 12.5, t);
+    if (t < 20) return 290;
+    if (t < 25.5) return 290 + 20 * smoothstep(20, 25.5, t);
+    return 310;
+  }
+
+  function drawSpindle(t, states) {
+    const a = smoothstep(10.2, 12.2, t) * (1 - smoothstep(26.0, 28.2, t));
+    if (a <= 0.01) return;
+    const dist = poleDist(t);
+    const poles = [
+      { x: CX - dist, y: CY },
+      { x: CX + dist, y: CY },
+    ];
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(130,200,255,0.22)';
+    for (const st of states) {
+      if (st.opacity < 0.15) continue;
+      const pole = st.pole < 0 ? poles[0] : poles[1];
+      const mx = (pole.x + st.x) / 2;
+      const my = (pole.y + st.y) / 2;
+      const bow = 12 * Math.sin(st.i * 1.7 + st.s * 2.1);
+      ctx.beginPath();
+      ctx.moveTo(pole.x, pole.y);
+      ctx.quadraticCurveTo(mx, my + bow, st.x, st.y);
+      ctx.stroke();
+    }
+    drawCentrosome(poles[0].x, poles[0].y, a);
+    drawCentrosome(poles[1].x, poles[1].y, a);
+    ctx.restore();
+  }
+
+  function beginFrame(halfW, halfH) {
+    if (mode === 'desktop') {
+      const sx = canvas.width / W;
+      const sy = canvas.height / H;
+      ctx.setTransform(sx, 0, 0, sy, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+    } else {
+      const pad = 60;
+      halfW += pad;
+      halfH += pad;
+      const aspect = canvas.width / canvas.height;
+      let vw = halfW * 2;
+      let vh = halfH * 2;
+      if (vw / vh < aspect) vw = vh * aspect;
+      else vh = vw / aspect;
+      const viewX = CX - vw / 2;
+      const viewY = CY - vh / 2;
+      const s = Math.min(canvas.width / vw, canvas.height / vh);
+      const tx = (canvas.width - vw * s) / 2 - viewX * s;
+      const ty = (canvas.height - vh * s) / 2 - viewY * s;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.setTransform(s, 0, 0, s, tx, ty);
+    }
+  }
+
+  function drawMitosis(t) {
+    const g = cellGeom(t);
+    beginFrame((g.d + 2 * g.r) / 2, g.r);
+
+    drawCellFill(g);
+    drawNuclei(t, g);
+    drawEquator(t);
+
+    const states = chromatids.map((ch) => chromatidState(ch, t));
+    for (const st of states) st.path = buildChromatidPath(st);
+    drawSpindle(t, states);
+    for (const st of states) strokeChromatid(st);
+    for (const st of states) fillChromatid(st);
+
+    drawCellStroke(g);
+  }
+
+  function draw() {
+    if (state.division === 'meiosis') drawMeiosis(state.t);
+    else drawMitosis(state.t);
+  }
+
+  // ---------- 減數分裂 ----------
+  const MEIOSIS_PAIR_Y = [-190, 0, 190];
+  const MEIOSIS_DAUGHTER_OFFSET = [
+    { x: -90, y: -65, a: -30 },
+    { x: 90, y: -45, a: 30 },
+    { x: 0, y: 85, a: 80 },
+  ];
+  const MEIOSIS_PLATE_OFFSET = [-125, 0, 125];
+  const MEIOSIS_FINAL_OFFSET = [
+    { x: -55, y: -40, a: -25 },
+    { x: 55, y: -35, a: 25 },
+    { x: 0, y: 55, a: 80 },
+  ];
+
+  function meiosisGeom(t) {
+    const p1 = smoothstep(21, 29.5, t);
+    const d1 = 480 * p1;
+    const r1 = 330 - 110 * p1;
+    const p2 = smoothstep(35, 40, t);
+    const d2 = 360 * p2;
+    const r2 = 220 - 60 * p2;
+    return { p1, d1, r1, p2, d2, r2 };
+  }
+
+  function meiosisChromatidState(ch, t) {
+    const pair = ch.pair;
+    const s = ch.s;
+    const i = ch.i;
+    const rest = REST[i];
+    const cellI = (i % 2 === 0) ? -1 : 1;
+    const pairY = MEIOSIS_PAIR_Y[pair];
+
+    const pRep = smoothstep(4.8, 9.0, t);
+    const alpha = 50 * pRep;
+    const pOpen = smoothstep(10.5, 14.2, t);
+
+    let x = rest.x;
+    let y = rest.y;
+    let theta = rest.a;
+
+    const drift = 3.2 * (1 - pOpen);
+    x += Math.sin(t * 0.9 + i * 2.1 + s * 1.7) * drift;
+    y += Math.cos(t * 0.7 + i * 1.4 + s * 0.9) * drift * 0.8;
+
+    const pLift = smoothstep(10.5 + pair * 0.25, 12.6 + pair * 0.25, t);
+    const pSlide = smoothstep(12.6 + pair * 0.25, 14.4 + pair * 0.25, t);
+    y = lerp(y, pairY, pLift);
+    x = lerp(x, cellI * 60, pSlide);
+    theta = lerp(theta, 0, pLift);
+
+    const pAna = smoothstep(19.8, 24.5, t);
+    x = lerp(x, cellI * 200, pAna);
+
+    const pTelo = smoothstep(25, 29.5, t);
+    const dOff = MEIOSIS_DAUGHTER_OFFSET[pair];
+    x = lerp(x, cellI * 240 + dOff.x, pTelo);
+    y = lerp(y, dOff.y, pTelo);
+    theta = lerp(theta, dOff.a, pTelo);
+
+    const pMeta2 = smoothstep(29.8, 33.2, t);
+    const plateX = cellI * 240 + MEIOSIS_PLATE_OFFSET[pair];
+    x = lerp(x, plateX, pMeta2);
+    y = lerp(y, 0, pMeta2);
+    theta = lerp(theta, 0, pMeta2);
+
+    const pAna2 = smoothstep(34.8, 39, t);
+    const sep = 180 * pAna2;
+    const sisterY = s === 0 ? -sep : sep;
+
+    const pTelo2 = smoothstep(39, 42.5, t);
+    const fOff = MEIOSIS_FINAL_OFFSET[pair];
+    const finalX = cellI * 240 + fOff.x;
+    const finalY = (s === 0 ? -175 : 175) + fOff.y;
+
+    const baseY = y;
+    let angle;
+    if (pTelo2 > 0) {
+      x = lerp(x, finalX, pTelo2);
+      y = lerp(baseY + sisterY, finalY, pTelo2);
+      const startAngle = theta + (s === 0 ? -alpha : alpha);
+      angle = lerp(startAngle, fOff.a, pTelo2);
+    } else {
+      y = baseY + sisterY;
+      angle = theta + (s === 0 ? -alpha : alpha);
+    }
+
+    const bAlpha = smoothstep(4.6, 5.8, t);
+    const opacity = s === 0 ? 1 : bAlpha;
+    const mix = s === 0 ? 0 : 0.12 * smoothstep(4.8, 6.0, t) * (1 - smoothstep(40, 43, t));
+
+    return {
+      x: CX + x,
+      y: CY + y,
+      angle,
+      len: ch.len,
+      width: ch.width,
+      opacity,
+      mix,
+      pair,
+      s,
+      i,
+      pole: cellI,
+    };
+  }
+
+  function pairPath(cx, cy, d, r, vertical) {
+    ctx.save();
+    if (vertical) {
+      ctx.translate(cx, cy);
+      ctx.rotate(Math.PI / 2);
+      ctx.translate(-cx, -cy);
+    }
+    traceCell({ cx, cy, d, r });
+    ctx.restore();
+  }
+
+  function drawPairFill(cx, cy, d, r, vertical) {
+    ctx.save();
+    pairPath(cx, cy, d, r, vertical);
+    const grad = ctx.createRadialGradient(cx, cy, r * 0.12, cx, cy, r + d / 2);
+    grad.addColorStop(0, 'rgba(44,94,168,0.30)');
+    grad.addColorStop(0.55, 'rgba(25,56,108,0.22)');
+    grad.addColorStop(1, 'rgba(9,22,46,0.10)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawPairStroke(cx, cy, d, r, vertical) {
+    ctx.save();
+    pairPath(cx, cy, d, r, vertical);
+    ctx.strokeStyle = 'rgba(126,201,255,0.58)';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = 'rgba(80,170,255,0.55)';
+    ctx.shadowBlur = 24;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawMeiosisNuclei(t) {
+    drawNucleus(CX, CY, 240, 1 - smoothstep(9.5, 11.5, t));
+
+    const a1 = smoothstep(26, 28.5, t) * (1 - smoothstep(30, 31.5, t));
+    if (a1 > 0.01) {
+      drawNucleus(CX - 240, CY, 180, a1);
+      drawNucleus(CX + 240, CY, 180, a1);
+    }
+
+    const a2 = smoothstep(41, 43, t);
+    if (a2 > 0.01) {
+      for (const mx of [CX - 240, CX + 240]) {
+        for (const my of [CY - 175, CY + 175]) {
+          drawNucleus(mx, my, 140, a2);
+        }
+      }
+    }
+  }
+
+  function drawMeiosisEquators(t) {
+    const a1 = smoothstep(13.5, 15, t) * (1 - smoothstep(19.5, 21, t));
+    if (a1 > 0.01) {
+      ctx.save();
+      ctx.globalAlpha = a1;
+      ctx.strokeStyle = 'rgba(184,226,255,0.22)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([9, 11]);
+      ctx.beginPath();
+      ctx.moveTo(CX, CY - 300);
+      ctx.lineTo(CX, CY + 300);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+
+    const a2 = smoothstep(30, 31.5, t) * (1 - smoothstep(34.5, 36, t));
+    if (a2 > 0.01) {
+      ctx.save();
+      ctx.globalAlpha = a2;
+      ctx.strokeStyle = 'rgba(184,226,255,0.22)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([9, 11]);
+      for (const mx of [CX - 240, CX + 240]) {
+        ctx.beginPath();
+        ctx.moveTo(mx - 200, CY);
+        ctx.lineTo(mx + 200, CY);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+  }
+
+  function drawMeiosisSpindleI(t, states) {
+    const a = smoothstep(10.5, 12.5, t) * (1 - smoothstep(26, 28, t));
+    if (a <= 0.01) return;
+    const poles = [
+      { x: CX - 310, y: CY },
+      { x: CX + 310, y: CY },
+    ];
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(130,200,255,0.22)';
+    for (const st of states) {
+      if (st.s !== 0 || st.opacity < 0.15) continue;
+      const pole = (st.i % 2 === 0) ? poles[0] : poles[1];
+      const mx = (pole.x + st.x) / 2;
+      const my = (pole.y + st.y) / 2;
+      const bow = 12 * Math.sin(st.i * 1.7);
+      ctx.beginPath();
+      ctx.moveTo(pole.x, pole.y);
+      ctx.quadraticCurveTo(mx, my + bow, st.x, st.y);
+      ctx.stroke();
+    }
+    drawCentrosome(poles[0].x, poles[0].y, a);
+    drawCentrosome(poles[1].x, poles[1].y, a);
+    ctx.restore();
+  }
+
+  function drawMeiosisSpindleII(t, states) {
+    const a = smoothstep(30, 32, t) * (1 - smoothstep(39, 41, t));
+    if (a <= 0.01) return;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(130,200,255,0.20)';
+    for (const st of states) {
+      if (st.opacity < 0.15) continue;
+      const px = (st.i % 2 === 0) ? CX - 240 : CX + 240;
+      const py = st.s === 0 ? CY - 200 : CY + 200;
+      const mx = (px + st.x) / 2;
+      const my = (py + st.y) / 2;
+      const bow = 8 * Math.sin(st.i * 1.3 + st.s * 2.1);
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.quadraticCurveTo(mx + bow, my, st.x, st.y);
+      ctx.stroke();
+    }
+    for (const mx of [CX - 240, CX + 240]) {
+      drawCentrosome(mx, CY - 200, a);
+      drawCentrosome(mx, CY + 200, a);
+    }
+    ctx.restore();
+  }
+
+  function drawMeiosis(t) {
+    const mg = meiosisGeom(t);
+    const halfW = t < 29.5 ? (mg.d1 + 2 * mg.r1) / 2 : 240 + mg.r2;
+    const halfH = t < 29.5 ? mg.r1 : (mg.d2 + 2 * mg.r2) / 2;
+    beginFrame(halfW, halfH);
+
+    if (t < 29.5) {
+      drawPairFill(CX, CY, mg.d1, mg.r1, false);
+    } else {
+      drawPairFill(CX - 240, CY, mg.d2, mg.r2, true);
+      drawPairFill(CX + 240, CY, mg.d2, mg.r2, true);
+    }
+
+    drawMeiosisNuclei(t);
+    drawMeiosisEquators(t);
+
+    const states = chromatids.map((ch) => meiosisChromatidState(ch, t));
+    for (const st of states) st.path = buildChromatidPath(st);
+    if (t < 29.5) drawMeiosisSpindleI(t, states);
+    else drawMeiosisSpindleII(t, states);
+    for (const st of states) strokeChromatid(st);
+    for (const st of states) fillChromatid(st);
+
+    if (t < 29.5) {
+      drawPairStroke(CX, CY, mg.d1, mg.r1, false);
+    } else {
+      drawPairStroke(CX - 240, CY, mg.d2, mg.r2, true);
+      drawPairStroke(CX + 240, CY, mg.d2, mg.r2, true);
+    }
+  }
+
+  // ---------- 介面 ----------
+  let curPhase = -1;
+  let phaseButtons = [];
+
+  function phaseIndexAt(t) {
+    if (t >= activeTotal) return activePhases.length - 1;
+    for (let i = activePhases.length - 1; i >= 0; i -= 1) {
+      if (t >= activePhases[i].start) return i;
+    }
+    return 0;
+  }
+
+  function updatePhaseUI() {
+    const idx = phaseIndexAt(state.t);
+    if (idx === curPhase) return;
+    curPhase = idx;
+    const p = activePhases[idx];
+    captionPhase.textContent = p.name;
+    captionDesc.textContent = p.desc;
+    phaseButtons.forEach((btn, i) => {
+      btn.classList.toggle('active', i === idx);
+      btn.classList.toggle('done', i < idx);
+    });
+    const activeBtn = phaseButtons[idx];
+    if (activeBtn && phaseNav.scrollWidth > phaseNav.clientWidth + 1) {
+      phaseNav.scrollTo({
+        left: Math.max(0, activeBtn.offsetLeft - (phaseNav.clientWidth - activeBtn.offsetWidth) / 2),
+        behavior: 'smooth',
+      });
+    }
+  }
+
+  function updatePlayButton() {
+    iconPlay.style.display = state.playing ? 'none' : 'block';
+    iconPause.style.display = state.playing ? 'block' : 'none';
+    playBtn.setAttribute('aria-label', state.playing ? '暫停' : '播放');
+    playBtn.title = state.playing ? '暫停（空白鍵）' : '播放（空白鍵）';
+  }
+
+  function togglePlay() {
+    if (state.playing) {
+      state.playing = false;
+    } else {
+      if (state.t >= activeTotal - 0.001) state.t = 0;
+      state.playing = true;
+    }
+    updatePlayButton();
+  }
+
+  function replay() {
+    state.t = 0;
+    state.playing = true;
+    updatePlayButton();
+    updatePhaseUI();
+    draw();
+  }
+
+  function seekToPhase(i) {
+    const p = activePhases[i];
+    if (i === activePhases.length - 1) {
+      state.t = activeTotal;
+      state.playing = false;
+    } else {
+      state.t = p.start + 0.001;
+      state.playing = true;
+    }
+    curPhase = -1;
+    updatePlayButton();
+    updatePhaseUI();
+    draw();
+  }
+
+  function buildPhaseButtons() {
+    phaseNav.innerHTML = '';
+    phaseButtons = [];
+    activePhases.forEach((p, i) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'phase-btn';
+      btn.textContent = p.name;
+      btn.addEventListener('click', () => {
+        seekToPhase(i);
+        btn.blur();
+      });
+      phaseNav.appendChild(btn);
+      phaseButtons.push(btn);
+    });
+    phaseNav.scrollLeft = 0;
+  }
+
+  function updatePurpose() {
+    purposeEl.innerHTML = '<b>目的</b>：' + DIVISIONS[state.division].purpose;
+  }
+
+  function updateSwitchUI() {
+    modeButtons.forEach((btn) => {
+      const on = btn.dataset.division === state.division;
+      btn.classList.toggle('active', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+
+  function applyDivision(next) {
+    if (!DIVISIONS[next]) return;
+    if (state.division === next) {
+      state.t = 0;
+      state.playing = true;
+      curPhase = -1;
+      updatePlayButton();
+      updatePhaseUI();
+      draw();
+      return;
+    }
+    state.division = next;
+    activePhases = DIVISIONS[next].phases;
+    activeTotal = DIVISIONS[next].total;
+    state.t = 0;
+    state.playing = true;
+    curPhase = -1;
+    buildPhaseButtons();
+    updatePurpose();
+    updateSwitchUI();
+    updatePlayButton();
+    updatePhaseUI();
+    draw();
+  }
+
+  modeButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      applyDivision(btn.dataset.division);
+      btn.blur();
+    });
+  });
+
+  playBtn.addEventListener('click', () => {
+    togglePlay();
+    playBtn.blur();
+  });
+
+  replayBtn.addEventListener('click', () => {
+    replay();
+    replayBtn.blur();
+  });
+
+  const speeds = [0.5, 1, 1.5, 2];
+  let speedIdx = 1;
+  speedBtn.addEventListener('click', () => {
+    speedIdx = (speedIdx + 1) % speeds.length;
+    state.speed = speeds[speedIdx];
+    speedBtn.textContent = state.speed + '×';
+    speedBtn.blur();
+  });
+
+  fsBtn.addEventListener('click', async () => {
+    try {
+      if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
+      else await document.exitFullscreen();
+    } catch (err) {
+      /* 忽略瀏覽器限制 */
+    }
+    fsBtn.blur();
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      togglePlay();
+    } else if (e.code === 'ArrowRight') {
+      e.preventDefault();
+      seekToPhase(Math.min(activePhases.length - 1, phaseIndexAt(state.t) + 1));
+    } else if (e.code === 'ArrowLeft') {
+      e.preventDefault();
+      seekToPhase(Math.max(0, phaseIndexAt(state.t) - 1));
+    } else if (e.key === 'r' || e.key === 'R') {
+      replay();
+    }
+  });
+
+  function fit() {
+    if (mode === 'desktop') {
+      const s = Math.min(window.innerWidth / W, window.innerHeight / H);
+      const ox = (window.innerWidth - W * s) / 2;
+      const oy = (window.innerHeight - H * s) / 2;
+      stage.style.transform = 'translate(' + ox + 'px, ' + oy + 'px) scale(' + s + ')';
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const scale = Math.min(s * dpr, 2);
+      canvas.width = Math.max(1, Math.round(W * scale));
+      canvas.height = Math.max(1, Math.round(H * scale));
+    } else {
+      stage.style.transform = 'none';
+      const rect = cellArea.getBoundingClientRect();
+      const cw = Math.max(1, rect.width);
+      const ch = Math.max(1, rect.height);
+      const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      canvas.width = Math.max(1, Math.round(cw * dpr));
+      canvas.height = Math.max(1, Math.round(ch * dpr));
+    }
+    draw();
+  }
+
+  function onResize() {
+    const next = detectMode();
+    if (next !== mode) {
+      mode = next;
+      document.documentElement.classList.toggle('mobile', mode === 'mobile');
+      if (mode === 'desktop') phaseNav.scrollLeft = 0;
+    }
+    fit();
+  }
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', () => setTimeout(onResize, 150));
+  if (window.ResizeObserver && cellArea) {
+    const ro = new ResizeObserver(onResize);
+    ro.observe(cellArea);
+  }
+
+  let last = 0;
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (state.playing) {
+      state.t += dt * state.speed;
+      if (state.t >= activeTotal) {
+        state.t = activeTotal;
+        state.playing = false;
+        updatePlayButton();
+      }
+    }
+    draw();
+    updatePhaseUI();
+    requestAnimationFrame(frame);
+  }
+
+  window.__SET_MODE__ = (next) => {
+    if (next !== 'mobile' && next !== 'desktop') return;
+    forcedMode = next;
+    mode = next;
+    document.documentElement.classList.toggle('mobile', mode === 'mobile');
+    fit();
+  };
+
+  window.__ANIM = {
+    get t() { return state.t; },
+    get playing() { return state.playing; },
+    get total() { return activeTotal; },
+    get division() { return state.division; },
+    get phases() { return activePhases.map((p) => ({ ...p })); },
+    setDivision(name) {
+      applyDivision(name);
+      return state.division;
+    },
+    seek(value) {
+      state.t = Math.max(0, Math.min(activeTotal, Number(value) || 0));
+      state.playing = false;
+      updatePlayButton();
+      updatePhaseUI();
+      draw();
+      return state.t;
+    },
+    play() {
+      if (state.t >= activeTotal - 0.001) state.t = 0;
+      state.playing = true;
+      updatePlayButton();
+      return state.t;
+    },
+    pause() {
+      state.playing = false;
+      updatePlayButton();
+      return state.t;
+    },
+  };
+
+  buildPhaseButtons();
+  updatePurpose();
+  updateSwitchUI();
+  fit();
+  updatePhaseUI();
+  updatePlayButton();
+  window.__APP_READY__ = true;
+  requestAnimationFrame((now) => {
+    last = now;
+    frame(now);
+  });
+})();
+</script>
+</body>
+</html>

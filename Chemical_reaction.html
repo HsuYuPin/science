@@ -281,10 +281,9 @@ const BOND_ORDER = {
   'N-N': 3,   // N₂ 三鍵
   'H-N': 1
 };
-const REACTANT_BONDS = new Set(['C-H', 'O-O', 'H-H', 'N-N']);
-const PRODUCT_BONDS  = new Set(['C-O', 'H-O', 'H-N']);
 
 const bondKey = (a, b) => (a < b ? a + '-' + b : b + '-' + a);
+const pairKey = (i, j) => i < j ? `${i}-${j}` : `${j}-${i}`;
 
 /* ============ 時間軸 ============ */
 const T_HIT        = 1.70;
@@ -363,14 +362,14 @@ function buildMethaneDef() {
     atoms: ['C', 'H', 'H', 'H', 'H', 'O', 'O', 'O', 'O'],
     s0, s1, s3,
     reactantGroups: [
-      { atoms: [0, 1, 2, 3, 4], center: s0[0].clone(), axis: V(0.4, 1, 0.3).normalize(), speed: 1.6 },
-      { atoms: [5, 6], center: s0[5].clone().add(s0[6]).multiplyScalar(0.5), axis: V(0, 1, 0.4).normalize(), speed: 2.2 },
-      { atoms: [7, 8], center: s0[7].clone().add(s0[8]).multiplyScalar(0.5), axis: V(0.3, 1, -0.4).normalize(), speed: -1.9 }
+      { atoms: [0, 1, 2, 3, 4], bonds: [[0,1],[0,2],[0,3],[0,4]], center: s0[0].clone(), axis: V(0.4, 1, 0.3).normalize(), speed: 1.6 },
+      { atoms: [5, 6], bonds: [[5,6]], center: s0[5].clone().add(s0[6]).multiplyScalar(0.5), axis: V(0, 1, 0.4).normalize(), speed: 2.2 },
+      { atoms: [7, 8], bonds: [[7,8]], center: s0[7].clone().add(s0[8]).multiplyScalar(0.5), axis: V(0.3, 1, -0.4).normalize(), speed: -1.9 }
     ],
     productGroups: [
-      { atoms: [0, 5, 6], center: s3[0].clone(), axis: V(0, 1, 0.12).normalize(), speed: 0.55 },
-      { atoms: [7, 1, 2], center: s3[7].clone(), axis: V(0.12, 1, 0).normalize(), speed: 0.85 },
-      { atoms: [8, 3, 4], center: s3[8].clone(), axis: V(-0.12, 1, 0).normalize(), speed: -0.75 }
+      { atoms: [0, 5, 6], bonds: [[0,5],[0,6]], center: s3[0].clone(), axis: V(0, 1, 0.12).normalize(), speed: 0.55 },
+      { atoms: [7, 1, 2], bonds: [[7,1],[7,2]], center: s3[7].clone(), axis: V(0.12, 1, 0).normalize(), speed: 0.85 },
+      { atoms: [8, 3, 4], bonds: [[8,3],[8,4]], center: s3[8].clone(), axis: V(-0.12, 1, 0).normalize(), speed: -0.75 }
     ],
     reactantLabels: [
       { idxs: [0, 1, 2, 3, 4], text: 'CH₄', offset: 2.35 },
@@ -444,13 +443,13 @@ function buildHydrogenDef() {
     atoms: ['H', 'H', 'H', 'H', 'O', 'O'],
     s0, s1, s3,
     reactantGroups: [
-      { atoms: [0, 1], center: h1c.clone(), axis: V(0.3, 1, 0.2).normalize(), speed: 2.4 },
-      { atoms: [2, 3], center: h2c.clone(), axis: V(-0.2, 1, 0.3).normalize(), speed: -2.2 },
-      { atoms: [4, 5], center: o2c.clone(), axis: V(0, 1, 0.35).normalize(), speed: 2.0 }
+      { atoms: [0, 1], bonds: [[0,1]], center: h1c.clone(), axis: V(0.3, 1, 0.2).normalize(), speed: 2.4 },
+      { atoms: [2, 3], bonds: [[2,3]], center: h2c.clone(), axis: V(-0.2, 1, 0.3).normalize(), speed: -2.2 },
+      { atoms: [4, 5], bonds: [[4,5]], center: o2c.clone(), axis: V(0, 1, 0.35).normalize(), speed: 2.0 }
     ],
     productGroups: [
-      { atoms: [4, 0, 1], center: s3[4].clone(), axis: V(0.1, 1, 0.12).normalize(), speed: 0.8 },
-      { atoms: [5, 2, 3], center: s3[5].clone(), axis: V(-0.1, 1, -0.12).normalize(), speed: -0.7 }
+      { atoms: [4, 0, 1], bonds: [[4,0],[4,1]], center: s3[4].clone(), axis: V(0.1, 1, 0.12).normalize(), speed: 0.8 },
+      { atoms: [5, 2, 3], bonds: [[5,2],[5,3]], center: s3[5].clone(), axis: V(-0.1, 1, -0.12).normalize(), speed: -0.7 }
     ],
     reactantLabels: [
       { idxs: [0, 1], text: 'H₂', offset: 1.55 },
@@ -509,22 +508,22 @@ function buildAmmoniaDef() {
   }
 
   /* --- S3 產物：2 個 NH₃（三角錐） --- */
-  const L = 1.55;                                    // N–H 鍵長
-  const theta = THREE.MathUtils.degToRad(68.1);      // 與對稱軸夾角（H–N–H ≈ 107°）
-  const r = L * Math.sin(theta);                     // 水平半徑
-  const h = L * Math.cos(theta);                     // 高度
-  const phis = [Math.PI / 2, Math.PI * 7 / 6, Math.PI * 11 / 6]; // 90°, 210°, 330°
+  const L = 1.55;
+  const theta = THREE.MathUtils.degToRad(68.1);
+  const r = L * Math.sin(theta);
+  const h = L * Math.cos(theta);
+  const phis = [Math.PI / 2, Math.PI * 7 / 6, Math.PI * 11 / 6];
 
   const nA = V(-4.6, 2.3, 0);
   s3[0] = nA.clone();
-  for (let k = 0; k < 3; k++) {                      // 氫在 N 下方（錐朝下）
+  for (let k = 0; k < 3; k++) {
     const phi = phis[k];
     s3[2 + k] = V(nA.x + r * Math.cos(phi), nA.y - h, nA.z + r * Math.sin(phi));
   }
 
   const nB = V(4.6, -2.3, 0);
   s3[1] = nB.clone();
-  for (let k = 0; k < 3; k++) {                      // 氫在 N 上方（錐朝上）
+  for (let k = 0; k < 3; k++) {
     const phi = phis[k];
     s3[5 + k] = V(nB.x + r * Math.cos(phi), nB.y + h, nB.z + r * Math.sin(phi));
   }
@@ -536,14 +535,14 @@ function buildAmmoniaDef() {
     atoms: ['N', 'N', 'H', 'H', 'H', 'H', 'H', 'H'],
     s0, s1, s3,
     reactantGroups: [
-      { atoms: [0, 1], center: n2c.clone(), axis: V(0, 1, 0.25).normalize(), speed: 1.5 },
-      { atoms: [2, 3], center: h2cs[0].clone(), axis: V(0.3, 1, 0.2).normalize(), speed: 2.5 },
-      { atoms: [4, 5], center: h2cs[1].clone(), axis: V(-0.2, 1, 0.3).normalize(), speed: -2.3 },
-      { atoms: [6, 7], center: h2cs[2].clone(), axis: V(0.25, 1, -0.2).normalize(), speed: 2.1 }
+      { atoms: [0, 1], bonds: [[0,1]], center: n2c.clone(), axis: V(0, 1, 0.25).normalize(), speed: 1.5 },
+      { atoms: [2, 3], bonds: [[2,3]], center: h2cs[0].clone(), axis: V(0.3, 1, 0.2).normalize(), speed: 2.5 },
+      { atoms: [4, 5], bonds: [[4,5]], center: h2cs[1].clone(), axis: V(-0.2, 1, 0.3).normalize(), speed: -2.3 },
+      { atoms: [6, 7], bonds: [[6,7]], center: h2cs[2].clone(), axis: V(0.25, 1, -0.2).normalize(), speed: 2.1 }
     ],
     productGroups: [
-      { atoms: [0, 2, 3, 4], center: nA.clone(), axis: V(0.08, 1, 0.10).normalize(), speed: 0.60 },
-      { atoms: [1, 5, 6, 7], center: nB.clone(), axis: V(-0.08, 1, -0.10).normalize(), speed: -0.55 }
+      { atoms: [0, 2, 3, 4], bonds: [[0,2],[0,3],[0,4]], center: nA.clone(), axis: V(0.08, 1, 0.10).normalize(), speed: 0.60 },
+      { atoms: [1, 5, 6, 7], bonds: [[1,5],[1,6],[1,7]], center: nB.clone(), axis: V(-0.08, 1, -0.10).normalize(), speed: -0.55 }
     ],
     reactantLabels: [
       { idxs: [0, 1], text: 'N₂', offset: 1.85 },
@@ -610,7 +609,18 @@ function buildReaction(def) {
     atomMeshes.push(mesh);
   }
 
-  /* --- 原子對（化學鍵） --- */
+  /* --- 收集反應物與產物中真正存在的鍵 --- */
+  const reactantPairs = new Set();
+  def.reactantGroups.forEach(g => {
+    if (g.bonds) g.bonds.forEach(([i, j]) => reactantPairs.add(pairKey(i, j)));
+  });
+
+  const productPairs = new Set();
+  def.productGroups.forEach(g => {
+    if (g.bonds) g.bonds.forEach(([i, j]) => productPairs.add(pairKey(i, j)));
+  });
+
+  /* --- 建立所有原子對的鍵物件 --- */
   const pairs = [];
   for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) pairs.push([i, j]);
 
@@ -627,7 +637,14 @@ function buildReaction(def) {
     const m3 = new THREE.Mesh(bondGeo, mat);
     m1.visible = m2.visible = m3.visible = false;
     scene.add(m1, m2, m3);
-    return { i, j, mat, m1, m2, m3, key: bondKey(def.atoms[i], def.atoms[j]) };
+
+    const pKey = pairKey(i, j);
+    return { 
+      i, j, mat, m1, m2, m3, 
+      key: bondKey(def.atoms[i], def.atoms[j]),
+      isReactant: reactantPairs.has(pKey),
+      isProduct: productPairs.has(pKey)
+    };
   });
 
   /* --- 飛散位置 S2（隨機化） --- */
@@ -744,14 +761,14 @@ const bondDir = new THREE.Vector3();
 const bondQuat = new THREE.Quaternion();
 const offsetTmp = new THREE.Vector3();
 
-function bondPhaseFactor(key, t) {
-  if (REACTANT_BONDS.has(key)) {
+function bondPhaseFactor(isReactant, isProduct, t) {
+  if (isReactant) {
     return 1 - smoothstep(T_HIT - 0.12, T_HIT + 0.28, t);
   }
-  if (PRODUCT_BONDS.has(key)) {
+  if (isProduct) {
     return smoothstep(T_FREE_END - 0.05, T_FREE_END + 0.85, t);
   }
-  return 1;
+  return 0;
 }
 
 function placeBondSegment(mesh, center, quat, length, radius) {
@@ -765,6 +782,11 @@ function updateBonds(t) {
   const { bondObjs, positions } = current;
 
   for (const b of bondObjs) {
+    if (!b.isReactant && !b.isProduct) {
+      b.m1.visible = b.m2.visible = b.m3.visible = false;
+      continue;
+    }
+
     const a = positions[b.i];
     const c = positions[b.j];
     const dist = a.distanceTo(c);
@@ -773,7 +795,7 @@ function updateBonds(t) {
     if (maxLen <= 0) { b.m1.visible = b.m2.visible = b.m3.visible = false; continue; }
 
     let alpha = clamp01((maxLen + 0.30 - dist) / 0.30);
-    alpha *= bondPhaseFactor(b.key, t);
+    alpha *= bondPhaseFactor(b.isReactant, b.isProduct, t);
 
     if (alpha <= 0.02) {
       b.m1.visible = b.m2.visible = b.m3.visible = false;
@@ -784,7 +806,6 @@ function updateBonds(t) {
     midPoint.copy(a).add(c).multiplyScalar(0.5);
     bondDir.subVectors(c, a).normalize();
 
-    /* 垂直於鍵、且盡量面向相機的偏移軸 */
     viewDir.subVectors(camera.position, midPoint).normalize();
     perpAxis.crossVectors(bondDir, viewDir);
     if (perpAxis.lengthSq() < 0.01) perpAxis.crossVectors(bondDir, UP);
@@ -794,19 +815,16 @@ function updateBonds(t) {
     const order = BOND_ORDER[b.key] || 1;
 
     if (order === 3) {
-      /* 三鍵：三根平行細圓柱（-gap, 0, +gap） */
       offsetTmp.copy(perpAxis).multiplyScalar(TRIPLE_GAP);
       placeBondSegment(b.m1, midPoint.clone().add(offsetTmp), bondQuat, dist, BOND_RADIUS_TRIPLE);
       placeBondSegment(b.m3, midPoint.clone(), bondQuat, dist, BOND_RADIUS_TRIPLE);
       placeBondSegment(b.m2, midPoint.clone().sub(offsetTmp), bondQuat, dist, BOND_RADIUS_TRIPLE);
     } else if (order === 2) {
-      /* 雙鍵：兩根平行細圓柱 */
       offsetTmp.copy(perpAxis).multiplyScalar(DOUBLE_GAP);
       placeBondSegment(b.m1, midPoint.clone().add(offsetTmp), bondQuat, dist, BOND_RADIUS_DOUBLE);
       placeBondSegment(b.m2, midPoint.clone().sub(offsetTmp), bondQuat, dist, BOND_RADIUS_DOUBLE);
       b.m3.visible = false;
     } else {
-      /* 單鍵：一根圓柱 */
       placeBondSegment(b.m1, midPoint.clone(), bondQuat, dist, BOND_RADIUS_SINGLE);
       b.m2.visible = false;
       b.m3.visible = false;

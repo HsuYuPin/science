@@ -44,7 +44,6 @@
   button.pbtn.sel[data-t="proton"]{background:rgba(190,50,70,.92);border-color:#ff6b7d;color:#fff;box-shadow:0 0 18px rgba(255,90,110,.5);}
   button.pbtn.sel[data-t="neutron"]{background:rgba(90,110,130,.92);border-color:#cfd8e3;color:#fff;box-shadow:0 0 18px rgba(200,215,235,.4);}
 
-  /* 磁場方向切換按鈕 */
   #fieldRow{margin-top:8px;display:flex;}
   #fieldBtn{
     flex:1;min-width:0;
@@ -101,7 +100,6 @@
   }
   #legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle;}
 
-  /* ─────── 全螢幕按鈕（僅手機 / 觸控裝置顯示） ─────── */
   #fsBtn{
     display:none;
     position:fixed;
@@ -130,21 +128,11 @@
   #fsBtn.fs-active .ico-enter{display:none;}
   #fsBtn.fs-active .ico-exit{display:block;}
 
-  /* ═══════════════════════════════════════════
-     手機 / 觸控裝置：精簡 UI
-     ═══════════════════════════════════════════ */
   @media (max-width: 820px), (hover: none) and (pointer: coarse) {
-
-    /* 1. 顯示右上角全螢幕按鈕 */
     #fsBtn{ display:flex; }
-
-    /* 2. 下方圖例（文字框）不顯示 */
     #legend{ display:none !important; }
-
-    /* 3. 上方 HUD 的底部說明（提示）不顯示 */
     #hint{ display:none !important; }
 
-    /* HUD 整體縮小，避開右上角按鈕 */
     #hud{
       top:calc(10px + env(safe-area-inset-top));
       left:calc(10px + env(safe-area-inset-left));
@@ -185,7 +173,6 @@
 </head>
 <body>
 
-<!-- 右上角全螢幕按鈕（手機才顯示） -->
 <button id="fsBtn" aria-label="切換全螢幕">
   <svg class="ico-enter" viewBox="0 0 24 24" aria-hidden="true">
     <path d="M4 9V4h5"/>
@@ -215,8 +202,8 @@
   </div>
 
   <div id="speedRow">
-    <div class="srow"><span>射出速率</span><b id="speedVal">4.0</b></div>
-    <input id="speedSlider" type="range" min="1" max="25" step="0.1" value="4">
+    <div class="srow"><span>射出速率</span><b id="speedVal">20.0</b></div>
+    <input id="speedSlider" type="range" min="1" max="50" step="0.1" value="20">
   </div>
 
   <div id="hint">
@@ -228,7 +215,8 @@
 <div id="legend">
   <i style="background:#4fc3ff;box-shadow:0 0 8px #4fc3ff"></i>電子（負電，半徑小）<br>
   <i style="background:#ff5f6d;box-shadow:0 0 8px #ff5f6d"></i>質子（正電，半徑大）<br>
-  <i style="background:#c9d6e4;box-shadow:0 0 8px #c9d6e4"></i>中子（不帶電，直線）
+  <i style="background:#c9d6e4;box-shadow:0 0 8px #c9d6e4"></i>中子（不帶電，直線）<br>
+  <i style="background:#ff2222;box-shadow:0 0 8px #ff2222"></i>紅色箭頭：洛倫茲力方向
 </div>
 
 <canvas id="scene"></canvas>
@@ -294,20 +282,19 @@ fsBtn.addEventListener('click', () => {
 
 /* ═══════════════════════════════════════════════
    物理參數
-   磁場 B = B ŷ（可切換向上 / 向下）
-   洛倫茲力 F = q v × B
-   圓周運動角頻率 ω = qB/m
    ═══════════════════════════════════════════════ */
 const PARTICLE_Y  = 0.38;
-const FIELD_R     = 9;
-const FIELD_H     = 6;
+const FIELD_R     = 18;          // ★ 擴大為兩倍（原 9）
+const FIELD_H     = 9;           // 磁力線高度（配合半徑稍高）
 const MAX_TRAIL   = 340;
-const MAX_SPAWN_R = 20;
+const MAX_SPAWN_R = 30;          // 允許更遠的發射點
 const MIN_SPAWN_R = 1.0;
-const KILL_R      = 100;
+const KILL_R      = 130;
 
-/* fieldDir：+1 = 磁場向上（原方向），-1 = 磁場向下 */
+/* fieldDir：+1 = 磁場向上，-1 = 磁場向下 */
 let fieldDir = 1;
+
+const UP_VEC = new THREE.Vector3(0, 1, 0);
 
 const TYPES = {
   electron: { label:'電子', charge:-1, omega:-3.0, color:0x4fc3ff, symbol:'−' },
@@ -326,40 +313,41 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x05080f);
-scene.fog = new THREE.Fog(0x05080f, 80, 200);
+scene.fog = new THREE.Fog(0x05080f, 100, 260);
 
-const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 800);
-camera.position.set(10, 16, 21);
+const camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 900);
+/* 相機拉遠，對應擴大的磁場區域 */
+camera.position.set(20, 30, 40);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 1.2, 0);
 controls.enableDamping = true;
 controls.dampingFactor = 0.075;
 controls.maxPolarAngle = Math.PI * 0.495;
-controls.minDistance = 8;
-controls.maxDistance = 130;
+controls.minDistance = 10;
+controls.maxDistance = 200;
 controls.update();
 
 /* 燈光 */
 scene.add(new THREE.HemisphereLight(0x6f92cc, 0x0a1020, 1.7));
 const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
-keyLight.position.set(12, 26, 14);
+keyLight.position.set(14, 30, 16);
 scene.add(keyLight);
 const fillLight = new THREE.DirectionalLight(0x4488ff, 0.9);
-fillLight.position.set(-16, 9, -12);
+fillLight.position.set(-18, 10, -14);
 scene.add(fillLight);
 
 /* ═══════════════════════════════════════════════
    地面 + 磁場區域
    ═══════════════════════════════════════════════ */
-const grid = new THREE.GridHelper(160, 80, 0x1b3352, 0x101d2e);
+const grid = new THREE.GridHelper(220, 110, 0x1b3352, 0x101d2e);
 grid.position.y = 0;
 grid.material.transparent = true;
 grid.material.opacity = 0.85;
 scene.add(grid);
 
 const disc = new THREE.Mesh(
-  new THREE.CircleGeometry(FIELD_R, 96),
+  new THREE.CircleGeometry(FIELD_R, 128),
   new THREE.MeshBasicMaterial({ color:0x2a6fd0, transparent:true, opacity:0.06, depthWrite:false })
 );
 disc.rotation.x = -Math.PI / 2;
@@ -367,7 +355,7 @@ disc.position.y = 0.02;
 scene.add(disc);
 
 const ring = new THREE.Mesh(
-  new THREE.RingGeometry(FIELD_R - 0.06, FIELD_R + 0.06, 128),
+  new THREE.RingGeometry(FIELD_R - 0.08, FIELD_R + 0.08, 160),
   new THREE.MeshBasicMaterial({ color:0x3f8de0, transparent:true, opacity:0.5, side:THREE.DoubleSide, depthWrite:false })
 );
 ring.rotation.x = -Math.PI / 2;
@@ -380,12 +368,12 @@ scene.add(fieldGroup);
 
 const lineVerts = [];
 const arrowSpots = [];
-const GAP = 2.1;
-const LIM = 8.4;
+const GAP = 2.5;   // ★ 線間距配合擴大後的範圍
+const LIM = 17.5;
 
 for (let x = -LIM; x <= LIM + 1e-6; x += GAP) {
   for (let z = -LIM; z <= LIM + 1e-6; z += GAP) {
-    if (Math.hypot(x, z) > FIELD_R - 0.6) continue;
+    if (Math.hypot(x, z) > FIELD_R - 0.8) continue;
     lineVerts.push(x, 0, z, x, FIELD_H, z);
     arrowSpots.push([x, z]);
   }
@@ -397,8 +385,8 @@ const fieldLines = new THREE.LineSegments(
 );
 fieldGroup.add(fieldLines);
 
-const coneGeo = new THREE.ConeGeometry(0.115, 0.42, 8);
-coneGeo.translate(0, 0.21, 0);   // 錐底在 0，錐尖在 +0.42
+const coneGeo = new THREE.ConeGeometry(0.14, 0.5, 8);
+coneGeo.translate(0, 0.25, 0);
 const arrowMesh = new THREE.InstancedMesh(
   coneGeo,
   new THREE.MeshBasicMaterial({ color:0x6fb4ff, transparent:true, opacity:0.9 }),
@@ -408,16 +396,13 @@ fieldGroup.add(arrowMesh);
 
 const _dummy = new THREE.Object3D();
 
-/* 依磁場方向重建箭頭的位置與旋轉
-   fieldDir = +1 → 箭頭在頂端、尖端朝上
-   fieldDir = -1 → 箭頭在底端、尖端朝下（朝地面） */
 function updateFieldArrows() {
   arrowSpots.forEach(([x, z], i) => {
     if (fieldDir > 0) {
-      _dummy.position.set(x, FIELD_H - 0.42, z);
+      _dummy.position.set(x, FIELD_H - 0.5, z);
       _dummy.rotation.set(0, 0, 0);
     } else {
-      _dummy.position.set(x, 0.42, z);
+      _dummy.position.set(x, 0.5, z);
       _dummy.rotation.set(Math.PI, 0, 0);
     }
     _dummy.updateMatrix();
@@ -477,7 +462,7 @@ const assetCache = {};
 function assetsFor(key) {
   if (assetCache[key]) return assetCache[key];
   const T = TYPES[key];
-  const geo = new THREE.SphereGeometry(0.3, 20, 14);
+  const geo = new THREE.SphereGeometry(0.5, 22, 16);
   const mat = new THREE.MeshStandardMaterial({
     color: T.color, emissive: T.color, emissiveIntensity: 1.3,
     roughness: 0.35, metalness: 0.1
@@ -503,14 +488,34 @@ function makeParticleMesh(key) {
   const g = new THREE.Group();
   g.add(new THREE.Mesh(A.geo, A.mat));
   const glow = new THREE.Sprite(A.glowMat);
-  glow.scale.set(1.8, 1.8, 1);
+  glow.scale.set(2.6, 2.6, 1);
   g.add(glow);
   if (A.symMat) {
     const s = new THREE.Sprite(A.symMat);
-    s.scale.set(0.44, 0.44, 1);
+    s.scale.set(0.7, 0.7, 1);
     s.renderOrder = 999;
     g.add(s);
   }
+  return g;
+}
+
+/* ═══════════════════════════════════════════════
+   ★ 洛倫茲力箭頭（紅色）
+   ═══════════════════════════════════════════════ */
+const forceArrowMat = new THREE.MeshBasicMaterial({
+  color: 0xff2222, transparent: true, opacity: 0.92, depthWrite: false
+});
+const forceShaftGeo = new THREE.CylinderGeometry(0.07, 0.07, 1.6, 8);
+forceShaftGeo.translate(0, 0.8, 0);
+const forceHeadGeo = new THREE.ConeGeometry(0.22, 0.45, 10);
+forceHeadGeo.translate(0, 2.02, 0);
+
+function makeForceArrow() {
+  const g = new THREE.Group();
+  g.add(new THREE.Mesh(forceShaftGeo, forceArrowMat));
+  g.add(new THREE.Mesh(forceHeadGeo, forceArrowMat));
+  g.visible = false;
+  scene.add(g);
   return g;
 }
 
@@ -519,7 +524,7 @@ function makeParticleMesh(key) {
    ═══════════════════════════════════════════════ */
 const particles = [];
 let currentType = 'electron';
-let currentSpeed = 4.0;
+let currentSpeed = 20.0;
 
 function spawnParticle(key, startPos, speed) {
   if (particles.length >= 10) removeParticle(0);
@@ -546,12 +551,16 @@ function spawnParticle(key, startPos, speed) {
 
   arr[0] = startPos.x; arr[1] = startPos.y; arr[2] = startPos.z;
 
+  const forceArrow = makeForceArrow();
+
   particles.push({
     T,
     omega: T.omega,
+    charge: T.charge,
     pos: startPos.clone(),
     vel: dir.multiplyScalar(speed),
     group, trail, arr,
+    forceArrow,
     count: 1,
     age: 0
   });
@@ -562,10 +571,13 @@ function removeParticle(index) {
   if (!p) return;
   scene.remove(p.group);
   scene.remove(p.trail);
+  scene.remove(p.forceArrow);
   p.trail.geometry.dispose();
   p.trail.material.dispose();
   particles.splice(index, 1);
 }
+
+const _forceDir = new THREE.Vector3();
 
 function updateParticles(dt) {
   for (let i = particles.length - 1; i >= 0; i--) {
@@ -573,8 +585,6 @@ function updateParticles(dt) {
     p.age += dt;
 
     const inField = Math.hypot(p.pos.x, p.pos.z) < FIELD_R;
-
-    /* ★ 有效角頻率 = 粒子本身 ω × 磁場方向（磁場翻轉時運動反向） */
     const omega = p.omega * fieldDir;
 
     if (inField && Math.abs(omega) > 1e-6) {
@@ -596,6 +606,28 @@ function updateParticles(dt) {
     }
 
     p.group.position.copy(p.pos);
+
+    /* ── 洛倫茲力箭頭 ──
+       F = q·v × B
+       其中 v = (vx, 0, vz)、B = (0, fieldDir, 0)
+       得 F = q·(−vz·fieldDir, 0, vx·fieldDir)  */
+    const showForce = inField && p.charge !== 0;
+    if (showForce) {
+      const B  = fieldDir;
+      const Fx = -p.charge * p.vel.z * B;
+      const Fz =  p.charge * p.vel.x * B;
+      const flen = Math.hypot(Fx, Fz);
+      if (flen > 1e-6) {
+        _forceDir.set(Fx / flen, 0, Fz / flen);
+        p.forceArrow.quaternion.setFromUnitVectors(UP_VEC, _forceDir);
+        p.forceArrow.position.copy(p.pos);
+        p.forceArrow.visible = true;
+      } else {
+        p.forceArrow.visible = false;
+      }
+    } else {
+      p.forceArrow.visible = false;
+    }
 
     const a = p.arr;
     if (p.count < MAX_TRAIL) {
@@ -624,7 +656,7 @@ function updateParticles(dt) {
    ═══════════════════════════════════════════════ */
 const ripples = [];
 function spawnRipple(pos) {
-  const geo = new THREE.RingGeometry(0.30, 0.40, 44);
+  const geo = new THREE.RingGeometry(0.4, 0.55, 44);
   const mat = new THREE.MeshBasicMaterial({
     color: 0x8fd0ff, transparent: true, opacity: 0.9,
     side: THREE.DoubleSide, depthWrite: false
@@ -656,7 +688,7 @@ function updateRipples(dt) {
 }
 
 /* ═══════════════════════════════════════════════
-   互動：點擊 / 輕觸 → 在該處生成粒子，射向中心
+   互動
    ═══════════════════════════════════════════════ */
 const raycaster = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
@@ -696,7 +728,6 @@ el.addEventListener('pointerup', (e) => {
     if (h > MAX_SPAWN_R) {
       const k = MAX_SPAWN_R / h;
       pt.x *= k; pt.z *= k;
-      h = MAX_SPAWN_R;
     }
 
     spawnParticle(currentType, pt, currentSpeed);
@@ -706,7 +737,6 @@ el.addEventListener('pointerup', (e) => {
 
 el.addEventListener('pointercancel', () => { downPos = null; });
 
-/* 粒子類型按鈕 */
 document.querySelectorAll('button.pbtn[data-t]').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('button.pbtn[data-t]').forEach(b => b.classList.remove('sel'));
@@ -715,7 +745,6 @@ document.querySelectorAll('button.pbtn[data-t]').forEach(btn => {
   });
 });
 
-/* ★ 磁場方向切換按鈕 */
 const fieldBtn = document.getElementById('fieldBtn');
 const subLine = document.getElementById('subLine');
 
@@ -738,7 +767,7 @@ fieldBtn.addEventListener('click', () => {
   applyFieldDirection();
 });
 
-/* 射出速率滑桿（最大 25） */
+/* 速度滑桿（1 ~ 50，初始 20） */
 const speedSlider = document.getElementById('speedSlider');
 const speedVal = document.getElementById('speedVal');
 currentSpeed = parseFloat(speedSlider.value);
@@ -765,9 +794,6 @@ function animate(now) {
 }
 requestAnimationFrame(animate);
 
-/* ═══════════════════════════════════════════════
-   視窗尺寸
-   ═══════════════════════════════════════════════ */
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();

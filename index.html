@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#b9eee8">
-<meta name="description" content="科學群島：8 座知識島嶼、30 個互動科學演示。以可愛明亮的 3D 群島地圖收納波動、光學、運動學、電路、天文、生物、力學與化學演示。">
-<title>科學群島｜8 座 3D 島嶼 · 30 個互動演示</title>
+<meta name="description" content="昱成自然-科學群島：8 座知識島嶼、32 個互動科學演示。以可愛明亮的 3D 群島地圖收納波動、光學、運動學、電路、地球科學、生物、力學與化學演示。">
+<title>昱成自然-科學群島｜8 座 3D 島嶼 · 32 個互動演示</title>
 <style>
 /* ================================================================
    科學群島 — visual system
@@ -158,13 +158,37 @@ button {
 }
 
 .brand h1 {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
   margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: 30px;
+  font-size: 29px;
   font-weight: 900;
-  line-height: 1.06;
-  letter-spacing: 0.075em;
+  line-height: 1.04;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.brand-parent {
+  color: var(--ink-2);
+  font-size: 0.63em;
+  font-weight: 850;
+  letter-spacing: 0.03em;
+}
+
+.brand-hyphen {
+  color: var(--coral);
+  font-size: 0.7em;
+  font-weight: 900;
+  letter-spacing: 0;
+  transform: translateY(-1px);
+}
+
+.brand-main {
+  font-weight: 900;
+  letter-spacing: 0.07em;
 }
 
 .brand-sub {
@@ -828,9 +852,10 @@ body.is-focused .tipbar {
   margin: 0;
   color: #0b464b;
   font-family: var(--font-display);
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 900;
-  letter-spacing: 0.11em;
+  line-height: 1.2;
+  letter-spacing: 0.055em;
 }
 
 .loader-sub {
@@ -915,7 +940,7 @@ body.is-focused .tipbar {
 
   .brand h1 {
     font-size: 23px;
-    letter-spacing: 0.055em;
+    letter-spacing: 0;
   }
 
   .brand-sub {
@@ -1081,7 +1106,7 @@ body.is-focused .tipbar {
     pointer-events: none;
   }
 
-  .loader-title { font-size: 26px; }
+  .loader-title { font-size: 22px; letter-spacing: 0.035em; }
   .loader-mark { width: 64px; height: 64px; border-radius: 22px; }
   .loader-mark svg { width: 44px; height: 44px; }
 }
@@ -1127,7 +1152,7 @@ body.is-focused .tipbar {
 </head>
 <body>
 <div id="app">
-  <canvas id="scene" aria-label="3D 科學群島互動地圖" role="img"></canvas>
+  <canvas id="scene" aria-label="昱成自然-科學群島 3D 互動地圖" role="img"></canvas>
   <div class="vignette" aria-hidden="true"></div>
 
   <header class="masthead">
@@ -1136,9 +1161,9 @@ body.is-focused .tipbar {
         <svg viewBox="0 0 40 40"><use href="#brand-island"></use></svg>
       </div>
       <div class="brand-text">
-        <p class="eyebrow">SCIENCE ARCHIPELAGO</p>
-        <h1>科學群島</h1>
-        <p class="brand-sub"><b>8</b> 座島嶼 <span class="sep"></span> <b>30</b> 個互動演示</p>
+        <p class="eyebrow">YUCHENG NATURE</p>
+        <h1 aria-label="昱成自然-科學群島"><span class="brand-parent">昱成自然</span><span class="brand-hyphen">-</span><span class="brand-main">科學群島</span></h1>
+        <p class="brand-sub"><b>8</b> 座島嶼 <span class="sep"></span> <b>32</b> 個互動演示</p>
       </div>
     </div>
 
@@ -1203,7 +1228,7 @@ body.is-focused .tipbar {
       <div class="loader-mark" aria-hidden="true">
         <svg viewBox="0 0 40 40"><use href="#brand-island"></use></svg>
       </div>
-      <p class="loader-title">科學群島</p>
+      <p class="loader-title">昱成自然-科學群島</p>
       <p class="loader-sub">正在浮出群島</p>
       <div class="loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
       <div class="webgl-error" id="webglError" hidden>這個瀏覽器暫時無法啟動 3D 場景。請開啟硬體加速，或改用最新版 Chrome／Edge 再試一次。</div>
@@ -1212,7 +1237,7 @@ body.is-focused .tipbar {
 
   <noscript>
     <div style="position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:#fffdf5;color:#0c3c40;font:700 16px/1.7 'Microsoft JhengHei',sans-serif;text-align:center;padding:32px;">
-      科學群島需要 JavaScript 才能轉動。<br>請開啟 JavaScript 後重新整理頁面。
+      昱成自然-科學群島需要 JavaScript 才能轉動。<br>請開啟 JavaScript 後重新整理頁面。
     </div>
   </noscript>
 </div>
@@ -1287,6 +1312,15 @@ body.is-focused .tipbar {
       <path d="m25.7 6.2.5 1.6 1.6.5-1.6.5-.5 1.6-.5-1.6-1.6-.5 1.6-.5.5-1.6Z" fill="currentColor" opacity=".75"/>
     </symbol>
 
+    <symbol id="i-earth" viewBox="0 0 32 32">
+      <circle cx="16" cy="16" r="9.1" fill="none" stroke="currentColor" stroke-width="2"/>
+      <ellipse cx="16" cy="16" rx="4.2" ry="9.1" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".38"/>
+      <path d="M6.9 16h18.2M8.8 11.2h14.4M8.8 20.8h14.4" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" opacity=".34"/>
+      <path d="M9.8 12.2c2.2-1.7 5-1.1 6.5.5 1.2 1.3 3.5 1.4 5.1.1l.9 2.2c-2.4 1.7-5.4 1.3-7.2-.4-1.4-1.3-3.2-1.1-4.6-.1l-.7-2.3Z" fill="currentColor" opacity=".78"/>
+      <path d="M18.2 21.6c-.3-2 .7-3.8 2.3-4.9 1.2-.9 2-2.5 2.2-4.1l2.2.5c-.3 2.2-1.3 4.2-2.9 5.5-.9.7-1.3 1.8-1 2.9l-2.8.1Z" fill="currentColor" opacity=".58"/>
+      <path d="M9.2 21.2c1.2-1.3 3-1.7 4.6-1l-.4 2.1c-1-.4-2.1-.2-2.9.7l-1.3-1.8Z" fill="currentColor" opacity=".5"/>
+    </symbol>
+
     <symbol id="i-biology" viewBox="0 0 32 32">
       <circle cx="15.5" cy="16" r="8.7" fill="none" stroke="currentColor" stroke-width="2"/>
       <circle cx="15.5" cy="16" r="3.4" fill="none" stroke="currentColor" stroke-width="1.8" opacity=".75"/>
@@ -1327,7 +1361,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   'use strict';
 
   /* ================================================================
-     Data — 8 islands, 31 demonstrations
+     Data — 8 islands, 32 demonstrations
      ================================================================ */
   const CATEGORIES = [
     {
@@ -1367,7 +1401,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
         { title: '運動學演示：加速度運動', url: 'https://hsuyupin.github.io/science/Kinematics_acceleration.html' },
         { title: '拋體運動演示', url: 'https://hsuyupin.github.io/science/Kinematics_free_fall.html' },
         { title: '萬有引力演示_行星繞日', url: 'https://hsuyupin.github.io/science/Gravity_earth.html' },
-        { title: '萬有引力演示_雙體運動', url: 'https://hsuyupin.github.io/science/Gravity_2_bodies_motion.html' },
+        { title: '萬有引力演示_雙體運動', url: 'https://hsuyupin.github.io/science/Gravity_2_bodies_motion.html' }
       ]
     },
     {
@@ -1386,22 +1420,24 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       ]
     },
     {
-      id: 'astronomy', icon: 'i-astronomy', name: '天文學', en: 'ASTRONOMY', num: '05',
-      tagline: '把視線拉遠一點：月球繞著地球，地球繞著太陽，宇宙有自己的節拍。',
+      id: 'earth', icon: 'i-earth', name: '地球科學', en: 'EARTH SCIENCE', num: '05',
+      tagline: '從地球繞日、月球繞地，到板塊的緩慢移動，讀懂這顆星球的節奏。',
       accent: '#7b78e6', deep: '#4540a8', soft: '#ecebff',
       x: 13.8, z: 4.9, mx: -3.75, mz: 1.8, radius: 3.02, seed: 53,
       items: [
         { title: '繞日運動3D', url: 'https://hsuyupin.github.io/science/Earth_revolution_3D.html' },
-        { title: '月球繞地運動演示3D', url: 'https://hsuyupin.github.io/science/Moon_revolution_3D.html' }
+        { title: '月球繞地運動演示3D', url: 'https://hsuyupin.github.io/science/Moon_revolution_3D.html' },
+        { title: '板塊運動', url: 'https://hsuyupin.github.io/science/Plate_tectonics.html' }
       ]
     },
     {
       id: 'biology', icon: 'i-biology', name: '生物學', en: 'BIOLOGY', num: '06',
-      tagline: '從一顆細胞開始，生命用分裂與生長，把小小的奇蹟變成一座花園。',
+      tagline: '從細胞分裂到血液循環，看見生命如何複製自己、運送養分與長大。',
       accent: '#59bd78', deep: '#287744', soft: '#e5f9e9',
       x: 5.9, z: 13.0, mx: 3.65, mz: 4.6, radius: 2.9, seed: 61,
       items: [
-        { title: '細胞分裂&減數分裂', url: 'https://hsuyupin.github.io/science/Biology_cell_division.html' }
+        { title: '細胞分裂&減數分裂', url: 'https://hsuyupin.github.io/science/Biology_cell_division.html' },
+        { title: '血液循環', url: 'https://hsuyupin.github.io/science/Blood_circulation.html' }
       ]
     },
     {
@@ -2172,7 +2208,64 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     group.add(finial);
   }
 
-  function addAstronomyMonument(group, anim, phase) {
+  function makeEarthTexture() {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#3d9fe0';
+    ctx.fillRect(0, 0, c.width, c.height);
+
+    const land = [
+      [42, 42, 26, 15], [72, 66, 18, 12], [108, 32, 23, 14], [142, 58, 30, 19],
+      [196, 80, 20, 11], [54, 92, 20, 12], [132, 101, 25, 12], [218, 44, 15, 10]
+    ];
+    land.forEach(([x, y, rx, ry], i) => {
+      ctx.beginPath();
+      ctx.ellipse(x, y, rx, ry, i * 0.3, 0, Math.PI * 2);
+      ctx.fillStyle = i % 2 ? '#6ac47b' : '#58b96d';
+      ctx.fill();
+    });
+    ctx.strokeStyle = 'rgba(31, 121, 88, 0.55)';
+    ctx.lineWidth = 1;
+    land.forEach(([x, y, rx]) => {
+      ctx.beginPath();
+      ctx.moveTo(x - rx * 0.55, y + 2);
+      ctx.quadraticCurveTo(x, y - 5, x + rx * 0.55, y + 1);
+      ctx.stroke();
+    });
+
+    ctx.strokeStyle = 'rgba(255, 159, 77, 0.9)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(12, 78);
+    ctx.lineTo(52, 70);
+    ctx.lineTo(86, 78);
+    ctx.lineTo(112, 68);
+    ctx.lineTo(144, 82);
+    ctx.lineTo(178, 74);
+    ctx.lineTo(220, 86);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255, 190, 105, 0.55)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(30, 24);
+    ctx.lineTo(60, 48);
+    ctx.lineTo(84, 40);
+    ctx.lineTo(116, 62);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(245, 252, 255, 0.86)';
+    ctx.fillRect(0, 0, c.width, 4);
+    ctx.fillRect(0, c.height - 4, c.width, 4);
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    return tex;
+  }
+
+  function addEarthScienceMonument(group, anim, phase) {
     const tripod = new THREE.Group();
     const legGeo = new THREE.CylinderGeometry(0.035, 0.045, 2.0, 5);
     for (let i = 0; i < 3; i += 1) {
@@ -2210,18 +2303,26 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     const planetGroup = new THREE.Group();
     planetGroup.position.set(1.15, 4.0, -0.18);
     const planet = new THREE.Mesh(
-      new THREE.SphereGeometry(0.38, 16, 12),
-      new THREE.MeshStandardMaterial({ color: 0xa99cff, roughness: 0.6, emissive: 0x2d247e, emissiveIntensity: 0.2 })
+      new THREE.SphereGeometry(0.38, 20, 14),
+      new THREE.MeshStandardMaterial({
+        map: makeEarthTexture(),
+        roughness: 0.66,
+        metalness: 0,
+        emissive: 0x0b2f55,
+        emissiveIntensity: 0.12
+      })
     );
     planet.castShadow = true;
     planetGroup.add(planet);
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(0.62, 0.038, 5, 30),
-      new THREE.MeshStandardMaterial({ color: 0xffe0a0, roughness: 0.55, flatShading: true })
+
+    const orbitRing = new THREE.Mesh(
+      new THREE.TorusGeometry(0.63, 0.012, 4, 36),
+      new THREE.MeshBasicMaterial({ color: 0xffe0a0, transparent: true, opacity: 0.42, depthWrite: false })
     );
-    ring.rotation.x = 1.16;
-    ring.rotation.z = 0.18;
-    planetGroup.add(ring);
+    orbitRing.rotation.x = 1.16;
+    orbitRing.rotation.z = 0.18;
+    planetGroup.add(orbitRing);
+
     const moon = new THREE.Mesh(new THREE.SphereGeometry(0.085, 8, 6), M.white);
     moon.position.set(-0.78, 0.38, 0.12);
     planetGroup.add(moon);
@@ -2454,7 +2555,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       case 'optics': addOpticsMonument(group); break;
       case 'kinematics': addKinematicsMonument(group, anim, index * 1.4); break;
       case 'circuits': addCircuitMonument(group, anim, index * 1.1); break;
-      case 'astronomy': addAstronomyMonument(group, anim, index * 1.3); break;
+      case 'earth': addEarthScienceMonument(group, anim, index * 1.3); break;
       case 'biology': addBiologyMonument(group, anim, index * 1.2); break;
       case 'mechanics': addMechanicsMonument(group, anim, index * 0.9); break;
       case 'chemistry': addChemistryMonument(group, anim, index * 1.2); break;

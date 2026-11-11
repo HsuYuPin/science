@@ -1,0 +1,1058 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>磁力線觀察台 ｜ 棒狀磁鐵與 U 型磁鐵</title>
+<style>
+  :root{
+    --bg:#e8eef9;
+    --panel:#ffffff;
+    --ink:#16233a;
+    --muted:#5b6c86;
+    --line:#d4dff0;
+    --line-strong:#c2d2e9;
+    --accent:#2f6bff;
+    --north:#f0503c;
+    --south:#2f6bff;
+    --shadow:rgba(23,44,88,.07);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:var(--bg);
+    background-image:
+      radial-gradient(1200px 620px at 8% -12%, #f9fcff 0, rgba(249,252,255,0) 62%),
+      radial-gradient(900px 520px at 104% -6%, #eef3ff 0, rgba(238,243,255,0) 58%);
+    color:var(--ink);
+    font-family:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  .app{
+    height:100vh;
+    height:100dvh;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    padding:16px 18px 18px;
+    max-width:1800px;
+    margin:0 auto;
+  }
+  .top{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px;min-width:0}
+  .badge{
+    width:42px;height:42px;border-radius:13px;flex:none;
+    background:#fff;border:1.5px solid var(--line-strong);
+    box-shadow:0 3px 0 var(--shadow);
+    display:grid;place-items:center;color:#93a6c3;
+  }
+  .brand h1{margin:0;font-size:19px;font-weight:750;letter-spacing:.01em;line-height:1.2}
+  .brand p{margin:3px 0 0;font-size:13px;color:var(--muted);line-height:1.35}
+  .controls{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .seg{
+    display:flex;padding:4px;gap:4px;background:#fff;
+    border:1.5px solid var(--line-strong);border-radius:13px;
+    box-shadow:0 3px 0 var(--shadow);
+  }
+  .seg button{
+    border:0;background:transparent;color:var(--muted);
+    font:inherit;font-size:14.5px;font-weight:650;letter-spacing:.01em;
+    padding:8px 15px;border-radius:9px;cursor:pointer;white-space:nowrap;
+    transition:background .16s ease,color .16s ease;
+  }
+  .seg button:hover{background:#f2f6fd;color:var(--ink)}
+  .seg button[aria-pressed="true"],
+  .seg button[aria-pressed="true"]:hover{background:var(--ink);color:#fff}
+  .ghost{
+    font:inherit;font-size:14.5px;font-weight:650;
+    padding:9px 14px;border-radius:13px;border:1.5px solid var(--line-strong);
+    background:#fff;color:var(--ink);cursor:pointer;
+    box-shadow:0 3px 0 var(--shadow);
+    display:inline-flex;align-items:center;gap:8px;
+    transition:transform .12s ease,background .16s ease,border-color .16s ease,color .16s ease;
+  }
+  .ghost:hover{background:#f7faff}
+  .ghost:active{transform:translateY(2px);box-shadow:0 1px 0 var(--shadow)}
+  .ghost[aria-pressed="true"]{border-color:#bfd3f8;background:#eef4ff;color:#1f4fd8}
+  .ghost .doton{width:8px;height:8px;border-radius:50%;background:#b9c8de;transition:background .16s ease}
+  .ghost[aria-pressed="true"] .doton{background:#2f6bff}
+  :focus-visible{outline:3px solid rgba(47,107,255,.38);outline-offset:2px}
+  canvas:focus-visible{outline:3px solid rgba(47,107,255,.42);outline-offset:-5px;border-radius:18px}
+  .stage{flex:1;min-height:0;display:flex}
+  .board{
+    position:relative;flex:1;min-height:0;
+    border-radius:20px;border:1.5px solid var(--line-strong);
+    background:#fff;overflow:hidden;
+    box-shadow:0 9px 0 -2px #d7e2f4, 0 1px 0 #fff inset;
+  }
+  canvas{display:block;width:100%;height:100%;touch-action:none;cursor:default;outline:none}
+  canvas:active{cursor:grabbing}
+  .sr-only{
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;
+  }
+  .tip{
+    position:absolute;left:50%;bottom:16px;transform:translateX(-50%);
+    padding:8px 15px;border-radius:999px;background:rgba(22,35,58,.90);
+    color:#fff;font-size:13px;font-weight:600;letter-spacing:.01em;
+    white-space:nowrap;pointer-events:none;
+    box-shadow:0 3px 0 rgba(22,35,58,.10);
+    transition:opacity .3s ease,transform .3s ease;
+  }
+  .tip.gone{opacity:0;transform:translateX(-50%) translateY(6px)}
+  .note{
+    position:absolute;left:16px;bottom:16px;
+    display:flex;align-items:center;gap:7px;
+    padding:5px 12px 5px 6px;border-radius:999px;
+    background:#fff;border:1.5px solid var(--line);
+    color:#46587a;font-size:12.5px;font-weight:600;
+    pointer-events:none;box-shadow:0 2px 0 var(--shadow);
+    transition:opacity .18s ease;
+  }
+  .note.dim{opacity:0}
+  noscript{display:block;padding:24px;font-size:15px;color:#46587a}
+  @media (max-width:900px){
+    .app{padding:12px 12px 14px;gap:10px}
+    .brand h1{font-size:17px}
+    .brand p{font-size:12.5px}
+    .badge{width:36px;height:36px;border-radius:11px}
+    .badge svg{width:21px;height:21px}
+  }
+  @media (max-width:760px){
+    .seg button{padding:7px 11px;font-size:13.5px}
+    .ghost{padding:8px 11px;font-size:13.5px}
+    .board{border-radius:16px}
+    .note{display:none}
+    .tip{top:12px;bottom:auto;font-size:12.5px;padding:7px 13px}
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none!important;animation:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <span class="badge" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" fill="#fff" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M12 4.4 15.2 12H8.8z" fill="#f0503c"/>
+          <path d="M12 19.6 8.8 12h6.4z" fill="#2f6bff"/>
+          <circle cx="12" cy="12" r="1.3" fill="#16233a"/>
+        </svg>
+      </span>
+      <div>
+        <h1>磁力線觀察台</h1>
+        <p>拖曳磁鐵，看下方小磁針怎麼轉</p>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="磁鐵型式">
+        <button type="button" data-type="bar" aria-pressed="true">棒狀磁鐵</button>
+        <button type="button" data-type="u" aria-pressed="false">U 型磁鐵</button>
+      </div>
+      <button type="button" class="ghost" id="btnLines" aria-pressed="true" title="顯示或隱藏磁力線">
+        <span class="doton" aria-hidden="true"></span>磁力線
+      </button>
+      <button type="button" class="ghost" id="btnReset" title="磁鐵回到中央並轉正">重設</button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <section class="board" id="board">
+      <canvas id="cv" tabindex="0" aria-describedby="cvHelp"
+        aria-label="可拖曳的磁鐵，下方是排列成網格的小磁針"></canvas>
+      <p class="sr-only" id="cvHelp">拖曳磁鐵可移動位置，拖曳磁鐵上的旋轉環可轉向。鍵盤：方向鍵移動磁鐵，左中括號與右中括號旋轉，R 重設。磁針的紅色端指向該處磁場方向。</p>
+      <div class="tip" id="hint">拖曳磁鐵移動　·　拖曳旋轉環轉向</div>
+      <div class="note">
+        <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+          <circle cx="9" cy="9" r="8" fill="#fff" stroke="#d3dfee" stroke-width="1"/>
+          <path d="M9 2.6 12 9H6z" fill="#f0503c"/>
+          <path d="M9 15.4 6 9h6z" fill="#2f6bff"/>
+          <circle cx="9" cy="9" r="1.3" fill="#16233a"/>
+        </svg>
+        紅端 = 磁場方向
+      </div>
+      <noscript>這個頁面需要 JavaScript 才能顯示磁力線與小磁針。</noscript>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ==PHYSICS_START== */
+(function (root) {
+  'use strict';
+
+  /* 兩極以磁荷（點電荷型式）近似：外部的磁場方向與真正的磁力線一致。 */
+  var NOM = {
+    bar: { length: 300, width: 68, facePad: 6, n: 7 },
+    u: { span: 72, thick: 46, top: -105, bend: 10, n: 5 }
+  };
+  var SOFT2 = 6; /* 極點的軟化量，避免磁針剛好落在極點時出現無限大 */
+
+  function localPoles(type) {
+    var out = [], i, t, g, spread;
+    if (type === 'u') {
+      g = NOM.u;
+      spread = g.thick / 2 - 4;
+      for (i = 0; i < g.n; i += 1) {
+        t = g.n === 1 ? 0 : (i / (g.n - 1)) * 2 - 1;
+        out.push({ x: -g.span + t * spread, y: g.top - 2, q: 1 / g.n });
+        out.push({ x: g.span + t * spread, y: g.top - 2, q: -1 / g.n });
+      }
+    } else {
+      g = NOM.bar;
+      spread = g.width / 2 - g.facePad;
+      for (i = 0; i < g.n; i += 1) {
+        t = g.n === 1 ? 0 : (i / (g.n - 1)) * 2 - 1;
+        out.push({ x: g.length / 2 - 3, y: t * spread, q: 1 / g.n });
+        out.push({ x: -g.length / 2 + 3, y: t * spread, q: -1 / g.n });
+      }
+    }
+    return out;
+  }
+
+  function rotate(x, y, angle) {
+    var c = Math.cos(angle), s = Math.sin(angle);
+    return { x: x * c - y * s, y: x * s + y * c };
+  }
+
+  function magnet(type, cx, cy, angle, scale) {
+    var raw = localPoles(type), poles = [], i, p, r;
+    for (i = 0; i < raw.length; i += 1) {
+      p = raw[i];
+      r = rotate(p.x * scale, p.y * scale, angle);
+      poles.push({ x: cx + r.x, y: cy + r.y, q: p.q });
+    }
+    return { type: type, cx: cx, cy: cy, angle: angle, scale: scale, poles: poles };
+  }
+
+  function field(m, x, y) {
+    var bx = 0, by = 0, poles = m.poles, i, p, dx, dy, r2, inv;
+    for (i = 0; i < poles.length; i += 1) {
+      p = poles[i];
+      dx = x - p.x;
+      dy = y - p.y;
+      r2 = dx * dx + dy * dy + SOFT2;
+      inv = p.q / (r2 * Math.sqrt(r2));
+      bx += dx * inv;
+      by += dy * inv;
+    }
+    return { x: bx, y: by, mag: Math.sqrt(bx * bx + by * by) };
+  }
+
+  function angleAt(m, x, y) {
+    var f = field(m, x, y);
+    return Math.atan2(f.y, f.x);
+  }
+
+  /* 兩極外側各撒半圓種子：N 極順著磁場、S 極逆著磁場追，兩邊才對稱 */
+  function seeds(type, scale, cx, cy, angle, narrow) {
+    var out = [], i, r;
+    function push(lx, ly, d) {
+      r = rotate(lx * scale, ly * scale, angle);
+      out.push({ x: cx + r.x, y: cy + r.y, d: d > 0 ? 1 : -1 });
+    }
+    if (type === 'u') {
+      var g = NOM.u, n = narrow ? 5 : 7;
+      var lo = narrow ? -0.52 : -0.60;
+      var hi = narrow ? 1.18 : 1.30;
+      var rr = 26;
+      for (i = 0; i < n; i += 1) {
+        var phi = lo + ((hi - lo) * i) / (n - 1);
+        push(-g.span + Math.sin(phi) * rr, g.top - Math.cos(phi) * rr, 1);
+      }
+    } else {
+      var b = NOM.bar, r2 = 46;
+      /* 兩極錯開角度撒種，避免同一條線被畫兩次 */
+      var fanN = narrow ? [0, 44, 68, 84] : [0, 25, 42, 56, 69, 79, 86, 89.6];
+      var fanS = narrow ? [20, 46, 64] : [12, 33, 49, 63, 75];
+      var list, k2, th, dx, dy, side;
+      for (side = 0; side < 2; side += 1) {
+        list = side === 0 ? fanN : fanS;
+        for (i = 0; i < list.length; i += 1) {
+          th = (list[i] * Math.PI) / 180;
+          dx = Math.cos(th) * r2;
+          dy = Math.sin(th) * r2;
+          if (side === 0) {
+            push(b.length / 2 + dx, dy, 1);
+            if (dy > 0.5) push(b.length / 2 + dx, -dy, 1);
+          } else {
+            push(-b.length / 2 - dx, dy, -1);
+            if (dy > 0.5) push(-b.length / 2 - dx, -dy, -1);
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  function trace(m, seedList, bounds, step, maxSteps) {
+    step = step || 5;
+    maxSteps = maxSteps || 470;
+    var lines = [], pos = [], negs = [], i, j, k, n;
+    for (i = 0; i < m.poles.length; i += 1) {
+      if (m.poles[i].q < 0) negs.push(m.poles[i]);
+      else pos.push(m.poles[i]);
+    }
+    for (k = 0; k < seedList.length; k += 1) {
+      var dir = seedList[k].d < 0 ? -1 : 1;
+      var stopPoles = dir > 0 ? negs : pos;
+      var x = seedList[k].x, y = seedList[k].y;
+      var pts = [x, y], stop = false;
+      for (j = 0; j < maxSteps; j += 1) {
+        var f1 = field(m, x, y);
+        var m1 = Math.sqrt(f1.x * f1.x + f1.y * f1.y);
+        if (!(m1 > 1e-12)) break;
+        var mx = x + dir * (f1.x / m1) * step * 0.5;
+        var my = y + dir * (f1.y / m1) * step * 0.5;
+        var f2 = field(m, mx, my);
+        var m2 = Math.sqrt(f2.x * f2.x + f2.y * f2.y);
+        if (!(m2 > 1e-12)) break;
+        x += dir * (f2.x / m2) * step;
+        y += dir * (f2.y / m2) * step;
+        pts.push(x, y);
+        if (x < bounds.x0 || x > bounds.x1 || y < bounds.y0 || y > bounds.y1) break;
+        for (n = 0; n < stopPoles.length; n += 1) {
+          var dx = x - stopPoles[n].x, dy = y - stopPoles[n].y;
+          if (dx * dx + dy * dy < 42) { stop = true; break; }
+        }
+        if (stop) break;
+      }
+      if (pts.length > 4) {
+        if (dir < 0) {
+          var rev = [];
+          for (j = pts.length - 2; j >= 0; j -= 2) rev.push(pts[j], pts[j + 1]);
+          pts = rev;
+        }
+        lines.push(pts);
+      }
+    }
+    return lines;
+  }
+
+  root.MagnetPhysics = {
+    NOM: NOM,
+    localPoles: localPoles,
+    magnet: magnet,
+    field: field,
+    angleAt: angleAt,
+    seeds: seeds,
+    trace: trace,
+    rotate: rotate
+  };
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+/* ==PHYSICS_END== */
+</script>
+
+<script>
+(function () {
+  'use strict';
+  var MP = window.MagnetPhysics;
+  if (!MP) return;
+
+  var TAU = Math.PI * 2;
+  var COL = {
+    paper: '#ffffff',
+    dot: '#e2e9f5',
+    dial: '#d3dfee',
+    north: '#f0503c',
+    south: '#2f6bff',
+    field: 'rgba(82,110,175,0.60)',
+    fieldArrow: 'rgba(60,90,155,0.75)'
+  };
+
+  var cv = document.getElementById('cv');
+  var ctx = cv.getContext('2d');
+  var boardEl = document.getElementById('board');
+  var hintEl = document.getElementById('hint');
+  var noteEl = document.querySelector('.note');
+  var noteBox = { x: 0, y: 0, w: 0, h: 0 };
+  var typeBtns = Array.prototype.slice.call(document.querySelectorAll('[data-type]'));
+  var linesBtn = document.getElementById('btnLines');
+  var resetBtn = document.getElementById('btnReset');
+
+  var mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  var reduce = !!(mq && mq.matches);
+  if (mq) {
+    if (mq.addEventListener) mq.addEventListener('change', function () { reduce = mq.matches; });
+    else if (mq.addListener) mq.addListener(function () { reduce = mq.matches; });
+  }
+
+  var S = {
+    type: 'bar',
+    cx: 0, cy: 0, angle: 0, scale: 1,
+    lines: true,
+    W: 0, H: 0, DPR: 1,
+    needles: [],
+    spacing: 62,
+    trace: [],
+    traceDirty: true,
+    drag: null,
+    placed: false,
+    hinted: false
+  };
+
+  var bg = document.createElement('canvas');
+  var dialSprite = null;
+  var needleSprite = null;
+  var spriteR = 0;
+
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+
+  function wrapPi(a) {
+    a = (a + Math.PI) % TAU;
+    if (a < 0) a += TAU;
+    return a - Math.PI;
+  }
+
+  function magnetScale() {
+    var base = Math.sqrt(S.W * S.H);
+    if (S.type === 'bar') {
+      return clamp(base * 0.28, 170, 300) / 300;
+    }
+    return clamp(base * 0.25, 150, 255) / 210;
+  }
+
+  /* ------------------------------------------------------------ paper */
+  function paintPaper() {
+    bg.width = Math.round(S.W * S.DPR);
+    bg.height = Math.round(S.H * S.DPR);
+    var b = bg.getContext('2d');
+    b.setTransform(S.DPR, 0, 0, S.DPR, 0, 0);
+    b.fillStyle = COL.paper;
+    b.fillRect(0, 0, S.W, S.H);
+    b.fillStyle = COL.dot;
+    for (var y = 16; y < S.H; y += 26) {
+      for (var x = 16; x < S.W; x += 26) {
+        b.beginPath();
+        b.arc(x, y, 1.15, 0, TAU);
+        b.fill();
+      }
+    }
+  }
+
+  /* ------------------------------------------------------------ needles */
+  function buildSprites(r) {
+    if (spriteR === r && dialSprite && needleSprite) return;
+    spriteR = r;
+    var ss = 3;
+    var side = Math.ceil(2 * r * ss) + 4;
+    var c, g;
+
+    c = document.createElement('canvas');
+    c.width = side; c.height = side;
+    g = c.getContext('2d');
+    g.translate(side / 2, side / 2);
+    g.beginPath();
+    g.arc(0, 0, r * ss, 0, TAU);
+    g.fillStyle = '#ffffff';
+    g.fill();
+    g.lineWidth = 1.1 * ss;
+    g.strokeStyle = COL.dial;
+    g.stroke();
+    dialSprite = c;
+
+    c = document.createElement('canvas');
+    c.width = side; c.height = side;
+    g = c.getContext('2d');
+    g.translate(side / 2, side / 2);
+    var L = r * 0.92 * ss;
+    var w = r * 0.30 * ss;
+    g.beginPath();
+    g.moveTo(L, 0); g.lineTo(0, -w); g.lineTo(0, w); g.closePath();
+    g.fillStyle = COL.north;
+    g.fill();
+    g.beginPath();
+    g.moveTo(-L, 0); g.lineTo(0, -w); g.lineTo(0, w); g.closePath();
+    g.fillStyle = COL.south;
+    g.fill();
+    g.beginPath();
+    g.arc(0, 0, w * 0.52, 0, TAU);
+    g.fillStyle = '#16233a';
+    g.fill();
+    needleSprite = c;
+  }
+
+  function layoutNeedles() {
+    var s = S.W >= 1180 ? 66 : S.W >= 880 ? 60 : S.W >= 620 ? 54 : 46;
+    S.spacing = s;
+    var pad = Math.max(20, s * 0.42);
+    var cols = Math.max(4, Math.round((S.W - pad * 2) / s) + 1);
+    var rows = Math.max(3, Math.round((S.H - pad * 2) / s) + 1);
+    var gx = cols > 1 ? (S.W - pad * 2) / (cols - 1) : 0;
+    var gy = rows > 1 ? (S.H - pad * 2) / (rows - 1) : 0;
+    var rad = Math.min(gx, gy) * 0.225;
+
+    buildSprites(Math.max(6, Math.round(rad)));
+
+    var m = MP.magnet(S.type, S.cx, S.cy, S.angle, S.scale);
+    S.needles = [];
+    for (var j = 0; j < rows; j += 1) {
+      for (var i = 0; i < cols; i += 1) {
+        var nx = pad + i * gx;
+        var ny = pad + j * gy;
+        S.needles.push({ x: nx, y: ny, a: MP.angleAt(m, nx, ny), v: 0 });
+      }
+    }
+  }
+
+  function updateNeedles(dt) {
+    var m = MP.magnet(S.type, S.cx, S.cy, S.angle, S.scale);
+    var k = 130, c = 19, moving = false;
+    for (var i = 0; i < S.needles.length; i += 1) {
+      var n = S.needles[i];
+      var target = MP.angleAt(m, n.x, n.y);
+      var d = wrapPi(target - n.a);
+      if (reduce) {
+        n.a = target;
+        n.v = 0;
+        if (Math.abs(d) > 0.001) moving = true;
+        continue;
+      }
+      n.v += (d * k - n.v * c) * dt;
+      n.a += n.v * dt;
+      if (Math.abs(d) > 0.0015 || Math.abs(n.v) > 0.012) moving = true;
+    }
+    return moving;
+  }
+
+  function drawNeedles() {
+    var r = spriteR, i, n;
+    for (i = 0; i < S.needles.length; i += 1) {
+      n = S.needles[i];
+      ctx.drawImage(dialSprite, n.x - r, n.y - r, r * 2, r * 2);
+    }
+    for (i = 0; i < S.needles.length; i += 1) {
+      n = S.needles[i];
+      ctx.save();
+      ctx.translate(n.x, n.y);
+      ctx.rotate(n.a);
+      ctx.drawImage(needleSprite, -r, -r, r * 2, r * 2);
+      ctx.restore();
+    }
+  }
+
+  /* ------------------------------------------------------------ field lines */
+  function rebuildTrace() {
+    S.traceDirty = false;
+    if (!S.lines) { S.trace = []; return; }
+    var m = MP.magnet(S.type, S.cx, S.cy, S.angle, S.scale);
+    var sd = MP.seeds(S.type, S.scale, S.cx, S.cy, S.angle, S.W < 720);
+    S.trace = MP.trace(m, sd, { x0: -40, y0: -40, x1: S.W + 40, y1: S.H + 40 }, 5, 470);
+  }
+
+  function arrowHead(x, y, a) {
+    var c = Math.cos(a), s = Math.sin(a);
+    ctx.beginPath();
+    ctx.moveTo(x + c * 5.5, y + s * 5.5);
+    ctx.lineTo(x - c * 3.6 - s * 3.2, y - s * 3.6 + c * 3.2);
+    ctx.lineTo(x - c * 3.6 + s * 3.2, y - s * 3.6 - c * 3.2);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawTrace() {
+    var lines = S.trace, i, j;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = COL.field;
+    ctx.lineWidth = 1.5;
+    for (i = 0; i < lines.length; i += 1) {
+      var p = lines[i];
+      ctx.beginPath();
+      ctx.moveTo(p[0], p[1]);
+      for (j = 2; j < p.length; j += 2) ctx.lineTo(p[j], p[j + 1]);
+      ctx.stroke();
+    }
+    ctx.fillStyle = COL.fieldArrow;
+    for (i = 0; i < lines.length; i += 1) {
+      var q = lines[i], acc = 0, nextAt = 80;
+      for (j = 2; j < q.length; j += 2) {
+        var dx = q[j] - q[j - 2];
+        var dy = q[j + 1] - q[j - 1];
+        acc += Math.sqrt(dx * dx + dy * dy);
+        if (acc >= nextAt) {
+          nextAt += 120;
+          arrowHead(q[j], q[j + 1], Math.atan2(dy, dx));
+        }
+      }
+    }
+  }
+
+  /* ------------------------------------------------------------ magnet */
+  function roundRect(x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  function horseshoePath() {
+    ctx.beginPath();
+    ctx.moveTo(-72, -105);
+    ctx.lineTo(-72, 10);
+    ctx.arc(0, 10, 72, Math.PI, 0, true);
+    ctx.lineTo(72, -105);
+  }
+
+  function poleLabel(txt, x, y) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-S.angle);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '800 34px "Segoe UI",system-ui,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(txt, 0, 1);
+    ctx.restore();
+  }
+
+  function drawBar() {
+    var L = 300, W = 68, R = 14, hx = L / 2, hy = W / 2;
+    ctx.save();
+    ctx.translate(9, 11);
+    roundRect(-hx, -hy, L, W, R);
+    ctx.fillStyle = 'rgba(21,42,80,0.10)';
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    roundRect(-hx, -hy, L, W, R);
+    ctx.clip();
+    ctx.fillStyle = COL.south;
+    ctx.fillRect(-hx - 2, -hy - 2, hx + 2, W + 4);
+    ctx.fillStyle = COL.north;
+    ctx.fillRect(0, -hy - 2, hx + 2, W + 4);
+    ctx.restore();
+
+    roundRect(-hx, -hy, L, W, R);
+    ctx.lineWidth = 2.4;
+    ctx.strokeStyle = 'rgba(18,34,62,0.22)';
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0, -hy + 6);
+    ctx.lineTo(0, hy - 6);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.stroke();
+
+    poleLabel('N', 78, 0);
+    poleLabel('S', -78, 0);
+  }
+
+  function drawHorseshoe() {
+    var W2 = 46;
+    ctx.save();
+    ctx.translate(9, 11);
+    horseshoePath();
+    ctx.lineWidth = W2;
+    ctx.lineCap = 'butt';
+    ctx.strokeStyle = 'rgba(21,42,80,0.10)';
+    ctx.stroke();
+    ctx.restore();
+
+    horseshoePath();
+    ctx.lineWidth = W2 + 3;
+    ctx.strokeStyle = 'rgba(18,34,62,0.20)';
+    ctx.stroke();
+
+    horseshoePath();
+    ctx.lineWidth = W2;
+    ctx.strokeStyle = COL.north;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, -220, 220, 440);
+    ctx.clip();
+    horseshoePath();
+    ctx.lineWidth = W2;
+    ctx.strokeStyle = COL.south;
+    ctx.stroke();
+    ctx.restore();
+
+    poleLabel('N', -72, -72);
+    poleLabel('S', 72, -72);
+  }
+
+  function knobWorld() {
+    var ly = (S.type === 'bar' ? -52 : 118) * S.scale;
+    var c = Math.cos(S.angle), s = Math.sin(S.angle);
+    return { x: S.cx - ly * s, y: S.cy + ly * c, r: 16 };
+  }
+
+  function drawKnob() {
+    var k = knobWorld();
+    var active = S.drag && S.drag.mode === 'rotate';
+    ctx.save();
+    ctx.translate(k.x, k.y);
+
+    ctx.beginPath();
+    ctx.arc(0, 0, 21, 0, TAU);
+    ctx.fillStyle = 'rgba(255,255,255,0.82)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(0, 0, 16, 0, TAU);
+    ctx.fillStyle = active ? '#eef4ff' : '#ffffff';
+    ctx.fill();
+    ctx.lineWidth = 1.6;
+    ctx.strokeStyle = active ? 'rgba(47,107,255,0.95)' : 'rgba(120,146,186,0.95)';
+    ctx.stroke();
+
+    var a0 = -2.1, a1 = 0.9, R = 8.2;
+    ctx.beginPath();
+    ctx.arc(0, 0, R, a0, a1);
+    ctx.lineWidth = 2.3;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#38517a';
+    ctx.stroke();
+
+    var tipx = Math.cos(a1) * R, tipy = Math.sin(a1) * R;
+    var tx = -Math.sin(a1), ty = Math.cos(a1);
+    var bx = tipx - tx * 2.6, by2 = tipy - ty * 2.6;
+    ctx.beginPath();
+    ctx.moveTo(tipx + tx * 4.2, tipy + ty * 4.2);
+    ctx.lineTo(bx - ty * 3.6, by2 + tx * 3.6);
+    ctx.lineTo(bx + ty * 3.6, by2 - tx * 3.6);
+    ctx.closePath();
+    ctx.fillStyle = '#38517a';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawMagnet() {
+    ctx.save();
+    ctx.translate(S.cx, S.cy);
+    ctx.rotate(S.angle);
+    ctx.scale(S.scale, S.scale);
+    if (S.type === 'bar') drawBar(); else drawHorseshoe();
+    ctx.restore();
+    drawKnob();
+  }
+
+  /* ------------------------------------------------------------ geometry */
+  function toLocal(x, y) {
+    var dx = x - S.cx, dy = y - S.cy;
+    var c = Math.cos(S.angle), s = Math.sin(S.angle);
+    return { x: (dx * c + dy * s) / S.scale, y: (-dx * s + dy * c) / S.scale };
+  }
+
+  function hitBody(x, y) {
+    var p = toLocal(x, y);
+    if (S.type === 'bar') {
+      return Math.abs(p.x) <= 156 && Math.abs(p.y) <= 40;
+    }
+    if (p.y < -111 || p.y > 111) return false;
+    var d = p.y <= 10
+      ? Math.abs(Math.abs(p.x) - 72)
+      : Math.abs(Math.sqrt(p.x * p.x + (p.y - 10) * (p.y - 10)) - 72);
+    return d <= 30;
+  }
+
+  function hitKnob(x, y) {
+    var k = knobWorld();
+    var dx = x - k.x, dy = y - k.y;
+    return dx * dx + dy * dy <= (k.r + 7) * (k.r + 7);
+  }
+
+  function bounds() {
+    var s = S.scale;
+    var c = Math.abs(Math.cos(S.angle)), n = Math.abs(Math.sin(S.angle));
+    var hw, hh;
+    if (S.type === 'bar') {
+      hw = ((300 * c + 68 * n) / 2) * s;
+      hh = ((300 * n + 68 * c) / 2) * s;
+    } else {
+      hw = ((190 * c + 210 * n) / 2) * s;
+      hh = ((190 * n + 210 * c) / 2) * s;
+    }
+    var ly = (S.type === 'bar' ? -52 : 118) * s;
+    hw = Math.max(hw, Math.abs(-ly * Math.sin(S.angle)) + 18);
+    hh = Math.max(hh, Math.abs(ly * Math.cos(S.angle)) + 18);
+    return { hw: hw, hh: hh };
+  }
+
+  function clampPose() {
+    var b = bounds(), m = 14;
+    var minx = m + b.hw, maxx = S.W - m - b.hw;
+    var miny = m + b.hh, maxy = S.H - m - b.hh;
+    S.cx = minx > maxx ? S.W / 2 : clamp(S.cx, minx, maxx);
+    S.cy = miny > maxy ? S.H / 2 : clamp(S.cy, miny, maxy);
+  }
+
+  /* ------------------------------------------------------------ frame */
+  function draw() {
+    ctx.setTransform(S.DPR, 0, 0, S.DPR, 0, 0);
+    ctx.clearRect(0, 0, S.W, S.H);
+    ctx.drawImage(bg, 0, 0, S.W, S.H);
+    if (S.traceDirty) rebuildTrace();
+    if (S.lines) drawTrace();
+    drawNeedles();
+    drawMagnet();
+    if (noteBox.w > 0) {
+      var b = bounds();
+      var over = S.cx + b.hw > noteBox.x - 8 && S.cx - b.hw < noteBox.x + noteBox.w + 8 &&
+        S.cy + b.hh > noteBox.y - 8 && S.cy - b.hh < noteBox.y + noteBox.h + 8;
+      noteEl.classList.toggle('dim', over);
+    }
+  }
+
+  var rafId = 0, lastT = 0, running = false;
+
+  function frame(t) {
+    var dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 0.016;
+    lastT = t;
+    var active = updateNeedles(dt) || !!S.drag;
+    draw();
+    if (active) {
+      rafId = requestAnimationFrame(frame);
+    } else {
+      running = false;
+      rafId = 0;
+    }
+  }
+
+  function kick() {
+    if (!running) {
+      running = true;
+      lastT = 0;
+      rafId = requestAnimationFrame(frame);
+    }
+  }
+
+  function poseChanged() {
+    clampPose();
+    S.traceDirty = true;
+    kick();
+  }
+
+  /* ------------------------------------------------------------ input */
+  function pointOf(e) {
+    var r = cv.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  }
+
+  function hideHint() {
+    if (S.hinted) return;
+    S.hinted = true;
+    hintEl.classList.add('gone');
+  }
+
+  cv.addEventListener('pointerdown', function (e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.isPrimary === false) return;
+    var p = pointOf(e);
+    if (hitKnob(p.x, p.y)) {
+      S.drag = {
+        mode: 'rotate',
+        off: Math.atan2(p.y - S.cy, p.x - S.cx) - S.angle
+      };
+    } else if (hitBody(p.x, p.y)) {
+      S.drag = { mode: 'move', ox: p.x - S.cx, oy: p.y - S.cy };
+    } else {
+      return;
+    }
+    cv.setPointerCapture(e.pointerId);
+    cv.focus({ preventScroll: true });
+    hideHint();
+    e.preventDefault();
+    kick();
+  });
+
+  cv.addEventListener('pointermove', function (e) {
+    var p = pointOf(e);
+    if (!S.drag) {
+      var k = knobWorld();
+      var over = Math.hypot(p.x - k.x, p.y - k.y) <= k.r + 7 || hitBody(p.x, p.y);
+      cv.style.cursor = over ? 'grab' : 'default';
+      return;
+    }
+    if (S.drag.mode === 'move') {
+      S.cx = p.x - S.drag.ox;
+      S.cy = p.y - S.drag.oy;
+      poseChanged();
+    } else {
+      var a = Math.atan2(p.y - S.cy, p.x - S.cx) - S.drag.off;
+      if (e.shiftKey) a = Math.round(a / (Math.PI / 12)) * (Math.PI / 12);
+      S.angle = a;
+      poseChanged();
+    }
+  });
+
+  function endDrag(e) {
+    if (!S.drag) return;
+    S.drag = null;
+    if (e && e.pointerId !== undefined && cv.hasPointerCapture && cv.hasPointerCapture(e.pointerId)) {
+      cv.releasePointerCapture(e.pointerId);
+    }
+    kick();
+  }
+  cv.addEventListener('pointerup', endDrag);
+  cv.addEventListener('pointercancel', endDrag);
+
+  cv.addEventListener('wheel', function (e) {
+    var p = pointOf(e);
+    if (!hitBody(p.x, p.y) && !hitKnob(p.x, p.y)) return;
+    e.preventDefault();
+    var dir = e.deltaY > 0 ? 1 : -1;
+    S.angle += dir * (e.shiftKey ? 0.6 : 3) * Math.PI / 180;
+    hideHint();
+    poseChanged();
+  }, { passive: false });
+
+  cv.addEventListener('keydown', function (e) {
+    var move = e.shiftKey ? 12 : 3;
+    var turn = (e.shiftKey ? 1 : 4) * Math.PI / 180;
+    var used = true;
+    if (e.key === 'ArrowLeft') S.cx -= move;
+    else if (e.key === 'ArrowRight') S.cx += move;
+    else if (e.key === 'ArrowUp') S.cy -= move;
+    else if (e.key === 'ArrowDown') S.cy += move;
+    else if (e.key === '[' || e.key === 'q' || e.key === 'Q') S.angle -= turn;
+    else if (e.key === ']' || e.key === 'e' || e.key === 'E') S.angle += turn;
+    else if (e.key === 'r' || e.key === 'R') reset();
+    else used = false;
+    if (used) {
+      e.preventDefault();
+      hideHint();
+      poseChanged();
+    }
+  });
+
+  cv.addEventListener('blur', endDrag);
+
+  /* ------------------------------------------------------------ controls */
+  function syncTypeButtons() {
+    typeBtns.forEach(function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-type') === S.type ? 'true' : 'false');
+    });
+  }
+
+  function setType(type) {
+    if (type !== 'bar' && type !== 'u') return;
+    if (S.type === type) return;
+    S.type = type;
+    S.scale = magnetScale();
+    syncTypeButtons();
+    poseChanged();
+  }
+
+  function setLines(on) {
+    S.lines = !!on;
+    linesBtn.setAttribute('aria-pressed', S.lines ? 'true' : 'false');
+    S.traceDirty = true;
+    kick();
+  }
+
+  function reset() {
+    S.scale = magnetScale();
+    S.cx = S.W / 2;
+    S.cy = S.H * 0.52;
+    S.angle = 0;
+    poseChanged();
+  }
+
+  typeBtns.forEach(function (b) {
+    b.addEventListener('click', function () { setType(b.getAttribute('data-type')); });
+  });
+  linesBtn.addEventListener('click', function () { setLines(!S.lines); });
+  resetBtn.addEventListener('click', reset);
+
+  /* ------------------------------------------------------------ sizing */
+  function measure() {
+    var r = boardEl.getBoundingClientRect();
+    S.W = Math.max(240, Math.round(r.width));
+    S.H = Math.max(240, Math.round(r.height));
+    S.DPR = Math.min(window.devicePixelRatio || 1, 3);
+    cv.width = Math.round(S.W * S.DPR);
+    cv.height = Math.round(S.H * S.DPR);
+    cv.style.width = S.W + 'px';
+    cv.style.height = S.H + 'px';
+    ctx.setTransform(S.DPR, 0, 0, S.DPR, 0, 0);
+    S.scale = magnetScale();
+    if (!S.placed) {
+      S.placed = true;
+      S.cx = S.W / 2;
+      S.cy = S.H * 0.52;
+    }
+    clampPose();
+    paintPaper();
+    layoutNeedles();
+    var nb = noteEl.getBoundingClientRect();
+    var bb = boardEl.getBoundingClientRect();
+    noteBox = { x: nb.left - bb.left, y: nb.top - bb.top, w: nb.width, h: nb.height };
+    S.traceDirty = true;
+  }
+
+  function reflow() {
+    var r = boardEl.getBoundingClientRect();
+    if (Math.round(r.width) === S.W && Math.round(r.height) === S.H) return;
+    measure();
+    draw();
+  }
+
+  if (window.ResizeObserver) {
+    new ResizeObserver(reflow).observe(boardEl);
+  } else {
+    window.addEventListener('resize', reflow);
+  }
+  window.addEventListener('orientationchange', function () { setTimeout(reflow, 120); });
+
+  /* ------------------------------------------------------------ public */
+  function currentMagnet() {
+    return MP.magnet(S.type, S.cx, S.cy, S.angle, S.scale);
+  }
+
+  window.__MAGNET__ = {
+    ready: function () { return true; },
+    getState: function () {
+      return {
+        type: S.type,
+        cx: Math.round(S.cx * 100) / 100,
+        cy: Math.round(S.cy * 100) / 100,
+        angle: Math.round(S.angle * 10000) / 10000,
+        scale: Math.round(S.scale * 10000) / 10000,
+        lines: S.lines,
+        needleCount: S.needles.length,
+        needleRadius: spriteR,
+        spacing: S.spacing,
+        traceCount: S.trace.length,
+        view: { w: S.W, h: S.H },
+        needleSample: S.needles.slice(0, 5).map(function (n) {
+          return { x: Math.round(n.x), y: Math.round(n.y), a: Math.round((((n.a % TAU) + TAU) % TAU) * 10000) / 10000 };
+        })
+      };
+    },
+    setType: setType,
+    setLines: setLines,
+    setPose: function (p) {
+      if (typeof p.x === 'number') S.cx = p.x;
+      if (typeof p.y === 'number') S.cy = p.y;
+      if (typeof p.angle === 'number') S.angle = p.angle;
+      poseChanged();
+    },
+    reset: reset,
+    scale: function () { return S.scale; },
+    fieldAt: function (x, y) { return MP.field(currentMagnet(), x, y); },
+    angleAt: function (x, y) { return MP.angleAt(currentMagnet(), x, y); }
+  };
+
+  measure();
+  syncTypeButtons();
+  linesBtn.setAttribute('aria-pressed', 'true');
+  draw();
+  window.__APP_READY__ = true;
+})();
+</script>
+</body>
+</html>

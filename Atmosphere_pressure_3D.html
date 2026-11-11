@@ -378,6 +378,10 @@ h1 {
   .compare { grid-template-columns: 1fr; gap: 10px; }
   .card { max-width: none; }
   .card-high, .card-low { justify-self: stretch; }
+  .fact { display: none; }
+  .card-high { order: 1; }
+  .card-low { order: 2; }
+  .coriolis { order: 3; }
   .coriolis {
     justify-content: center;
     padding: 10px 12px;
@@ -499,7 +503,7 @@ h1 {
       <canvas id="scene" tabindex="0" aria-label="3D 氣流示意：左側高氣壓下沉輻散，右側低氣壓上升輻合"></canvas>
       <div class="hint">
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 20V9M8 9l-3 3M8 9l3 3"/><path d="M4 4h16v16"/></svg>
-        拖曳可 360° 旋轉視角
+        拖曳 360°・雙指縮放
       </div>
       <div class="hint hint-right">綠：高壓氣流　白：低壓水氣</div>
       <div class="hint hint-center" id="windNote">地面風：高壓 → 低壓</div>
@@ -653,6 +657,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 400);
   const camTarget = new THREE.Vector3(0, 4.6, 0);
   let radius = 44;
+  let zoom = 1;
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0xd4e5f0, 1.7));
 
@@ -1548,28 +1553,55 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   function updateCamera() {
     const cp = Math.cos(pitch);
     const sp = Math.sin(pitch);
+    const r = radius / zoom;
     camera.position.set(
-      camTarget.x + Math.sin(yaw) * cp * radius,
-      camTarget.y + sp * radius,
-      camTarget.z + Math.cos(yaw) * cp * radius
+      camTarget.x + Math.sin(yaw) * cp * r,
+      camTarget.y + sp * r,
+      camTarget.z + Math.cos(yaw) * cp * r
     );
     camera.lookAt(camTarget);
   }
 
-  // drag to orbit
+  // drag to orbit (one pointer) / pinch to zoom (two pointers)
+  const pointers = new Map();
   let dragging = false;
   let lastX = 0;
   let lastY = 0;
+  let pinchDist = 0;
+  let pinchZoom = 1;
+
+  function pointerGap() {
+    const pts = Array.from(pointers.values());
+    if (pts.length < 2) return 0;
+    return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+  }
 
   canvas.addEventListener('pointerdown', function (e) {
-    dragging = true;
-    lastX = e.clientX;
-    lastY = e.clientY;
-    canvas.classList.add('dragging');
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    if (pointers.size === 1) {
+      dragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      canvas.classList.add('dragging');
+    } else if (pointers.size === 2) {
+      dragging = false;
+      canvas.classList.remove('dragging');
+      pinchDist = pointerGap();
+      pinchZoom = zoom;
+    }
   });
 
   canvas.addEventListener('pointermove', function (e) {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size >= 2) {
+      const gap = pointerGap();
+      if (pinchDist > 0 && gap > 0) {
+        zoom = clamp(pinchZoom * (gap / pinchDist), 0.55, 2.6);
+      }
+      return;
+    }
     if (!dragging) return;
     const dx = e.clientX - lastX;
     const dy = e.clientY - lastY;
@@ -1579,18 +1611,30 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     pitchTarget = clamp(pitchTarget + dy * 0.0028, 0, 1.56);
   });
 
-  function endDrag() {
-    if (!dragging) return;
-    dragging = false;
-    canvas.classList.remove('dragging');
+  function removePointer(e) {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) {
+      pinchDist = 0;
+      dragging = false;
+      canvas.classList.remove('dragging');
+    }
+    try { canvas.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
   }
-  canvas.addEventListener('pointerup', endDrag);
-  canvas.addEventListener('pointercancel', endDrag);
-  canvas.addEventListener('pointerleave', function () { if (!canvas.hasPointerCapture) endDrag(); });
+  canvas.addEventListener('pointerup', removePointer);
+  canvas.addEventListener('pointercancel', removePointer);
+  canvas.addEventListener('pointerleave', function (e) {
+    if (!canvas.hasPointerCapture(e.pointerId)) removePointer(e);
+  });
+
+  canvas.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    zoom = clamp(zoom * (e.deltaY < 0 ? 1.1 : 0.9), 0.55, 2.6);
+  }, { passive: false });
 
   canvas.addEventListener('dblclick', function () {
     yawTarget = 0;
     pitchTarget = BASE_PITCH;
+    zoom = 1;
   });
 
   canvas.addEventListener('keydown', function (e) {
@@ -1782,7 +1826,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
           }
         },
         surfaceWind: 'high-to-low',
-        view: { yaw: Number(yawNorm.toFixed(3)), pitch: Number(pitch.toFixed(3)) },
+        view: { yaw: Number(yawNorm.toFixed(3)), pitch: Number(pitch.toFixed(3)), zoom: Number(zoom.toFixed(2)) },
         rainDrops: RAIN_COUNT,
         simTime: Number(simTime.toFixed(2))
       };
@@ -1792,7 +1836,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     togglePaused: function () { setPaused(!paused); },
     setHemisphere: setHemisphere,
     setArrowsVisible: setArrowsVisible,
-    resetView: function () { yawTarget = 0; pitchTarget = BASE_PITCH; },
+    setZoom: function (z) { zoom = clamp(Number(z) || 1, 0.55, 2.6); },
+    resetView: function () { yawTarget = 0; pitchTarget = BASE_PITCH; zoom = 1; },
     setView: function (y, p) {
       const pv = p === undefined || p === null || p === '' ? BASE_PITCH : Number(p);
       yawTarget = Number(y) || 0;

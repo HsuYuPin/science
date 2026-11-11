@@ -3102,7 +3102,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       const [a, b] = [...pointers.values()];
       const dist = Math.hypot(a.x - b.x, a.y - b.y);
       if (dragState.pinchStart > 0) {
-        state.zoom = clamp(dragState.pinchZoom * (dist / dragState.pinchStart), 0.72, 1.58);
+        state.zoom = clamp(dragState.pinchZoom * (dragState.pinchStart / dist), 0.72, 1.58);
         syncCameraGoal();
         dragState.moved = true;
       }

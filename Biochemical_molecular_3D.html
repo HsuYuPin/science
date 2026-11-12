@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>有機化學 3D 分子結構展示</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+    background: radial-gradient(ellipse at 50% 35%, #617384 0%, #37434f 55%, #222a33 100%);
+    color: #fff;
+    -webkit-user-select: none; user-select: none;
+  }
+  #c { display: block; width: 100%; height: 100%; }
+
+  .panel {
+    position: fixed; top: 20px; left: 20px;
+    padding: 16px 18px 14px;
+    background: rgba(18, 24, 32, .60);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 16px;
+    box-shadow: 0 10px 36px rgba(0, 0, 0, .38);
+    width: min(92vw, 460px);
+    max-height: 88vh;
+    overflow-y: auto;
+    z-index: 10;
+  }
+  .title {
+    font-size: 15px; font-weight: 700; letter-spacing: .12em;
+    color: #cfe3ff; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .title::before {
+    content: ""; width: 5px; height: 16px; border-radius: 3px;
+    background: linear-gradient(#5ea9ff, #2f6bff);
+  }
+  .title.sub { font-size: 13px; margin-top: 12px; margin-bottom: 10px; color: #9fd0ff; }
+  .title.sub::before { background: linear-gradient(#ffb15e, #ff7f2f); }
+
+  .row { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+  .tag {
+    font-size: 12px; color: #93a7bd; letter-spacing: .08em;
+    width: 42px; flex: 0 0 auto;
+  }
+  .btn {
+    font-family: inherit;
+    font-size: 13.5px; letter-spacing: .05em;
+    color: #d5e2f0;
+    background: rgba(255, 255, 255, .07);
+    border: 1px solid rgba(255, 255, 255, .14);
+    border-radius: 9px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: all .18s ease;
+  }
+  .btn:hover { background: rgba(255, 255, 255, .16); transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+  .btn.active {
+    background: linear-gradient(135deg, #3d8bff, #2455d6);
+    border-color: rgba(160, 200, 255, .75);
+    color: #fff;
+    box-shadow: 0 0 16px rgba(61, 139, 255, .5);
+  }
+  .btn.primary {
+    background: linear-gradient(135deg, #ff9b3d, #e66e0f);
+    border-color: rgba(255, 200, 140, .65);
+    color: #fff;
+    font-weight: 600;
+  }
+  .btn.primary:hover {
+    background: linear-gradient(135deg, #ffb060, #ff8020);
+    box-shadow: 0 0 16px rgba(255, 150, 60, .5);
+  }
+  .btn:disabled {
+    opacity: .4;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  #esterPanel {
+    display: none; /* 默认隐藏，由JS控制显示 */
+    margin-top: 4px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, .1);
+  }
+
+  .info {
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, .10);
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .name { font-size: 18px; font-weight: 700; letter-spacing: .04em; line-height: 1.4; }
+  .formula { font-size: 13px; color: #8fbaff; letter-spacing: .03em; line-height: 1.5; word-break: break-word; }
+  .formula sub { font-size: .72em; }
+
+  .fs-btn {
+    position: fixed;
+    top: 20px; right: 20px;
+    width: 42px; height: 42px;
+    border-radius: 12px;
+    background: rgba(18, 24, 32, .60);
+    border: 1px solid rgba(255, 255, 255, .14);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    color: #d5e2f0;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all .18s ease;
+    z-index: 30;
+  }
+  .fs-btn:hover {
+    background: rgba(70, 110, 170, .55);
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(40, 90, 180, .35);
+  }
+  .fs-btn:active { transform: translateY(0); }
+  .fs-btn svg { width: 19px; height: 19px; display: block; }
+  .fs-btn .icon-exit { display: none; }
+  .fs-btn.is-fs .icon-enter { display: none; }
+  .fs-btn.is-fs .icon-exit { display: block; }
+
+  .hint {
+    position: fixed; top: 74px; right: 22px;
+    font-size: 12px; color: rgba(255, 255, 255, .45);
+    letter-spacing: .08em; text-align: right; line-height: 1.7;
+    z-index: 5;
+  }
+
+  .legend {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;
+    padding: 10px 20px;
+    background: rgba(18, 24, 32, .58);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 999px;
+    font-size: 13px; color: #cfdcea; letter-spacing: .05em;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .32);
+    z-index: 10;
+    white-space: nowrap;
+  }
+  .legend span { display: flex; align-items: center; gap: 7px; }
+  .dot {
+    width: 15px; height: 15px; border-radius: 50%;
+    box-shadow: inset -3px -3px 5px rgba(0,0,0,.45), inset 2px 2px 4px rgba(255,255,255,.45);
+  }
+  .dot.c { background: #171717; border: 1px solid #4a4a4a; }
+  .dot.h { background: #2f6bff; }
+  .dot.o { background: #ffffff; }
+
+  /* 針對手機版進行輕量化與縮小 */
+  @media (max-width: 600px) {
+    .panel {
+      top: 10px; left: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      width: 270px; /* 固定較小寬度，不撐滿 */
+      max-height: 75vh;
+    }
+    .title { font-size: 13px; margin-bottom: 10px; }
+    .title::before { width: 4px; height: 14px; }
+    .title.sub { font-size: 12px; margin-top: 8px; margin-bottom: 8px; }
+    
+    .row { gap: 5px; margin-bottom: 8px; }
+    .tag { font-size: 11px; width: 34px; }
+    
+    .btn {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 7px;
+    }
+    /* 酯化反應按鈕在手機上獨佔一行，避免擠壓 */
+    #esterBtn {
+      margin-top: 2px;
+    }
+
+    .info { margin-top: 10px; padding-top: 10px; }
+    .name { font-size: 15px; }
+    .formula { font-size: 11px; }
+
+    .fs-btn {
+      top: 10px; right: 10px;
+      width: 36px; height: 36px;
+      border-radius: 10px;
+    }
+    .fs-btn svg { width: 16px; height: 16px; }
+
+    .hint { display: none; }
+
+    .legend {
+      bottom: 10px;
+      font-size: 11px;
+      gap: 10px;
+      padding: 6px 14px;
+      border-radius: 20px;
+    }
+    .dot { width: 12px; height: 12px; }
+  }
+</style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <button id="fsBtn" class="fs-btn" title="切換全螢幕" aria-label="切換全螢幕">
+    <svg class="icon-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9V3h6" /><path d="M21 9V3h-6" />
+      <path d="M3 15v6h6" /><path d="M21 15v6h-6" />
+    </svg>
+    <svg class="icon-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 3v6H3" /><path d="M15 3v6h6" />
+      <path d="M9 21v-6H3" /><path d="M15 21v-6h6" />
+    </svg>
+  </button>
+
+  <div class="panel">
+    <div class="title">有機化學 3D 分子結構</div>
+    <div class="row" id="catRow">
+      <span class="tag">類別</span>
+      <button class="btn" data-cat="alkane">烷類</button>
+      <button class="btn" data-cat="alcohol">醇類</button>
+      <button class="btn" data-cat="acid">有機酸類</button>
+      <button class="btn" id="esterBtn" style="margin-left:0;">酯化反應</button>
+    </div>
+    <div class="row" id="numRow">
+      <span class="tag">碳數</span>
+      <button class="btn" data-n="1">甲</button>
+      <button class="btn" data-n="2">乙</button>
+      <button class="btn" data-n="3">丙</button>
+      <button class="btn" data-n="4">丁</button>
+    </div>
+    <div class="info">
+      <div class="name" id="molName">甲烷</div>
+      <div class="formula" id="molFormula">CH<sub>4</sub></div>
+    </div>
+
+    <!-- 酯化反應控制框 -->
+    <div id="esterPanel">
+      <div class="title sub">酯化反應</div>
+      <div class="row" id="acidRow">
+        <span class="tag">酸</span>
+        <button class="btn" data-acid="1">甲酸</button>
+        <button class="btn" data-acid="2">乙酸</button>
+        <button class="btn" data-acid="3">丙酸</button>
+        <button class="btn" data-acid="4">丁酸</button>
+      </div>
+      <div class="row" id="alcoholRow">
+        <span class="tag">醇</span>
+        <button class="btn" data-alcohol="1">甲醇</button>
+        <button class="btn" data-alcohol="2">乙醇</button>
+        <button class="btn" data-alcohol="3">丙醇</button>
+        <button class="btn" data-alcohol="4">丁醇</button>
+      </div>
+      <div class="row">
+        <span class="tag"></span>
+        <button class="btn primary" id="reactBtn">開始反應</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="hint">拖曳旋轉 · 滾輪縮放<br>右鍵平移</div>
+
+  <div class="legend">
+    <span><i class="dot c"></i>碳原子 C</span>
+    <span><i class="dot h"></i>氫原子 H</span>
+    <span><i class="dot o"></i>氧原子 O</span>
+  </div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ============================================================
+   基本設定
+   ============================================================ */
+const canvas   = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene  = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(0, 0, 10);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.09;
+controls.rotateSpeed    = 0.85;
+controls.zoomSpeed      = 0.9;
+controls.minDistance    = 2;
+controls.maxDistance    = 80;
+controls.autoRotate      = true;
+controls.autoRotateSpeed = 0.9;
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.42));
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.35);
+keyLight.position.set(6, 9, 11);
+scene.add(keyLight);
+const fillLight = new THREE.DirectionalLight(0xa8c8ff, 0.55);
+fillLight.position.set(-9, -5, -7);
+scene.add(fillLight);
+const rimLight = new THREE.DirectionalLight(0xffffff, 0.5);
+rimLight.position.set(0, -12, 5);
+scene.add(rimLight);
+
+/* ============================================================
+   常數
+   ============================================================ */
+const UP_Y = new THREE.Vector3(0, 1, 0);
+const RADII     = { C: 0.44, H: 0.26, O: 0.38 };
+const COLORS    = { C: 0x181818, H: 0x2f6bff, O: 0xf4f7fa };
+const SPECULAR  = { C: 0x9a9a9a, H: 0xaaccff, O: 0xffffff };
+const SHININESS = { C: 95, H: 70, O: 100 };
+
+const SPAWN_DIST = 22;
+const ANIM_DUR   = 1150;
+
+const sphereGeo = new THREE.SphereGeometry(1, 32, 24);
+const cylGeo    = new THREE.CylinderGeometry(1, 1, 1, 16, 1, false);
+const rootGroup = new THREE.Group();
+scene.add(rootGroup);
+
+/* ============================================================
+   化學參數與幾何工具
+   ============================================================ */
+const CC = 1.54, CH = 1.09, CO = 1.43, OH = 0.96, C_DOUBLE_O = 1.23;
+const ZIG_A = CC * Math.sin(THREE.MathUtils.degToRad(54.75));
+const ZIG_B = CC * Math.cos(THREE.MathUtils.degToRad(54.75));
+
+function zigzag(n) {
+  const pts = [];
+  for (let i = 0; i < n; i++) pts.push(new THREE.Vector3(i * ZIG_A, (i % 2) * ZIG_B, 0));
+  return pts;
+}
+function rotZ(v, th) {
+  const c = Math.cos(th), s = Math.sin(th);
+  return new THREE.Vector3(v.x * c - v.y * s, v.x * s + v.y * c, v.z);
+}
+function computeHDirs(known, count) {
+  const out = [];
+  if (known.length === 0) {
+    return [
+      new THREE.Vector3( 1,  1,  1), new THREE.Vector3( 1, -1, -1),
+      new THREE.Vector3(-1,  1, -1), new THREE.Vector3(-1, -1,  1)
+    ].map(v => v.normalize()).slice(0, count);
+  }
+  if (known.length === 1) {
+    const u = known[0].clone().normalize();
+    const a = u.clone().negate();
+    let p = new THREE.Vector3(0, 0, 1).cross(a);
+    if (p.lengthSq() < 1e-6) p = new THREE.Vector3(0, 1, 0).cross(a);
+    p.normalize();
+    const q = new THREE.Vector3().crossVectors(a, p).normalize();
+    for (let k = 0; k < count; k++) {
+      const ang = (2 * Math.PI * k) / Math.max(count, 1);
+      const d = a.clone().multiplyScalar(1 / 3)
+        .addScaledVector(p, Math.cos(ang) * 0.9428)
+        .addScaledVector(q, Math.sin(ang) * 0.9428);
+      out.push(d.normalize());
+    }
+    return out;
+  }
+  if (known.length === 2) {
+    const u1 = known[0].clone().normalize();
+    const u2 = known[1].clone().normalize();
+    const b  = u1.clone().add(u2).normalize();
+    const e1 = u1.clone().sub(u2).normalize();
+    const e2 = new THREE.Vector3().crossVectors(b, e1).normalize();
+    out.push(b.clone().multiplyScalar(-0.5774).addScaledVector(e2,  0.8165).normalize());
+    out.push(b.clone().multiplyScalar(-0.5774).addScaledVector(e2, -0.8165).normalize());
+    return out.slice(0, count);
+  }
+  if (known.length === 3) {
+    out.push(known[0].clone().add(known[1]).add(known[2]).normalize().negate());
+    return out;
+  }
+  return out;
+}
+
+/* ============================================================
+   分子建構器
+   ============================================================ */
+function buildAlkane(n) {
+  const atoms = [], bonds = [];
+  const addAtom = (el, pos) => { atoms.push({ el, pos: pos.clone() }); return atoms.length - 1; };
+  const addBond = (i, j, o = 1) => bonds.push({ i, j, order: o });
+  const pts = zigzag(n);
+  const cIdx = pts.map(p => addAtom('C', p));
+  for (let i = 0; i < n - 1; i++) addBond(cIdx[i], cIdx[i + 1]);
+  for (let i = 0; i < n; i++) {
+    const dirs = [];
+    if (i > 0)     dirs.push(pts[i - 1].clone().sub(pts[i]).normalize());
+    if (i < n - 1) dirs.push(pts[i + 1].clone().sub(pts[i]).normalize());
+    const hDirs = computeHDirs(dirs, 4 - dirs.length);
+    for (const d of hDirs) {
+      const h = addAtom('H', pts[i].clone().addScaledVector(d, CH));
+      addBond(cIdx[i], h);
+    }
+  }
+  return { atoms, bonds };
+}
+
+function buildAlcohol(n) {
+  const atoms = [], bonds = [];
+  const addAtom = (el, pos) => { atoms.push({ el, pos: pos.clone() }); return atoms.length - 1; };
+  const addBond = (i, j, o = 1) => bonds.push({ i, j, order: o });
+  const pts = zigzag(n);
+  const cIdx = pts.map(p => addAtom('C', p));
+  for (let i = 0; i < n - 1; i++) addBond(cIdx[i], cIdx[i + 1]);
+  const last = n - 1, lastPos = pts[last];
+  const knownDirs = [];
+  if (last > 0) knownDirs.push(pts[last - 1].clone().sub(lastPos).normalize());
+  const avail = computeHDirs(knownDirs, 4 - knownDirs.length);
+  const oDir = avail[0];
+  const oPos = lastPos.clone().addScaledVector(oDir, CO);
+  const oIdx = addAtom('O', oPos);
+  addBond(cIdx[last], oIdx);
+  for (let k = 1; k < avail.length; k++) {
+    const h = addAtom('H', lastPos.clone().addScaledVector(avail[k], CH));
+    addBond(cIdx[last], h);
+  }
+  const oToC = lastPos.clone().sub(oPos).normalize();
+  const away = oToC.clone().negate();
+  let perp = new THREE.Vector3(0, 0, 1).cross(away);
+  if (perp.lengthSq() < 1e-6) perp = new THREE.Vector3(0, 1, 0).cross(away);
+  perp.normalize();
+  const ohDir = away.clone().multiplyScalar(1 / 3).addScaledVector(perp, 0.9428).normalize();
+  const ohIdx = addAtom('H', oPos.clone().addScaledVector(ohDir, OH));
+  addBond(oIdx, ohIdx);
+  for (let i = 0; i < last; i++) {
+    const dirs = [];
+    if (i > 0) dirs.push(pts[i - 1].clone().sub(pts[i]).normalize());
+    dirs.push(pts[i + 1].clone().sub(pts[i]).normalize());
+    const hDirs = computeHDirs(dirs, 4 - dirs.length);
+    for (const d of hDirs) {
+      const h = addAtom('H', pts[i].clone().addScaledVector(d, CH));
+      addBond(cIdx[i], h);
+    }
+  }
+  return { atoms, bonds };
+}
+
+function buildAcid(n) {
+  const atoms = [], bonds = [];
+  const addAtom = (el, pos) => { atoms.push({ el, pos: pos.clone() }); return atoms.length - 1; };
+  const addBond = (i, j, o = 1) => bonds.push({ i, j, order: o });
+  const OH_DIR = new THREE.Vector3(-0.6496, -0.7605, 0).normalize();
+
+  if (n === 1) {
+    const cPos  = new THREE.Vector3(0, 0, 0);
+    const o1Pos = new THREE.Vector3(0.615, 1.065, 0);
+    const o2Pos = new THREE.Vector3(0.715, -1.238, 0);
+    const hPos  = new THREE.Vector3(-1.09, 0, 0);
+    const c  = addAtom('C', cPos);
+    const o1 = addAtom('O', o1Pos);
+    const o2 = addAtom('O', o2Pos);
+    const h  = addAtom('H', hPos);
+    addBond(c, o1, 2); addBond(c, o2, 1); addBond(c, h, 1);
+    const oh = addAtom('H', o2Pos.clone().addScaledVector(OH_DIR, OH));
+    addBond(o2, oh);
+    return { atoms, bonds };
+  }
+
+  let pts = zigzag(n);
+  const dLast = pts[n - 1].clone().sub(pts[n - 2]);
+  const theta = -Math.atan2(dLast.y, dLast.x);
+  pts = pts.map(p => rotZ(p, theta));
+  const cIdx = pts.map(p => addAtom('C', p));
+  for (let i = 0; i < n - 1; i++) addBond(cIdx[i], cIdx[i + 1]);
+  const cc = pts[n - 1];
+  const cLast = cIdx[n - 1];
+  const o1Pos = cc.clone().add(new THREE.Vector3(0.5,  0.866, 0).multiplyScalar(C_DOUBLE_O));
+  const o2Pos = cc.clone().add(new THREE.Vector3(0.5, -0.866, 0).multiplyScalar(CO));
+  const o1 = addAtom('O', o1Pos);
+  const o2 = addAtom('O', o2Pos);
+  addBond(cLast, o1, 2); addBond(cLast, o2, 1);
+  const oh = addAtom('H', o2Pos.clone().addScaledVector(OH_DIR, OH));
+  addBond(o2, oh);
+  for (let i = 0; i <= n - 2; i++) {
+    const dirs = [];
+    if (i > 0)     dirs.push(pts[i - 1].clone().sub(pts[i]).normalize());
+    if (i < n - 1) dirs.push(pts[i + 1].clone().sub(pts[i]).normalize());
+    const hDirs = computeHDirs(dirs, 4 - dirs.length);
+    for (const d of hDirs) {
+      const h = addAtom('H', pts[i].clone().addScaledVector(d, CH));
+      addBond(cIdx[i], h);
+    }
+  }
+  return { atoms, bonds };
+}
+
+/* ============================================================
+   工具函式
+   ============================================================ */
+function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+function centerMolecule(mol) {
+  const box = new THREE.Box3();
+  mol.atoms.forEach(a => box.expandByPoint(a.pos));
+  const center = box.getCenter(new THREE.Vector3());
+  return {
+    atoms: mol.atoms.map(a => ({ el: a.el, pos: a.pos.clone().sub(center) })),
+    bonds: mol.bonds.map(b => ({ i: b.i, j: b.j, order: b.order }))
+  };
+}
+function clearGroup() {
+  while (rootGroup.children.length > 0) {
+    const child = rootGroup.children[0];
+    rootGroup.remove(child);
+    if (child.material && child.material.dispose) child.material.dispose();
+  }
+}
+
+/* ============================================================
+   酯化反應專用工具
+   ============================================================ */
+function findAcidOHParts(acid) {
+  for (let i = 0; i < acid.atoms.length; i++) {
+    if (acid.atoms[i].el !== 'O') continue;
+    const bonds = acid.bonds.filter(b => b.i === i || b.j === i);
+    if (bonds.length === 2) {
+      let cIdx = -1, hIdx = -1;
+      for (const b of bonds) {
+        const other = b.i === i ? b.j : b.i;
+        if (b.order === 1 && acid.atoms[other].el === 'C') cIdx = other;
+        if (acid.atoms[other].el === 'H') hIdx = other;
+      }
+      if (cIdx >= 0 && hIdx >= 0) return { oIdx: i, hIdx, cIdx };
+    }
+  }
+  return { oIdx: -1, hIdx: -1, cIdx: -1 };
+}
+
+function findAlcoholParts(alcohol) {
+  for (let i = 0; i < alcohol.atoms.length; i++) {
+    if (alcohol.atoms[i].el !== 'O') continue;
+    const bonds = alcohol.bonds.filter(b => b.i === i || b.j === i);
+    for (const b of bonds) {
+      const other = b.i === i ? b.j : b.i;
+      if (alcohol.atoms[other].el === 'H') return { oIdx: i, hIdx: other };
+    }
+  }
+  return { oIdx: -1, hIdx: -1 };
+}
+
+function buildReactantsPreview(acidN, alcoholN) {
+  const acid = centerMolecule(buildAcid(acidN));
+  const alcohol = centerMolecule(buildAlcohol(alcoholN));
+  
+  const acidOffset = new THREE.Vector3(-3.5, 0, 0);
+  const alcoholOffset = new THREE.Vector3(3.5, 0, 0);
+  
+  const atoms = [];
+  const bonds = [];
+  
+  for (let i = 0; i < acid.atoms.length; i++) {
+    atoms.push({ el: acid.atoms[i].el, pos: acid.atoms[i].pos.clone().add(acidOffset) });
+  }
+  for (let i = 0; i < acid.bonds.length; i++) {
+    bonds.push({ i: acid.bonds[i].i, j: acid.bonds[i].j, order: acid.bonds[i].order });
+  }
+  
+  const alcoholIdxOffset = atoms.length;
+  for (let i = 0; i < alcohol.atoms.length; i++) {
+    atoms.push({ el: alcohol.atoms[i].el, pos: alcohol.atoms[i].pos.clone().add(alcoholOffset) });
+  }
+  for (let i = 0; i < alcohol.bonds.length; i++) {
+    bonds.push({ 
+      i: alcohol.bonds[i].i + alcoholIdxOffset, 
+      j: alcohol.bonds[i].j + alcoholIdxOffset, 
+      order: alcohol.bonds[i].order 
+    });
+  }
+  
+  return { atoms, bonds };
+}
+
+function buildReactionTransition(acidN, alcoholN) {
+  const acid = centerMolecule(buildAcid(acidN));
+  const alcohol = centerMolecule(buildAlcohol(alcoholN));
+  const acidParts = findAcidOHParts(acid);
+  const alcoholParts = findAlcoholParts(alcohol);
+  if (acidParts.oIdx < 0 || alcoholParts.oIdx < 0) return null;
+
+  // 旋轉醇
+  const rPrimeAtoms = alcohol.atoms.filter((a, i) => i !== alcoholParts.oIdx && i !== alcoholParts.hIdx);
+  const rPrimeCentroid = new THREE.Vector3();
+  for (const a of rPrimeAtoms) rPrimeCentroid.add(a.pos);
+  rPrimeCentroid.divideScalar(rPrimeAtoms.length);
+  const dirToR = rPrimeCentroid.clone().sub(alcohol.atoms[alcoholParts.oIdx].pos);
+  if (dirToR.lengthSq() > 1e-6) {
+    const angle = Math.atan2(dirToR.y, dirToR.x);
+    const rotAngle = -angle;
+    const oPos = alcohol.atoms[alcoholParts.oIdx].pos.clone();
+    const zAxis = new THREE.Vector3(0, 0, 1);
+    for (const a of alcohol.atoms) {
+      a.pos.sub(oPos).applyAxisAngle(zAxis, rotAngle).add(oPos);
+    }
+  }
+
+  const shift = acid.atoms[acidParts.oIdx].pos.clone().sub(alcohol.atoms[alcoholParts.oIdx].pos);
+
+  // 構建酯原子
+  const esterAtoms = [];
+  for (let i = 0; i < acid.atoms.length; i++) {
+    if (i === acidParts.oIdx || i === acidParts.hIdx) continue;
+    esterAtoms.push({ el: acid.atoms[i].el, src: 'acid', srcIdx: i, pos: acid.atoms[i].pos.clone() });
+  }
+  for (let i = 0; i < alcohol.atoms.length; i++) {
+    if (i === alcoholParts.hIdx) continue;
+    esterAtoms.push({ el: alcohol.atoms[i].el, src: 'alcohol', srcIdx: i, pos: alcohol.atoms[i].pos.clone().add(shift) });
+  }
+  const c = new THREE.Vector3();
+  for (const a of esterAtoms) c.add(a.pos);
+  c.divideScalar(esterAtoms.length);
+  for (const a of esterAtoms) a.pos.sub(c);
+
+  // 水
+  const wc = new THREE.Vector3(0, -3.5, 0);
+  const waterAtoms = [
+    { el: 'O', pos: wc.clone() },
+    { el: 'H', pos: wc.clone().add(new THREE.Vector3(0.77, 0.59, 0)) },
+    { el: 'H', pos: wc.clone().add(new THREE.Vector3(-0.77, 0.59, 0)) }
+  ];
+
+  const acidOffset    = new THREE.Vector3(-3.2, 0.3, 0);
+  const alcoholOffset = new THREE.Vector3( 3.2, 0.3, 0);
+
+  const atoms = [];
+  const acidMap = new Map();
+  const alcoholMap = new Map();
+  let esterIdx = 0;
+
+  for (let i = 0; i < acid.atoms.length; i++) {
+    const a = acid.atoms[i];
+    if (i === acidParts.oIdx) {
+      atoms.push({ el: a.el, start: a.pos.clone().add(acidOffset), end: waterAtoms[0].pos.clone(), delay: 0.18, dur: 0.55, type: 'in', mesh: null });
+      acidMap.set(i, atoms.length - 1);
+    } else if (i === acidParts.hIdx) {
+      atoms.push({ el: a.el, start: a.pos.clone().add(acidOffset), end: waterAtoms[1].pos.clone(), delay: 0.20, dur: 0.55, type: 'in', mesh: null });
+      acidMap.set(i, atoms.length - 1);
+    } else {
+      atoms.push({ el: a.el, start: a.pos.clone().add(acidOffset), end: esterAtoms[esterIdx].pos.clone(), delay: 0.10, dur: 0.50, type: 'keep', mesh: null });
+      acidMap.set(i, atoms.length - 1);
+      esterIdx++;
+    }
+  }
+  for (let i = 0; i < alcohol.atoms.length; i++) {
+    const a = alcohol.atoms[i];
+    if (i === alcoholParts.hIdx) {
+      atoms.push({ el: a.el, start: a.pos.clone().add(alcoholOffset), end: waterAtoms[2].pos.clone(), delay: 0.20, dur: 0.55, type: 'in', mesh: null });
+      alcoholMap.set(i, atoms.length - 1);
+    } else {
+      atoms.push({ el: a.el, start: a.pos.clone().add(alcoholOffset), end: esterAtoms[esterIdx].pos.clone(), delay: 0.12, dur: 0.50, type: 'keep', mesh: null });
+      alcoholMap.set(i, atoms.length - 1);
+      esterIdx++;
+    }
+  }
+
+  const atomFinish = atoms.map(a => a.delay + a.dur);
+  const bonds = [];
+
+  for (const b of acid.bonds) {
+    const a = acidMap.get(b.i), c2 = acidMap.get(b.j);
+    if (a === undefined || c2 === undefined) continue;
+    const breaks = (b.i === acidParts.oIdx || b.j === acidParts.oIdx || b.i === acidParts.hIdx || b.j === acidParts.hIdx);
+    if (breaks) {
+      bonds.push({ i: a, j: c2, order: b.order, type: 'out', alpha0: 1, alpha1: 0, delay: 0, dur: 0.15, meshes: [] });
+    } else {
+      bonds.push({ i: a, j: c2, order: b.order, type: 'keep', alpha0: 1, alpha1: 1, delay: 0, dur: 0.01, meshes: [] });
+    }
+  }
+  for (const b of alcohol.bonds) {
+    const a = alcoholMap.get(b.i), c2 = alcoholMap.get(b.j);
+    if (a === undefined || c2 === undefined) continue;
+    const breaks = (b.i === alcoholParts.hIdx || b.j === alcoholParts.hIdx);
+    if (breaks) {
+      bonds.push({ i: a, j: c2, order: b.order, type: 'out', alpha0: 1, alpha1: 0, delay: 0, dur: 0.15, meshes: [] });
+    } else {
+      bonds.push({ i: a, j: c2, order: b.order, type: 'keep', alpha0: 1, alpha1: 1, delay: 0, dur: 0.01, meshes: [] });
+    }
+  }
+
+  const cIdx = acidMap.get(acidParts.cIdx);
+  const oIdx = alcoholMap.get(alcoholParts.oIdx);
+  if (cIdx !== undefined && oIdx !== undefined) {
+    const ready = Math.max(atomFinish[cIdx], atomFinish[oIdx]);
+    bonds.push({ i: cIdx, j: oIdx, order: 1, type: 'in', alpha0: 0, alpha1: 1, delay: ready + 0.02, dur: 0.18, meshes: [] });
+  }
+  const wO = acidMap.get(acidParts.oIdx);
+  const wH1 = acidMap.get(acidParts.hIdx);
+  const wH2 = alcoholMap.get(alcoholParts.hIdx);
+  if (wO !== undefined && wH1 !== undefined) {
+    const ready = Math.max(atomFinish[wO], atomFinish[wH1]);
+    bonds.push({ i: wO, j: wH1, order: 1, type: 'in', alpha0: 0, alpha1: 1, delay: ready + 0.02, dur: 0.15, meshes: [] });
+  }
+  if (wO !== undefined && wH2 !== undefined) {
+    const ready = Math.max(atomFinish[wO], atomFinish[wH2]);
+    bonds.push({ i: wO, j: wH2, order: 1, type: 'in', alpha0: 0, alpha1: 1, delay: ready + 0.02, dur: 0.15, meshes: [] });
+  }
+  return { atoms, bonds };
+}
+
+/* ============================================================
+   建立 Mesh / 更新過渡 / 清理
+   ============================================================ */
+function createMeshes(tr) {
+  clearGroup();
+  for (const atom of tr.atoms) {
+    const mat = new THREE.MeshPhongMaterial({
+      color: COLORS[atom.el], shininess: SHININESS[atom.el], specular: SPECULAR[atom.el], transparent: true, opacity: 1
+    });
+    const mesh = new THREE.Mesh(sphereGeo, mat);
+    mesh.scale.setScalar(RADII[atom.el]);
+    mesh.position.copy(atom.start);
+    atom.mesh = mesh;
+    rootGroup.add(mesh);
+  }
+  for (const bond of tr.bonds) {
+    const radius = bond.order === 2 ? 0.062 : 0.092;
+    const count  = bond.order === 2 ? 2 : 1;
+    for (let k = 0; k < count; k++) {
+      const mat = new THREE.MeshPhongMaterial({
+        color: 0xbcc6d2, shininess: 40, specular: 0x777777, transparent: true, opacity: bond.alpha0
+      });
+      const mesh = new THREE.Mesh(cylGeo, mat);
+      mesh.userData.offset = bond.order === 2 ? (k === 0 ? 0.13 : -0.13) : 0;
+      mesh.userData.radius = radius;
+      mesh.visible = bond.alpha0 > 0.01;
+      bond.meshes.push(mesh);
+      rootGroup.add(mesh);
+    }
+  }
+}
+
+const _dir = new THREE.Vector3();
+const _perp = new THREE.Vector3();
+
+function updateTransition(tr, t) {
+  const positions = [];
+  for (const atom of tr.atoms) {
+    const lt = clamp01((t - atom.delay) / atom.dur);
+    const e  = easeInOutCubic(lt);
+    const pos = atom.start.clone().lerp(atom.end, e);
+    positions.push(pos);
+    atom.mesh.position.copy(pos);
+    if (atom.type === 'out') {
+      const a = 1 - e;
+      atom.mesh.material.opacity = a;
+      atom.mesh.material.depthWrite = a > 0.95;
+      atom.mesh.visible = a > 0.01;
+    } else if (atom.type === 'in') {
+      const a = Math.min(1, e * 1.6);
+      atom.mesh.material.opacity = a;
+      atom.mesh.material.depthWrite = a > 0.95;
+      atom.mesh.visible = true;
+    } else {
+      atom.mesh.material.opacity = 1;
+      atom.mesh.material.depthWrite = true;
+      atom.mesh.visible = true;
+    }
+  }
+  for (const bond of tr.bonds) {
+    const lt = clamp01((t - bond.delay) / bond.dur);
+    const e  = easeInOutCubic(lt);
+    const alpha = bond.alpha0 + (bond.alpha1 - bond.alpha0) * e;
+    if (lt <= 0 || alpha < 0.01) {
+      bond.meshes.forEach(m => { m.visible = false; });
+      continue;
+    }
+    const p1 = positions[bond.i], p2 = positions[bond.j];
+    if (!p1 || !p2) {
+      bond.meshes.forEach(m => { m.visible = false; });
+      continue;
+    }
+    _dir.subVectors(p2, p1);
+    const len = _dir.length();
+    if (len < 1e-5) {
+      bond.meshes.forEach(m => { m.visible = false; });
+      continue;
+    }
+    const ndir = _dir.clone().normalize();
+    if (bond.meshes.length === 2) {
+      _perp.crossVectors(ndir, new THREE.Vector3(0, 0, 1));
+      if (_perp.lengthSq() < 1e-4) _perp.crossVectors(ndir, new THREE.Vector3(0, 1, 0));
+      _perp.normalize();
+    }
+    for (const mesh of bond.meshes) {
+      mesh.visible = true;
+      const off = mesh.userData.offset;
+      const offsetVec = _perp.clone().multiplyScalar(off);
+      mesh.position.copy(p1).add(offsetVec).addScaledVector(_dir, 0.5);
+      mesh.scale.set(mesh.userData.radius, len, mesh.userData.radius);
+      mesh.quaternion.setFromUnitVectors(UP_Y, ndir);
+      mesh.material.opacity = alpha;
+      mesh.material.depthWrite = alpha > 0.95;
+    }
+  }
+}
+
+function cleanupFinished(tr) {
+  for (const atom of tr.atoms) {
+    if (atom.type === 'out' && atom.mesh) {
+      rootGroup.remove(atom.mesh);
+      atom.mesh.material.dispose();
+      atom.mesh = null;
+    }
+  }
+  for (const bond of tr.bonds) {
+    if (bond.type === 'out') {
+      for (const m of bond.meshes) {
+        rootGroup.remove(m);
+        m.material.dispose();
+      }
+      bond.meshes = [];
+    }
+  }
+}
+
+/* ============================================================
+   相機對焦
+   ============================================================ */
+let cameraAnim = null;
+
+// 調整相機距離與偏移，針對手機優化
+function getCameraDistanceAndCenter(maxR, isMobile) {
+  const fovRad = THREE.MathUtils.degToRad(camera.fov);
+  // 手機上需要更遠一點點，避免模型過大被面板遮擋
+  const mobileFactor = isMobile ? 1.35 : 1.12;
+  const dist = (maxR / Math.sin(fovRad / 2)) * mobileFactor;
+  
+  // 手機上將 target 稍微往右下偏，使模型顯示在空曠處（避開左上角面板）
+  const targetOffset = isMobile ? new THREE.Vector3(1.0, -1.0, 0) : new THREE.Vector3(0, 0, 0);
+  
+  return { dist, targetOffset };
+}
+
+function focusCamera(mol, animate) {
+  const isMobile = window.innerWidth <= 600;
+  let maxR = 0.5;
+  for (const a of mol.atoms) maxR = Math.max(maxR, a.pos.length() + 0.6);
+  
+  const { dist, targetOffset } = getCameraDistanceAndCenter(maxR, isMobile);
+  
+  const dir = camera.position.clone().sub(controls.target);
+  if (dir.lengthSq() < 1e-6) dir.set(0.32, 0.24, 1);
+  dir.normalize();
+  const targetPos = dir.multiplyScalar(dist).add(targetOffset);
+
+  if (animate) {
+    cameraAnim = { 
+      from: camera.position.clone(), to: targetPos,
+      fromTarget: controls.target.clone(), toTarget: targetOffset,
+      start: performance.now(), dur: 800 
+    };
+  } else {
+    camera.position.copy(targetPos);
+    controls.target.copy(targetOffset);
+    camera.near = dist * 0.02; camera.far = dist * 12;
+    camera.updateProjectionMatrix();
+    controls.minDistance = dist * 0.35;
+    controls.maxDistance = dist * 3.2;
+    controls.update();
+  }
+}
+
+function focusCameraForTransition(tr, animate) {
+  const isMobile = window.innerWidth <= 600;
+  let maxR = 0.5;
+  for (const atom of tr.atoms) {
+    const sLen = atom.start.length(), eLen = atom.end.length();
+    if (sLen > maxR) maxR = sLen;
+    if (eLen > maxR) maxR = eLen;
+  }
+  maxR += 0.7;
+  
+  const { dist, targetOffset } = getCameraDistanceAndCenter(maxR, isMobile);
+  
+  const dir = camera.position.clone().sub(controls.target);
+  if (dir.lengthSq() < 1e-6) dir.set(0.32, 0.24, 1);
+  dir.normalize();
+  const targetPos = dir.multiplyScalar(dist).add(targetOffset);
+
+  if (animate) {
+    cameraAnim = { 
+      from: camera.position.clone(), to: targetPos,
+      fromTarget: controls.target.clone(), toTarget: targetOffset,
+      start: performance.now(), dur: 800 
+    };
+  } else {
+    camera.position.copy(targetPos);
+    controls.target.copy(targetOffset);
+    camera.near = dist * 0.02; camera.far = dist * 12;
+    camera.updateProjectionMatrix();
+    controls.minDistance = dist * 0.35;
+    controls.maxDistance = dist * 3.2;
+    controls.update();
+  }
+}
+
+/* ============================================================
+   分子顯示入口
+   ============================================================ */
+let currentMol = null;
+let activeTransition = null;
+let pendingMol = null;
+
+function finishTransitionImmediate() {
+  if (!activeTransition) return;
+  updateTransition(activeTransition, 1);
+  cleanupFinished(activeTransition);
+  const wasReaction = activeTransition.isReaction;
+  activeTransition = null;
+  currentMol = pendingMol;
+  pendingMol = null;
+  if (wasReaction) setButtonsDisabled(false);
+  if (cameraAnim) {
+    camera.position.copy(cameraAnim.to);
+    controls.target.copy(cameraAnim.toTarget);
+    const dist = cameraAnim.to.length();
+    camera.near = dist * 0.02; camera.far = dist * 12;
+    camera.updateProjectionMatrix();
+    controls.minDistance = dist * 0.35;
+    controls.maxDistance = dist * 3.2;
+    cameraAnim = null;
+  }
+}
+
+function makeStaticTransition(mol) {
+  return {
+    atoms: mol.atoms.map(a => ({ el: a.el, start: a.pos.clone(), end: a.pos.clone(), delay: 0, dur: 1, type: 'keep', mesh: null })),
+    bonds: mol.bonds.map(b => ({ i: b.i, j: b.j, order: b.order, type: 'keep', alpha0: 1, alpha1: 1, delay: 0, dur: 1, meshes: [] })),
+    start: 0, duration: 0
+  };
+}
+
+function displayMolecule(mol, animate) {
+  if (activeTransition) finishTransitionImmediate();
+  const oldMol = currentMol;
+  if (!oldMol || !animate) {
+    clearGroup();
+    const tr = makeStaticTransition(mol);
+    createMeshes(tr);
+    updateTransition(tr, 1);
+    cleanupFinished(tr);
+    currentMol = mol;
+    focusCamera(mol, false);
+    return;
+  }
+}
+
+function playReaction(acidN, alcoholN) {
+  if (activeTransition) finishTransitionImmediate();
+  const tr = buildReactionTransition(acidN, alcoholN);
+  if (!tr) return;
+  tr.isReaction = true;
+  tr.start = performance.now();
+  tr.duration = ANIM_DUR;
+  setButtonsDisabled(true);
+  clearGroup();
+  createMeshes(tr);
+  updateTransition(tr, 0);
+  activeTransition = tr;
+  pendingMol = null;
+  focusCameraForTransition(tr, true);
+  controls.enabled = false;
+  updateReactionInfo(acidN, alcoholN);
+}
+
+/* ============================================================
+   資料與 UI
+   ============================================================ */
+const DATA = {
+  alkane: {
+    1: { name: '甲烷', formula: 'CH<sub>4</sub>' },
+    2: { name: '乙烷', formula: 'C<sub>2</sub>H<sub>6</sub>' },
+    3: { name: '丙烷', formula: 'C<sub>3</sub>H<sub>8</sub>' },
+    4: { name: '丁烷', formula: 'C<sub>4</sub>H<sub>10</sub>' }
+  },
+  alcohol: {
+    1: { name: '甲醇', formula: 'CH<sub>3</sub>OH' },
+    2: { name: '乙醇', formula: 'C<sub>2</sub>H<sub>5</sub>OH' },
+    3: { name: '丙醇', formula: 'C<sub>3</sub>H<sub>7</sub>OH' },
+    4: { name: '丁醇', formula: 'C<sub>4</sub>H<sub>9</sub>OH' }
+  },
+  acid: {
+    1: { name: '甲酸', formula: 'HCOOH' },
+    2: { name: '乙酸', formula: 'CH<sub>3</sub>COOH' },
+    3: { name: '丙酸', formula: 'C<sub>2</sub>H<sub>5</sub>COOH' },
+    4: { name: '丁酸', formula: 'C<sub>3</sub>H<sub>7</sub>COOH' }
+  }
+};
+const BUILDERS = { alkane: buildAlkane, alcohol: buildAlcohol, acid: buildAcid };
+
+let mode = 'browse'; 
+const state = { cat: 'alkane', n: 1 };
+const reactState = { acid: 2, alcohol: 2 };
+
+const ACID_NAMES = { 1: '甲酸', 2: '乙酸', 3: '丙酸', 4: '丁酸' };
+const ALCOHOL_NAMES = { 1: '甲醇', 2: '乙醇', 3: '丙醇', 4: '丁醇' };
+const ACID_FORMULAS = {
+  1: 'HCOOH', 2: 'CH<sub>3</sub>COOH', 3: 'C<sub>2</sub>H<sub>5</sub>COOH', 4: 'C<sub>3</sub>H<sub>7</sub>COOH'
+};
+const ALCOHOL_FORMULAS = {
+  1: 'CH<sub>3</sub>OH', 2: 'C<sub>2</sub>H<sub>5</sub>OH', 3: 'C<sub>3</sub>H<sub>7</sub>OH', 4: 'C<sub>4</sub>H<sub>9</sub>OH'
+};
+const ACID_ALKYL = { 1: 'H', 2: 'CH<sub>3</sub>', 3: 'C<sub>2</sub>H<sub>5</sub>', 4: 'C<sub>3</sub>H<sub>7</sub>' };
+const ALCOHOL_ALKYL = { 1: 'CH<sub>3</sub>', 2: 'C<sub>2</sub>H<sub>5</sub>', 3: 'C<sub>3</sub>H<sub>7</sub>', 4: 'C<sub>4</sub>H<sub>9</sub>' };
+const ALCOHOL_PREFIX = { 1: '甲', 2: '乙', 3: '丙', 4: '丁' };
+
+function getEsterInfo(acidN, alcoholN) {
+  return {
+    name: `${ACID_NAMES[acidN]}${ALCOHOL_PREFIX[alcoholN]}酯`,
+    formula: `${ACID_ALKYL[acidN]}COO${ALCOHOL_ALKYL[alcoholN]}`
+  };
+}
+
+const catButtons = [...document.querySelectorAll('#catRow .btn[data-cat]')];
+const numButtons = [...document.querySelectorAll('#numRow .btn')];
+const acidButtons = [...document.querySelectorAll('#acidRow .btn')];
+const alcoholButtons = [...document.querySelectorAll('#alcoholRow .btn')];
+const nameEl = document.getElementById('molName');
+const formulaEl = document.getElementById('molFormula');
+const esterBtn = document.getElementById('esterBtn');
+const esterPanel = document.getElementById('esterPanel');
+const numRow = document.getElementById('numRow');
+
+function updateActiveButtons() {
+  catButtons.forEach(b => b.classList.toggle('active', mode === 'browse' && b.dataset.cat === state.cat));
+  numButtons.forEach(b => b.classList.toggle('active', mode === 'browse' && Number(b.dataset.n) === state.n));
+  acidButtons.forEach(b => b.classList.toggle('active', Number(b.dataset.acid) === reactState.acid));
+  alcoholButtons.forEach(b => b.classList.toggle('active', Number(b.dataset.alcohol) === reactState.alcohol));
+  
+  if (mode === 'ester') {
+    esterBtn.classList.add('active');
+  } else {
+    esterBtn.classList.remove('active');
+  }
+}
+
+function setButtonsDisabled(disabled) {
+  document.querySelectorAll('.panel button').forEach(b => { b.disabled = disabled; });
+}
+
+function refresh() {
+  updateActiveButtons();
+  const raw = BUILDERS[state.cat](state.n);
+  const mol = centerMolecule(raw);
+  displayMolecule(mol, false); 
+  const info = DATA[state.cat][state.n];
+  nameEl.textContent = info.name;
+  formulaEl.innerHTML = info.formula;
+}
+
+function updateReactionInfo(acidN, alcoholN) {
+  const ester = getEsterInfo(acidN, alcoholN);
+  nameEl.textContent = `${ACID_NAMES[acidN]} + ${ALCOHOL_NAMES[alcoholN]} → ${ester.name} + 水`;
+  formulaEl.innerHTML = `${ACID_FORMULAS[acidN]} + ${ALCOHOL_FORMULAS[alcoholN]} → ${ester.formula} + H<sub>2</sub>O`;
+}
+
+function showReactantPreview() {
+  const mol = buildReactantsPreview(reactState.acid, reactState.alcohol);
+  displayMolecule(mol, false);
+  
+  const acidName = ACID_NAMES[reactState.acid];
+  const alcoholName = ALCOHOL_NAMES[reactState.alcohol];
+  nameEl.textContent = `${acidName} + ${alcoholName}`;
+  formulaEl.innerHTML = `${ACID_FORMULAS[reactState.acid]} + ${ALCOHOL_FORMULAS[reactState.alcohol]}`;
+}
+
+catButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (mode === 'browse' && state.cat === btn.dataset.cat) return;
+    mode = 'browse';
+    esterPanel.style.display = 'none';
+    numRow.style.display = 'flex';
+    state.cat = btn.dataset.cat;
+    refresh();
+  });
+});
+
+numButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const n = Number(btn.dataset.n);
+    if (state.n === n) return;
+    state.n = n;
+    refresh();
+  });
+});
+
+esterBtn.addEventListener('click', () => {
+  mode = 'ester';
+  esterPanel.style.display = 'block';
+  numRow.style.display = 'none';
+  updateActiveButtons();
+  showReactantPreview(); 
+});
+
+acidButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    reactState.acid = Number(btn.dataset.acid);
+    updateActiveButtons();
+    showReactantPreview();
+  });
+});
+
+alcoholButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    reactState.alcohol = Number(btn.dataset.alcohol);
+    updateActiveButtons();
+    showReactantPreview();
+  });
+});
+
+document.getElementById('reactBtn').addEventListener('click', () => {
+  playReaction(reactState.acid, reactState.alcohol);
+});
+
+/* ============================================================
+   全螢幕按鈕
+   ============================================================ */
+const fsBtn = document.getElementById('fsBtn');
+fsBtn.addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    const p = document.documentElement.requestFullscreen();
+    if (p && p.catch) p.catch(() => {});
+  } else {
+    const p = document.exitFullscreen();
+    if (p && p.catch) p.catch(() => {});
+  }
+});
+function syncFullscreenIcon() {
+  fsBtn.classList.toggle('is-fs', !!document.fullscreenElement);
+}
+document.addEventListener('fullscreenchange', syncFullscreenIcon);
+document.addEventListener('webkitfullscreenchange', syncFullscreenIcon);
+
+/* ============================================================
+   動畫迴圈
+   ============================================================ */
+function tick() {
+  requestAnimationFrame(tick);
+  const now = performance.now();
+
+  if (cameraAnim) {
+    const ct = clamp01((now - cameraAnim.start) / cameraAnim.dur);
+    const e  = easeInOutCubic(ct);
+    camera.position.lerpVectors(cameraAnim.from, cameraAnim.to, e);
+    controls.target.lerpVectors(cameraAnim.fromTarget, cameraAnim.toTarget, e);
+    if (ct >= 1) {
+      const dist = cameraAnim.to.length();
+      camera.near = dist * 0.02; camera.far = dist * 12;
+      camera.updateProjectionMatrix();
+      controls.minDistance = dist * 0.35;
+      controls.maxDistance = dist * 3.2;
+      cameraAnim = null;
+    }
+  }
+
+  if (activeTransition) {
+    const t = (now - activeTransition.start) / activeTransition.duration;
+    if (t >= 1) {
+      const wasReaction = activeTransition.isReaction;
+      updateTransition(activeTransition, 1);
+      cleanupFinished(activeTransition);
+      activeTransition = null;
+      currentMol = pendingMol;
+      pendingMol = null;
+      if (wasReaction) setButtonsDisabled(false);
+    } else {
+      updateTransition(activeTransition, t);
+    }
+  }
+
+  if (activeTransition || cameraAnim) {
+    controls.enabled = false;
+  } else {
+    controls.enabled = true;
+    controls.update();
+  }
+
+  renderer.render(scene, camera);
+}
+
+/* ============================================================
+   視窗縮放
+   ============================================================ */
+function onResize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+
+/* ============================================================
+   啟動
+   ============================================================ */
+updateActiveButtons();
+refresh();
+tick();
+</script>
+</body>
+</html>

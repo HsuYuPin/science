@@ -82,7 +82,7 @@
   }
 
   #esterPanel {
-    display: none; /* 默认隐藏，由JS控制显示 */
+    display: none;
     margin-top: 4px;
     padding-top: 10px;
     border-top: 1px solid rgba(255, 255, 255, .1);
@@ -153,53 +153,56 @@
   .dot.h { background: #2f6bff; }
   .dot.o { background: #ffffff; }
 
-  /* 針對手機版進行輕量化與縮小 */
-  @media (max-width: 600px) {
+  /* 手機豎屏 (Portrait) */
+  @media (max-width: 600px) and (orientation: portrait) {
     .panel {
       top: 10px; left: 10px;
       padding: 10px 12px;
       border-radius: 12px;
-      width: 270px; /* 固定較小寬度，不撐滿 */
+      width: 270px;
       max-height: 75vh;
     }
     .title { font-size: 13px; margin-bottom: 10px; }
     .title::before { width: 4px; height: 14px; }
     .title.sub { font-size: 12px; margin-top: 8px; margin-bottom: 8px; }
-    
     .row { gap: 5px; margin-bottom: 8px; }
     .tag { font-size: 11px; width: 34px; }
-    
-    .btn {
-      font-size: 12px;
-      padding: 4px 8px;
-      border-radius: 7px;
-    }
-    /* 酯化反應按鈕在手機上獨佔一行，避免擠壓 */
-    #esterBtn {
-      margin-top: 2px;
-    }
-
+    .btn { font-size: 12px; padding: 4px 8px; border-radius: 7px; }
+    #esterBtn { margin-top: 2px; }
     .info { margin-top: 10px; padding-top: 10px; }
     .name { font-size: 15px; }
     .formula { font-size: 11px; }
-
-    .fs-btn {
-      top: 10px; right: 10px;
-      width: 36px; height: 36px;
-      border-radius: 10px;
-    }
+    .fs-btn { top: 10px; right: 10px; width: 36px; height: 36px; border-radius: 10px; }
     .fs-btn svg { width: 16px; height: 16px; }
-
     .hint { display: none; }
-
-    .legend {
-      bottom: 10px;
-      font-size: 11px;
-      gap: 10px;
-      padding: 6px 14px;
-      border-radius: 20px;
-    }
+    .legend { bottom: 10px; font-size: 11px; gap: 10px; padding: 6px 14px; border-radius: 20px; }
     .dot { width: 12px; height: 12px; }
+  }
+
+  /* 手機橫屏 (Landscape) 針對高度較小的設備 */
+  @media (max-height: 500px) and (orientation: landscape) {
+    .panel {
+      top: 8px; left: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      width: 215px; /* 更窄，把空間留給右側模型 */
+      max-height: 94vh;
+      overflow-y: auto;
+    }
+    .title { font-size: 12px; margin-bottom: 6px; }
+    .title::before { width: 3px; height: 12px; }
+    .title.sub { font-size: 11px; margin-top: 6px; margin-bottom: 6px; }
+    .row { gap: 4px; margin-bottom: 6px; }
+    .tag { font-size: 10px; width: 26px; }
+    .btn { font-size: 11px; padding: 3px 6px; border-radius: 5px; }
+    .info { margin-top: 8px; padding-top: 8px; }
+    .name { font-size: 13px; }
+    .formula { font-size: 10px; }
+    .fs-btn { top: 8px; right: 8px; width: 32px; height: 32px; }
+    .fs-btn svg { width: 14px; height: 14px; }
+    .legend { bottom: 8px; font-size: 10px; gap: 8px; padding: 4px 10px; }
+    .dot { width: 10px; height: 10px; }
+    .hint { display: none; }
   }
 </style>
 </head>
@@ -238,7 +241,6 @@
       <div class="formula" id="molFormula">CH<sub>4</sub></div>
     </div>
 
-    <!-- 酯化反應控制框 -->
     <div id="esterPanel">
       <div class="title sub">酯化反應</div>
       <div class="row" id="acidRow">
@@ -598,7 +600,6 @@ function buildReactionTransition(acidN, alcoholN) {
   const alcoholParts = findAlcoholParts(alcohol);
   if (acidParts.oIdx < 0 || alcoholParts.oIdx < 0) return null;
 
-  // 旋轉醇
   const rPrimeAtoms = alcohol.atoms.filter((a, i) => i !== alcoholParts.oIdx && i !== alcoholParts.hIdx);
   const rPrimeCentroid = new THREE.Vector3();
   for (const a of rPrimeAtoms) rPrimeCentroid.add(a.pos);
@@ -616,7 +617,6 @@ function buildReactionTransition(acidN, alcoholN) {
 
   const shift = acid.atoms[acidParts.oIdx].pos.clone().sub(alcohol.atoms[alcoholParts.oIdx].pos);
 
-  // 構建酯原子
   const esterAtoms = [];
   for (let i = 0; i < acid.atoms.length; i++) {
     if (i === acidParts.oIdx || i === acidParts.hIdx) continue;
@@ -631,7 +631,6 @@ function buildReactionTransition(acidN, alcoholN) {
   c.divideScalar(esterAtoms.length);
   for (const a of esterAtoms) a.pos.sub(c);
 
-  // 水
   const wc = new THREE.Vector3(0, -3.5, 0);
   const waterAtoms = [
     { el: 'O', pos: wc.clone() },
@@ -834,29 +833,38 @@ function cleanupFinished(tr) {
 }
 
 /* ============================================================
-   相機對焦
+   相機對焦與優化邏輯
    ============================================================ */
 let cameraAnim = null;
 
-// 調整相機距離與偏移，針對手機優化
-function getCameraDistanceAndCenter(maxR, isMobile) {
+// 集中管理相機距離與偏移量，專為手機橫向/直向優化
+function getCameraParams(maxR) {
   const fovRad = THREE.MathUtils.degToRad(camera.fov);
-  // 手機上需要更遠一點點，避免模型過大被面板遮擋
-  const mobileFactor = isMobile ? 1.35 : 1.12;
-  const dist = (maxR / Math.sin(fovRad / 2)) * mobileFactor;
+  let dist = (maxR / Math.sin(fovRad / 2)) * 1.12;
   
-  // 手機上將 target 稍微往右下偏，使模型顯示在空曠處（避開左上角面板）
-  const targetOffset = isMobile ? new THREE.Vector3(1.0, -1.0, 0) : new THREE.Vector3(0, 0, 0);
+  const isMobileLandscape = window.innerWidth > window.innerHeight && window.innerHeight <= 500;
+  const isMobilePortrait  = window.innerHeight > window.innerWidth && window.innerWidth <= 600;
+  
+  let targetOffset = new THREE.Vector3(0, 0, 0);
+
+  if (isMobileLandscape) {
+    // 手機橫版：相機拉遠確保垂直視野，並將模型重心大幅向右偏移
+    dist *= 1.45;
+    targetOffset.set(2.5, 0, 0);
+  } else if (isMobilePortrait) {
+    // 手機豎版：相機適度拉遠，重心向右下偏移避開左上方面板
+    dist *= 1.25;
+    targetOffset.set(0.8, -1.2, 0);
+  }
   
   return { dist, targetOffset };
 }
 
 function focusCamera(mol, animate) {
-  const isMobile = window.innerWidth <= 600;
   let maxR = 0.5;
   for (const a of mol.atoms) maxR = Math.max(maxR, a.pos.length() + 0.6);
   
-  const { dist, targetOffset } = getCameraDistanceAndCenter(maxR, isMobile);
+  const { dist, targetOffset } = getCameraParams(maxR);
   
   const dir = camera.position.clone().sub(controls.target);
   if (dir.lengthSq() < 1e-6) dir.set(0.32, 0.24, 1);
@@ -881,7 +889,6 @@ function focusCamera(mol, animate) {
 }
 
 function focusCameraForTransition(tr, animate) {
-  const isMobile = window.innerWidth <= 600;
   let maxR = 0.5;
   for (const atom of tr.atoms) {
     const sLen = atom.start.length(), eLen = atom.end.length();
@@ -890,7 +897,7 @@ function focusCameraForTransition(tr, animate) {
   }
   maxR += 0.7;
   
-  const { dist, targetOffset } = getCameraDistanceAndCenter(maxR, isMobile);
+  const { dist, targetOffset } = getCameraParams(maxR);
   
   const dir = camera.position.clone().sub(controls.target);
   if (dir.lengthSq() < 1e-6) dir.set(0.32, 0.24, 1);
@@ -1206,6 +1213,8 @@ function onResize() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
+  // 視窗尺寸改變時重新對焦，確保橫豎切換時位置正確
+  if (currentMol) focusCamera(currentMol, false);
 }
 window.addEventListener('resize', onResize);
 

@@ -786,24 +786,24 @@ html.mobile #stage {
   const CY = 508;
   const MITOSIS_PHASES = [
     { name: '間期', start: 0,    end: 4.5,  desc: '細胞內有 3 對同源染色體，每條染色體含 1 個 DNA 分子' },
-    { name: '複製', start: 4.5,  end: 9.5,  desc: '每條染色體複製成 2 條姐妹染色單體，呈 X 形' },
+    { name: '複製', start: 4.5,  end: 9.5,  desc: '每條染色體複製成 2 條姐妹染色分體，呈 X 形' },
     { name: '前期', start: 9.5,  end: 14,   desc: '核膜消失，紡錘絲出現，染色體向細胞中央移動' },
-    { name: '中期', start: 14,   end: 20,   desc: '著絲粒整齊排列在細胞中央的赤道板上' },
-    { name: '後期', start: 20,   end: 25.5, desc: '著絲粒分裂，姐妹染色單體分別移向細胞兩極' },
-    { name: '末期', start: 25.5, end: 30,   desc: '染色體到達兩極，核膜重建，細胞膜從中央縊裂' },
+    { name: '中期', start: 14,   end: 20,   desc: '染色分體整齊排列在細胞中央的赤道板上' },
+    { name: '後期', start: 20,   end: 25.5, desc: '紡錘絲縮短，姐妹染色分體分別移向細胞兩極' },
+    { name: '末期', start: 25.5, end: 30,   desc: '染色體到達兩極，核膜重建，細胞膜向內凹陷' },
     { name: '完成', start: 30,   end: 35,   desc: '形成 2 個子細胞，各有與母細胞相同的 3 對染色體' },
   ];
 
   const MEIOSIS_PHASES = [
     { name: '間期', start: 0,    end: 4.5,  desc: '細胞內有 3 對同源染色體（2n = 6），每條含 1 個 DNA 分子' },
-    { name: '複製', start: 4.5,  end: 9,    desc: '每條染色體複製成 2 條姐妹染色單體，形成 6 個 X' },
+    { name: '複製', start: 4.5,  end: 9,    desc: '每條染色體複製成 2 條姐妹染色分體，形成 6 個 X' },
     { name: '前期 I', start: 9,    end: 14.5, desc: '同源染色體配對（聯會），形成 3 對四分體' },
     { name: '中期 I', start: 14.5, end: 19.5, desc: '3 對同源染色體成對排列在赤道板兩側' },
-    { name: '後期 I', start: 19.5, end: 25,   desc: '同源染色體分離，分別移向兩極；姐妹染色單體仍相連' },
+    { name: '後期 I', start: 19.5, end: 25,   desc: '同源染色體分離，分別移向兩極；姐妹染色分體仍相連' },
     { name: '末期 I', start: 25,   end: 29.5, desc: '形成 2 個次級細胞，每個有 3 條 X 形染色體（n = 3）' },
     { name: '中期 II', start: 29.5, end: 34.5, desc: '兩個次級細胞的染色體，各自排列在赤道板上' },
-    { name: '後期 II', start: 34.5, end: 39.5, desc: '著絲粒分裂，姐妹染色單體分開，移向四個極' },
-    { name: '完成', start: 39.5, end: 44,   desc: '形成 4 個單倍體細胞，每個有 3 條染色體（n = 3）' },
+    { name: '後期 II', start: 34.5, end: 39.5, desc: '紡錘絲縮短，姐妹染色分體分開，移向兩個極' },
+    { name: '完成', start: 39.5, end: 44,   desc: '形成 4 個單套染色體細胞，每個有 3 條染色體（n = 3）' },
   ];
 
   const DIVISIONS = {

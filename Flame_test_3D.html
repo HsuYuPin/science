@@ -912,7 +912,7 @@ h1 {
             <span class="fact-value" id="smokeText">—</span>
           </div>
           <div class="fact">
-            <span class="fact-label">燃燒產物</span>
+            <span class="fact-label" id="productLabel">燃燒產物</span>
             <span class="fact-value" id="productText">—</span>
           </div>
           <div class="fact">
@@ -932,7 +932,7 @@ h1 {
         <button class="btn btn-secondary" id="resetBtn" type="button">重置</button>
       </div>
 
-      <p class="lab-note"><b>觀察重點：</b>火焰顏色和產物顏色不一定相同；看不到氣體，也不代表沒有反應。</p>
+      <p class="lab-note"><b>觀察重點：</b>火焰顏色和產物顏色不一定相同；銅只受熱、不起火；看不到氣體，也不代表沒有反應。</p>
     </aside>
   </main>
 </div>
@@ -5599,12 +5599,13 @@ THREE.GLTFLoader = GLTFLoader;
     cu: {
       symbol: "Cu", name: "銅", appearance: "紅銅色金屬",
       accent: "#b96e45", accentInk: "#fff9f3",
-      flame: "綠色", flameHex: "#3dd879", glowHex: "#24cf68",
-      smoke: "少量煙", smokeKind: "low", smokeColor: 0xf0f7f0, sparkRate: 7,
+      flame: "無火焰（只受熱）", flameHex: "#c77a45", glowHex: "#d98448",
+      hasFlame: false,
+      smoke: "幾乎無煙", smokeKind: "none", smokeColor: 0xf0f7f0, sparkRate: 0,
       product: "氧化銅（CuO）", productColor: "黑色粉末", productHex: "#2b2c2c",
       equation: "2Cu + O₂ → 2CuO",
       residue: { color: 0x2b2c2c, radius: 1.18, height: 0.33 },
-      flameScale: 1.05, light: 40, flash: 0.72
+      flameScale: 1.0, light: 0, flash: 0
     },
     s: {
       symbol: "S", name: "硫", appearance: "黃色粉末",
@@ -5658,6 +5659,7 @@ THREE.GLTFLoader = GLTFLoader;
   var flameText = document.getElementById("flameText");
   var flameHint = document.getElementById("flameHint");
   var smokeText = document.getElementById("smokeText");
+  var productLabel = document.getElementById("productLabel");
   var productText = document.getElementById("productText");
   var colorText = document.getElementById("colorLabel");
   var productSwatch = document.getElementById("productSwatch");
@@ -5677,6 +5679,7 @@ THREE.GLTFLoader = GLTFLoader;
     running: false,
     completed: false,
     lastUiMode: "",
+    flashStrength: 0,
     startedAt: 0,
     useWallClock: false,
     placing: false,
@@ -5754,56 +5757,65 @@ THREE.GLTFLoader = GLTFLoader;
     flameOrb.style.background = "radial-gradient(circle at 36% 30%, #fff 0 10%, " + color + " 55%, " + color + " 100%)";
   }
 
+  function isHeatOnly(el) {
+    return !!el && el.hasFlame === false;
+  }
+
+  function startLabelFor(el) {
+    return isHeatOnly(el) ? "開始加熱" : "開始燃燒";
+  }
+
   function paintObservation(mode) {
     var el = ELEMENTS[currentId];
     obsSub.textContent = el.name + " " + el.symbol + " · " + el.appearance;
+    productLabel.textContent = isHeatOnly(el) ? "氧化產物" : "燃燒產物";
 
     if (mode === "idle") {
       if (state.running) {
-        obsTitle.textContent = el.name + " 正在放入火焰";
-        setPill("燃燒中", "live");
+        obsTitle.textContent = isHeatOnly(el) ? el.name + " 正在受熱" : el.name + " 正在放入火焰";
+        setPill(isHeatOnly(el) ? "加熱中" : "燃燒中", "live");
         setOrb(null);
-        flameText.textContent = "加熱中…";
-        flameHint.textContent = "觀察中";
-        smokeText.textContent = "燃燒匙下降中";
+        flameText.textContent = isHeatOnly(el) ? "無火焰（只受熱）" : "加熱中…";
+        flameHint.textContent = isHeatOnly(el) ? "只受熱" : "觀察中";
+        smokeText.textContent = isHeatOnly(el) ? "銅片送入火焰中" : "燃燒匙下降中";
         productText.textContent = "—";
-        colorText.textContent = "等待燃燒";
+        colorText.textContent = isHeatOnly(el) ? "等待氧化" : "等待燃燒";
         productSwatch.className = "color-mini";
         productSwatch.style.background = "#e9e0ce";
-        equation.textContent = "把燃燒匙放進火焰…";
+        equation.textContent = isHeatOnly(el) ? "把銅片放進火焰上加熱…" : "把燃燒匙放進火焰…";
       } else {
-        obsTitle.textContent = "尚未燃燒";
+        obsTitle.textContent = isHeatOnly(el) ? "尚未加熱" : "尚未燃燒";
         setPill("待機", "idle");
         setOrb(null);
         flameText.textContent = "—";
-        flameHint.textContent = "燃燒後觀察";
+        flameHint.textContent = isHeatOnly(el) ? "加熱後觀察" : "燃燒後觀察";
         smokeText.textContent = "—";
         productText.textContent = "—";
         colorText.textContent = "—";
         productSwatch.className = "color-mini";
         productSwatch.style.background = "#f1e6d0";
-        equation.textContent = "選好元素，按「開始燃燒」";
+        equation.textContent = "選好元素，按「" + startLabelFor(el) + "」";
       }
       obsCard.classList.remove("is-complete");
     } else if (mode === "live") {
-      obsTitle.textContent = el.name + " 正在燃燒";
-      setPill("燃燒中", "live");
-      setOrb(el.flameHex);
-      flameText.textContent = el.flame;
-      flameHint.textContent = "觀察中";
-      smokeText.textContent = "觀察煙霧與火焰…";
-      productText.textContent = "燃燒中…";
-      colorText.textContent = "等待燃燒完成";
+      obsTitle.textContent = isHeatOnly(el) ? el.name + " 正在加熱" : el.name + " 正在燃燒";
+      setPill(isHeatOnly(el) ? "加熱中" : "燃燒中", "live");
+      setOrb(isHeatOnly(el) ? null : el.flameHex);
+      flameText.textContent = isHeatOnly(el) ? "無火焰（只受熱）" : el.flame;
+      flameHint.textContent = isHeatOnly(el) ? "只受熱" : "觀察中";
+      smokeText.textContent = isHeatOnly(el) ? "銅表面逐漸氧化變黑" : "觀察煙霧與火焰…";
+      productText.textContent = isHeatOnly(el) ? "氧化反應中…" : "燃燒中…";
+      colorText.textContent = isHeatOnly(el) ? "等待氧化完成" : "等待燃燒完成";
       productSwatch.className = "color-mini";
       productSwatch.style.background = "#e9e0ce";
-      equation.textContent = "反應進行中…";
+      equation.textContent = isHeatOnly(el) ? "2Cu + O₂ → 2CuO ｜ 只受熱，不起火" : "反應進行中…";
       obsCard.classList.remove("is-complete");
     } else if (mode === "complete") {
-      obsTitle.textContent = el.name + " 燃燒完成";
+      obsTitle.textContent = isHeatOnly(el) ? el.name + " 加熱完成" : el.name + " 燃燒完成";
       setPill("已完成", "done");
-      setOrb(el.flameHex);
-      flameText.textContent = el.flame;
-      flameHint.textContent = "已觀察";
+      setOrb(isHeatOnly(el) ? null : el.flameHex);
+      flameText.textContent = isHeatOnly(el) ? "無火焰（只受熱）" : el.flame;
+      flameHint.textContent = isHeatOnly(el) ? "只受熱" : "已觀察";
       smokeText.textContent = el.smoke;
       productText.textContent = el.product;
       colorText.textContent = el.productColor;
@@ -5832,7 +5844,7 @@ THREE.GLTFLoader = GLTFLoader;
     resetExperiment(true);
     sampleFlame.setColor(ELEMENTS[id].flameHex, ELEMENTS[id].glowHex);
     updateSpoonLabel();
-    setStatus(ELEMENTS[id].name + " 已放上燃燒匙 · 按「開始燃燒」");
+    setStatus(ELEMENTS[id].name + " 已放上燃燒匙 · 按「" + startLabelFor(ELEMENTS[id]) + "」");
     updateUiMode(true);
   }
 
@@ -5842,8 +5854,9 @@ THREE.GLTFLoader = GLTFLoader;
     state.running = false;
     state.completed = false;
     state.useWallClock = false;
+    state.flashStrength = 0;
     burnBtn.disabled = false;
-    burnLabel.textContent = "開始燃燒";
+    burnLabel.textContent = startLabelFor(ELEMENTS[currentId]);
     spoonGroup.position.y = SPOON_REST;
     armGroup.position.y = SPOON_REST;
     sampleFlame.group.visible = false;
@@ -5862,7 +5875,7 @@ THREE.GLTFLoader = GLTFLoader;
     buildSample();
     startPlacement();
     paintObservation("idle");
-    if (!keepStatus) setStatus(ELEMENTS[currentId].name + " 已放上燃燒匙 · 按「開始燃燒」");
+    if (!keepStatus) setStatus(ELEMENTS[currentId].name + " 已放上燃燒匙 · 按「" + startLabelFor(ELEMENTS[currentId]) + "」");
     sampleLight.intensity = 0;
     spoonBowlMat.emissiveIntensity = 0;
     spoonHandleMat.emissiveIntensity = 0;
@@ -5889,9 +5902,9 @@ THREE.GLTFLoader = GLTFLoader;
     state.startedAt = (typeof performance !== "undefined" ? performance.now() : Date.now());
     state.useWallClock = true;
     burnBtn.disabled = true;
-    burnLabel.textContent = "燃燒中…";
-    setStatus("把燃燒匙放進火焰…");
-    setPill("燃燒中", "live");
+    burnLabel.textContent = isHeatOnly(ELEMENTS[currentId]) ? "加熱中…" : "燃燒中…";
+    setStatus(isHeatOnly(ELEMENTS[currentId]) ? "把銅片送進酒精燈火焰上加熱…" : "把燃燒匙放進火焰…");
+    setPill(isHeatOnly(ELEMENTS[currentId]) ? "加熱中" : "燃燒中", "live");
     buildResidue();
     sampleFlame.group.visible = false;
     sampleFlame.group.scale.set(0.01, 0.01, 0.01);
@@ -5901,20 +5914,25 @@ THREE.GLTFLoader = GLTFLoader;
   function onPhaseChange(phase, t) {
     var el = ELEMENTS[currentId];
     if (phase === "lowering") {
-      setStatus("把燃燒匙放進火焰…");
-      burnLabel.textContent = "燃燒中…";
+      setStatus(isHeatOnly(el) ? "把銅片送進酒精燈火焰上加熱…" : "把燃燒匙放進火焰…");
+      burnLabel.textContent = isHeatOnly(el) ? "加熱中…" : "燃燒中…";
     } else if (phase === "igniting") {
-      setStatus("點燃中 · 觀察火焰顏色");
+      setStatus(isHeatOnly(el) ? "受熱中 · 銅不會起火，觀察表面變化" : "點燃中 · 觀察火焰顏色");
     } else if (phase === "burning") {
-      if (currentId === "p") setStatus("燃燒中 · 大量白煙生成");
+      if (isHeatOnly(el)) setStatus("加熱中 · 銅表面逐漸氧化成黑色氧化銅");
+      else if (currentId === "p") setStatus("燃燒中 · 大量白煙生成");
       else if (currentId === "s") setStatus("燃燒中 · 藍紫色火焰，產物無色");
       else if (currentId === "c") setStatus("燃燒中 · 橘紅光與少量煙");
       else setStatus("燃燒中 · 觀察火焰顏色");
       updateUiMode(false);
     } else if (phase === "finishing") {
-      setStatus(state.completed ? "燃燒完成 · 火焰漸弱，觀察產物" : "火焰漸弱 · 觀察燃燒匙上的產物");
+      setStatus(isHeatOnly(el)
+        ? (state.completed ? "加熱完成 · 銅表面已變黑，準備觀察產物" : "銅表面變黑 · 觀察產物")
+        : (state.completed ? "燃燒完成 · 火焰漸弱，觀察產物" : "火焰漸弱 · 觀察燃燒匙上的產物"));
     } else if (phase === "lifting") {
-      setStatus(state.completed ? "燃燒完成 · 燃燒匙正在移出火焰" : "把燃燒匙移出火焰 · 準備觀察產物");
+      setStatus(isHeatOnly(el)
+        ? (state.completed ? "加熱完成 · 燃燒匙正在移出火焰" : "把燃燒匙移出火焰 · 準備觀察產物")
+        : (state.completed ? "燃燒完成 · 燃燒匙正在移出火焰" : "把燃燒匙移出火焰 · 準備觀察產物"));
     }
   }
 
@@ -5924,7 +5942,9 @@ THREE.GLTFLoader = GLTFLoader;
     updateUiMode(true);
     burnBtn.disabled = true;
     burnLabel.textContent = "整理中…";
-    if (el.productHex === null) {
+    if (isHeatOnly(el)) {
+      setStatus("加熱完成 · 銅表面已氧化成黑色的氧化銅（CuO）");
+    } else if (el.productHex === null) {
       setStatus("燃燒完成 · 產物是無色氣體，看不到");
     } else {
       setStatus("燃燒完成 · 看看燃燒匙上的" + el.productColor);
@@ -5936,8 +5956,10 @@ THREE.GLTFLoader = GLTFLoader;
     state.running = false;
     state.phase = "done";
     burnBtn.disabled = false;
-    burnLabel.textContent = "再燒一次";
-    if (el.productHex === null) {
+    burnLabel.textContent = isHeatOnly(el) ? "再加熱一次" : "再燒一次";
+    if (isHeatOnly(el)) {
+      setStatus("加熱完成 · 產物：氧化銅（CuO），黑色粉末");
+    } else if (el.productHex === null) {
       setStatus("燃燒完成 · " + el.product + "，無色看不到");
     } else {
       setStatus("燃燒完成 · 產物：" + el.product + "，" + el.productColor);
@@ -5946,6 +5968,7 @@ THREE.GLTFLoader = GLTFLoader;
 
   // ------------------------------------------------------------------ three
   var BASE_EXPOSURE = 0.98;
+  var OXIDE_BLACK = new THREE.Color(0x171716);
   var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(1, 1, false);
@@ -7250,8 +7273,9 @@ THREE.GLTFLoader = GLTFLoader;
     var burnProgress = smoothstep(T_LOWER + 0.05, T_BURN_END - 0.15, t);
     var residueProgress = smoothstep(T_BURN_END - 0.95, T_BURN_END - 0.05, t);
     var el = ELEMENTS[currentId];
+    var heatOnly = isHeatOnly(el);
 
-    var sampleScale = 1 - smoothstep(0.08, 0.86, burnProgress);
+    var sampleScale = 1 - smoothstep(heatOnly ? 0.58 : 0.08, heatOnly ? 0.96 : 0.86, burnProgress);
     sampleGroup.visible = sampleScale > 0.02;
     sampleGroup.scale.set(Math.max(0.001, sampleScale), Math.max(0.001, sampleScale), Math.max(0.001, sampleScale));
 
@@ -7263,7 +7287,7 @@ THREE.GLTFLoader = GLTFLoader;
       residueGroup.visible = false;
     }
 
-    var activeFlame = flameStrength > 0.002;
+    var activeFlame = flameStrength > 0.002 && !heatOnly;
     sampleFlame.group.visible = activeFlame;
     if (activeFlame) {
       var flick = 0.92 + 0.08 * Math.sin(simTime * 12.7) + 0.04 * Math.sin(simTime * 21.3 + 1.1);
@@ -7274,32 +7298,41 @@ THREE.GLTFLoader = GLTFLoader;
     }
 
     sampleLight.position.set(0, spoonY + 2.8, 2);
-    sampleLight.intensity = flameStrength * el.light * 0.64;
+    sampleLight.intensity = heatOnly ? 0 : flameStrength * el.light * 0.64;
     sampleLight.color.set(el.glowHex);
 
     var flashU = (t - T_LOWER) / 0.85;
-    var flashStrength = 0;
+    var flashPulse = 0;
     if (flashU > 0 && flashU < 1) {
-      flashStrength = Math.sin(Math.PI * clamp01(flashU)) * el.flash;
+      flashPulse = Math.sin(Math.PI * clamp01(flashU)) * el.flash;
     }
     var isMagnesium = currentId === "mg";
+    var flashStrength = flashPulse;
+    if (isMagnesium) {
+      // Magnesium keeps its intense white light for the whole burn, then
+      // fades with the flame instead of dropping right after ignition.
+      var mgRamp = smoothstep(T_LOWER, T_LOWER + 0.55, t);
+      var mgFade = 1 - smoothstep(T_BURN_END, T_FADE_END, t);
+      flashStrength = mgRamp * mgFade;
+    }
+    state.flashStrength = flashStrength;
     if (flashStrength > 0.01) {
       flash.visible = true;
       flash.position.set(0, spoonY + 2.4, 2);
-      var fs = 10 + flashStrength * (isMagnesium ? 32 : 21);
+      var fs = 10 + flashStrength * (isMagnesium ? 34 : 21);
       flash.scale.set(fs, fs, 1);
-      flash.material.opacity = (isMagnesium ? 0.72 : 0.48) * flashStrength;
+      flash.material.opacity = (isMagnesium ? 0.62 : 0.48) * flashStrength;
       flash.material.color.set(isMagnesium ? 0xffffff : el.glowHex);
       flashLight.position.set(0, spoonY + 2.2, 2);
       flashLight.color.set(isMagnesium ? 0xffffff : el.glowHex);
-      flashLight.intensity = flashStrength * (isMagnesium ? 230 : 110);
+      flashLight.intensity = flashStrength * (isMagnesium ? 200 : 110);
       flashLight.distance = isMagnesium ? 46 : 34;
       if (flashVeil) {
         flashVeil.style.opacity = String(
-          Math.min(0.92, flashStrength * (isMagnesium ? 0.82 : 0.16))
+          Math.min(0.92, flashStrength * (isMagnesium ? 0.34 : 0.16))
         );
       }
-      renderer.toneMappingExposure = BASE_EXPOSURE + flashStrength * (isMagnesium ? 0.24 : 0.04);
+      renderer.toneMappingExposure = BASE_EXPOSURE + flashStrength * (isMagnesium ? 0.18 : 0.04);
     } else {
       flash.visible = false;
       flash.material.opacity = 0;
@@ -7314,9 +7347,24 @@ THREE.GLTFLoader = GLTFLoader;
     spoonHandleMat.emissive.set(el.flameHex);
     spoonHandleMat.emissiveIntensity = heat * 0.22;
     if (sampleMaterials.length) {
-      for (var sm = 0; sm < sampleMaterials.length; sm += 1) {
-        sampleMaterials[sm].emissive.set(el.flameHex);
-        sampleMaterials[sm].emissiveIntensity = flameStrength * 0.3;
+      if (heatOnly) {
+        // Copper does not ignite: keep the alcohol-lamp flame, but let the
+        // copper itself heat up and turn black as CuO forms.
+        var oxidation = smoothstep(T_LOWER + 0.15, T_BURN_END - 0.15, t);
+        for (var hm = 0; hm < sampleMaterials.length; hm += 1) {
+          var hmat = sampleMaterials[hm];
+          if (!hmat.userData.baseColor) hmat.userData.baseColor = hmat.color.clone();
+          hmat.color.copy(hmat.userData.baseColor).lerp(OXIDE_BLACK, oxidation * 0.94);
+          hmat.emissive.set(0xc75b24);
+          hmat.emissiveIntensity = flameStrength * (0.24 - oxidation * 0.16);
+          hmat.metalness = 0.08 * (1 - oxidation * 0.9);
+          hmat.roughness = 0.56 + oxidation * 0.34;
+        }
+      } else {
+        for (var sm = 0; sm < sampleMaterials.length; sm += 1) {
+          sampleMaterials[sm].emissive.set(el.flameHex);
+          sampleMaterials[sm].emissiveIntensity = flameStrength * 0.3;
+        }
       }
     }
 
@@ -7686,6 +7734,9 @@ THREE.GLTFLoader = GLTFLoader;
         spoonY: Number(spoonGroup.position.y.toFixed(2)),
         flameColor: el.flame,
         flameHex: el.flameHex,
+        hasFlame: el.hasFlame !== false,
+        flameVisible: sampleFlame.group.visible,
+        flashStrength: Number(state.flashStrength.toFixed(2)),
         smoke: el.smoke,
         product: el.product,
         productColor: el.productColor,

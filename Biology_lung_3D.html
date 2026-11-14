@@ -5308,13 +5308,13 @@ THREE.GLTFLoader = GLTFLoader;
       text: '與右側一樣不斷分支成細支氣管。這些氣道只負責輸送空氣，真正交換氣體的地方在末端的肺泡。'
     },
     artery: {
-      name: '肺動脈 Pulmonary artery', en: 'Pulmonary artery', color: '#cf4b45',
+      name: '肺靜脈 Pulmonary artery', en: 'Pulmonary artery', color: '#cf4b45',
       anchor: [-0.95, 0.60, 0.75], center: [-0.41, 0.56, 0.0], r: 1.5,
       dx: -232, dy: 130, modes: ['xray'], groups: ['artery'],
       text: '把缺氧血從右心室送到肺，在肺泡周圍形成微血管網。模型中以紅色標示，與體循環的動脈顏色不同。'
     },
     vein: {
-      name: '肺靜脈 Pulmonary vein', en: 'Pulmonary vein', color: '#4a7fb5',
+      name: '肺動脈 Pulmonary vein', en: 'Pulmonary vein', color: '#4a7fb5',
       anchor: [0.55, -0.10, 0.72], center: [0.08, 0.02, -0.37], r: 1.5,
       dx: 228, dy: 118, modes: ['xray'], groups: ['vein'],
       text: '在肺泡旁接收含氧血，送回左心房，再由左心室打到全身。模型中以藍色標示。'
@@ -5342,7 +5342,7 @@ THREE.GLTFLoader = GLTFLoader;
 
   var MODE_TEXT = {
     surface: { step: '整組呼吸器官', name: '肺 Lungs', text: '空氣由鼻腔進入，經氣管、左右主支氣管分支成細支氣管，最後到達肺泡。肺泡壁只有一層細胞，氧氣在這裡擴散進血液，二氧化碳則擴散出來。' },
-    xray: { step: '透視 · 內部構造', name: '氣道與血管', text: '肺臟被調淡，看見裡面的支氣管樹，以及纏繞在肺泡旁的肺動脈（紅）與肺靜脈（藍）。氣體交換就在這層薄膜上發生。' },
+    xray: { step: '透視 · 內部構造', name: '氣道與血管', text: '肺臟被調淡，看見裡面的支氣管樹，以及纏繞在肺泡旁的肺靜脈（紅）與肺動脈（藍）。氣體交換就在這層薄膜上發生。' },
     covid: { step: '發炎 · COVID-19', name: '發炎中的肺', text: '綠色標出這份模型裡的發炎區。肺泡發炎、積水後，氧氣通過肺泡壁與微血管的速度變慢，血液含氧量下降。' }
   };
 
@@ -5627,8 +5627,8 @@ THREE.GLTFLoader = GLTFLoader;
     var html = '<span class="lg"><i style="background:#c15f50"></i>肺臟</span>' +
       '<span class="lg"><i style="background:#d29a8c"></i>氣管 · 支氣管</span>';
     if (state.mode === 'xray') {
-      html += '<span class="lg"><i style="background:#cf4b45"></i>肺動脈</span>' +
-        '<span class="lg"><i style="background:#4a7fb5"></i>肺靜脈</span>';
+      html += '<span class="lg"><i style="background:#cf4b45"></i>肺靜脈</span>' +
+        '<span class="lg"><i style="background:#4a7fb5"></i>肺動脈</span>';
     } else if (state.mode === 'covid') {
       html += '<span class="lg"><i style="background:#6d9a3e"></i>發炎區</span>';
     } else {

@@ -611,6 +611,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
   const TAU = Math.PI * 2;
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const smoothstep = (a, b, x) => {
+    const t = clamp((x - a) / (b - a), 0, 1);
+    return t * t * (3 - 2 * t);
+  };
 
   const stage = document.getElementById('stage');
   const canvas = document.getElementById('scene');
@@ -990,6 +994,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   const flowSets = [];
   const motes = [];
   const highFlows = [];
+  const crossFlows = [];
+  const tracerGroups = [];
   const coinRings = [];
   const flowTextures = [];
   const pulseHeads = [];
@@ -1344,6 +1350,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     const nx = -dz / len;
     const nz = dx / len;
     const offsets = [-2.8, 0, 2.8];
+    const curves = [];
 
     for (let i = 0; i < offsets.length; i += 1) {
       const off = new THREE.Vector3(nx * offsets[i], 0, nz * offsets[i]);
@@ -1352,6 +1359,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       const c1 = start.clone().add(new THREE.Vector3(ta.x, 0, ta.z).multiplyScalar(len * 0.33));
       const c2 = end.clone().add(new THREE.Vector3(tb.x, 0, tb.z).multiplyScalar(-len * 0.33));
       const curve = new THREE.CubicBezierCurve3(start, c1, c2, end);
+      curves.push(curve);
 
       const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 64, 0.14, 8, false), shaftMat);
       tube.castShadow = false;
@@ -1364,6 +1372,50 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       head.castShadow = false;
       g.add(head);
     }
+
+    // Tracers along each curve: they start as pale-green arrows leaving the
+    // high and cross-fade into white vapour dots as they reach the low.
+    const perCurve = 8;
+    const markerCount = curves.length * perCurve;
+    const morphArrows = new THREE.InstancedMesh(
+      new THREE.ConeGeometry(0.34, 1.05, 10),
+      new THREE.MeshBasicMaterial({ color: 0x8fd49c, transparent: true, opacity: 0.9, depthWrite: false }),
+      markerCount
+    );
+    morphArrows.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    morphArrows.frustumCulled = false;
+
+    // the tracers live outside arrowRoots, so hiding the arrow shapes does
+    // not stop the ground airflow animation
+    const tracers = new THREE.Group();
+    tracers.userData.hemi = hemi;
+    tracers.add(morphArrows);
+
+    const dotTex = makeVaporTexture();
+    const dotMat = new THREE.SpriteMaterial({
+      map: dotTex,
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.95,
+      depthWrite: false
+    });
+    const morphDots = [];
+    for (let i = 0; i < markerCount; i += 1) {
+      const sprite = new THREE.Sprite(dotMat);
+      sprite.scale.setScalar(0.001);
+      tracers.add(sprite);
+      morphDots.push(sprite);
+    }
+    content.add(tracers);
+    tracerGroups.push(tracers);
+    crossFlows.push({
+      arrows: morphArrows,
+      dots: morphDots,
+      curves: curves,
+      perCurve: perCurve,
+      count: markerCount
+    });
+
     content.add(g);
     arrowRoots.push(g);
   }
@@ -1595,6 +1647,30 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       set.mat.opacity = 0.5 + 0.06 * Math.sin(t * 2.0);
     }
 
+    for (let c = 0; c < crossFlows.length; c += 1) {
+      const cf = crossFlows[c];
+      for (let i = 0; i < cf.count; i += 1) {
+        const ci = Math.floor(i / cf.perCurve);
+        const k = i % cf.perCurve;
+        const u = (t * 0.15 + k / cf.perCurve + ci * 0.035) % 1;
+        const p = cf.curves[ci].getPointAt(u);
+        const tan = cf.curves[ci].getTangentAt(u);
+        const aScale = smoothstep(0, 0.08, u) * (1 - smoothstep(0.3, 0.62, u));
+        const dScale = smoothstep(0.38, 0.72, u) * (1 - smoothstep(0.96, 1, u));
+
+        dummy.position.set(p.x, p.y + 0.12, p.z);
+        dummy.quaternion.setFromUnitVectors(UP, tan);
+        dummy.scale.setScalar(aScale);
+        dummy.updateMatrix();
+        cf.arrows.setMatrixAt(i, dummy.matrix);
+
+        const dot = cf.dots[i];
+        dot.position.set(p.x, p.y + 0.16, p.z);
+        dot.scale.setScalar(Math.max(0.001, dScale * 1.3));
+      }
+      cf.arrows.instanceMatrix.needsUpdate = true;
+    }
+
     if (rainMesh) {
       for (let i = 0; i < rainDrops.length; i += 1) {
         const d = rainDrops[i];
@@ -1780,6 +1856,12 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     }
   }
 
+  function applyTracerVisibility() {
+    for (let i = 0; i < tracerGroups.length; i += 1) {
+      tracerGroups[i].visible = tracerGroups[i].userData.hemi === hemiSign;
+    }
+  }
+
   function setHemisphere(sign) {
     hemiSign = sign < 0 ? -1 : 1;
     const south = hemiSign < 0;
@@ -1796,6 +1878,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       ? '<span class="rot">↻</span>順時針'
       : '<span class="rot">↺</span>逆時針';
     applyArrowVisibility();
+    applyTracerVisibility();
   }
 
   function setArrowsVisible(v) {
@@ -1803,7 +1886,6 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     arrowBtn.classList.toggle('arrows-off', !arrowsVisible);
     arrowBtn.setAttribute('aria-pressed', String(arrowsVisible));
     arrowBtn.setAttribute('aria-label', arrowsVisible ? '隱藏箭頭' : '顯示箭頭');
-    windNote.classList.toggle('is-hidden', !arrowsVisible);
     applyArrowVisibility();
   }
 

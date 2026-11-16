@@ -1168,9 +1168,17 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   const POINTERS = new Map();
 
   canvas.addEventListener('pointerdown', (e) => {
-    canvas.setPointerCapture(e.pointerId);
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 合成事件或已釋放 */ }
     POINTERS.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    state.dragging = POINTERS.size === 1;
+    if (POINTERS.size >= 2) {
+      // 第二根手指落下：以目前的兩指距離當基準，避免第一下跳動
+      const pts = [...POINTERS.values()];
+      state.pinch = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      state.dragging = false;
+    } else {
+      state.dragging = POINTERS.size === 1;
+      state.pinch = 0;
+    }
     state.lastX = e.clientX; state.lastY = e.clientY;
   });
 
@@ -1183,8 +1191,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       const pts = [...POINTERS.values()];
       const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
       if (state.pinch) {
-        const dz = (state.pinch - d) * 0.0022;
-        nudgeT(dz);
+        // 雙指張開（d 變大）＝放大（t 變大、鏡頭靠近）；捏合＝縮小
+        autoStop();
+        nudgeT((d - state.pinch) * 0.0024);
       }
       state.pinch = d;
       return;

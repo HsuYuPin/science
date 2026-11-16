@@ -114,7 +114,7 @@
   .rung.on .tag{color:#eaf6ff}
 
   /* ---------- part labels ---------- */
-  #labels{position:absolute;inset:0;pointer-events:none}
+  #labels{position:absolute;inset:0;pointer-events:none;transition:opacity .24s ease}
   .part-label{
     position:absolute;left:0;top:0;display:block;
     padding:.42em .62em;border-radius:11px;
@@ -131,7 +131,7 @@
     display:block;margin-top:.18em;font-style:normal;font-weight:700;
     font-size:.78em;color:var(--cy);
   }
-  #leaders{position:absolute;inset:0;pointer-events:none;overflow:visible}
+  #leaders{position:absolute;inset:0;pointer-events:none;overflow:visible;transition:opacity .24s ease}
   .leader{stroke:rgba(196,232,255,.95);stroke-width:3.2;stroke-linecap:round}
   .leader-under{stroke:rgba(2,10,20,.62);stroke-width:8;stroke-linecap:round}
   .leader-dot{fill:#dff2ff;stroke:rgba(2,10,20,.65);stroke-width:2.4}
@@ -291,6 +291,8 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   ];
   const VFOV = 22.8;                       // 對齊 Blender 50mm／36mm 的縱向視角
   const HFOV = 39.6;                       // 橫向視角，窄螢幕時維持不變
+  const Z_FAR = -0.5;                      // 每幕可額外拉遠的範圍（t=-0.5 → 再遠一倍）
+  const AUTO_RATE = 0.19;                  // 自動縮放：每幕約 5.3 秒
 
   const el = (id) => document.getElementById(id);
   const canvas = el('gl');
@@ -941,7 +943,6 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       syncNucleonHud();
       measureUI();
       buildLabels(i);
-      popStage();
     }
   }
 
@@ -971,12 +972,6 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       measureUI();
       buildLabels(4);
     }
-  }
-
-  function popStage() {
-    const grp = stageRoot.children[state.stage];
-    grp.scale.setScalar(1.045);
-    grp.userData.popT = 0;
   }
 
   function flash(strength) {
@@ -1135,7 +1130,10 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     const t = state.t;
     // 直向螢幕：鏡頭稍微靠近，主體才不會縮在畫面中央
     const portrait = state.vw < state.vh * 1.05 ? 0.92 : 1;
-    const R = s.r0 * Math.pow(s.r1 / s.r0, t) * portrait;
+    const rDef = s.r0 * 2;                 // 預設鏡頭：比原本遠一倍（物體小一半）
+    const R = (t >= 0
+      ? rDef * Math.pow(s.r1 / rDef, t)
+      : rDef * Math.pow(2, -2 * t)) * portrait;   // t = Z_FAR(-0.5) → 再遠一倍（= 4×r0）
     const az = deg(s.az0 + (s.az1 - s.az0) * t) + state.az;
     const el = deg(s.el0 + (s.el1 - s.el0) * t) + state.el;
     const look = s.look;
@@ -1186,7 +1184,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
       if (state.pinch) {
         const dz = (state.pinch - d) * 0.0022;
-        requestZoom(dz);
+        nudgeT(dz);
       }
       state.pinch = d;
       return;
@@ -1207,10 +1205,53 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   canvas.addEventListener('pointercancel', endPointer);
   canvas.addEventListener('pointerleave', endPointer);
 
-  let zoomTarget = null;
-  function requestZoom(dz) {
-    const base = zoomTarget === null ? (state.stage + state.t) : zoomTarget;
-    zoomTarget = clamp(base + dz, 0, STAGES.length - 1);
+  // ---------- 縮放：每個尺度 t ∈ [Z_FAR, 1]，t = 0 是預設鏡頭 ----------
+  // Z_FAR 讓人在同一尺度內先往外拉（模型變小）之後才切換到更大尺度
+  let targetT = null;
+
+  function nudgeT(dT) {
+    const base = targetT === null ? state.t : targetT;
+    targetT = clamp(base + dT, Z_FAR - 0.5, 1 + 0.5);
+  }
+
+  function setT(t) {
+    if (t > 1) {
+      if (state.stage >= STAGES.length - 1) { state.t = 1; targetT = null; return; }
+      applyStage(state.stage + 1, false);
+      startTransition('in');
+      state.t = 0;
+      targetT = 0;
+      return;
+    }
+    if (t < Z_FAR) {
+      if (state.stage === 0) { state.t = Z_FAR; targetT = null; return; }
+      applyStage(state.stage - 1, false);
+      startTransition('out');
+      state.t = 0;
+      targetT = 0;
+      return;
+    }
+    state.t = t;
+  }
+
+  // ---------- 切幕過渡：進到更小尺度先出現極小模型再放大；反之先極大再縮小 ----------
+  let transition = null;                   // { dir:'in'|'out', p:0..1 }
+  const TRANSITION_DUR = 0.92;
+
+  function startTransition(dir) {
+    transition = { dir, p: 0 };
+    labelLayer.style.opacity = '0';
+    svg.style.opacity = '0';
+    flash(dir === 'in' ? 0.14 : 0.18);
+  }
+
+  function transitionScale() {
+    if (!transition) return 1;
+    // 前 12% 停在極端尺寸（極小／極大），之後才平滑回到 1
+    const q = clamp((transition.p - 0.12) / 0.88, 0, 1);
+    const e = q * q * (3 - 2 * q);
+    const from = transition.dir === 'in' ? 0.09 : 6.5;
+    return 1 + (from - 1) * (1 - e);
   }
 
   // ---------- 全螢幕 ----------
@@ -1252,8 +1293,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
 
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
+    autoStop();
     const k = e.deltaMode === 1 ? 0.05 : 0.0016;
-    requestZoom(-clamp(e.deltaY, -260, 260) * k);
+    nudgeT(-clamp(e.deltaY, -260, 260) * k);
   }, { passive: false });
 
   window.addEventListener('keydown', (e) => {
@@ -1269,10 +1311,13 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   function setStage(i) {
     i = clamp(i, 0, STAGES.length - 1);
     autoStop();
-    flash(0.34);
-    applyStage(i, false);
     state.az = 0; state.el = 0;
-    zoomTarget = null;
+    state.t = 0;
+    targetT = 0;
+    // 方向要在 applyStage 改掉 state.stage 之前決定
+    const dir = i >= state.stage ? 'in' : 'out';
+    if (i !== state.stage) applyStage(i, false);
+    startTransition(dir);
   }
 
   function toggleAuto() {
@@ -1318,36 +1363,42 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
     const dt = Math.min(clock.getDelta(), 0.05);
     elapsed += dt;
 
-    // 縮放目標（滾輪／雙指）
-    if (zoomTarget !== null) {
-      const cur = state.stage + state.t;
-      const next = cur + (zoomTarget - cur) * Math.min(1, dt * 9);
-      const z = Math.abs(next - zoomTarget) < 0.002 ? zoomTarget : next;
-      const idx = clamp(Math.floor(z), 0, STAGES.length - 1);
-      const t = clamp(z - idx, 0, 1);
-      if (idx !== state.stage) { flash(0.20); applyStage(idx, true); }
-      state.t = t;
-      if (z === zoomTarget) zoomTarget = null;
+    // 縮放平滑（滾輪／雙指）
+    if (targetT !== null) {
+      const k = Math.min(1, dt * 10);
+      let next = state.t + (targetT - state.t) * k;
+      if (Math.abs(next - targetT) < 0.004) next = targetT;
+      const done = next === targetT;
+      setT(next);
+      if (done) targetT = null;
     }
 
     // 自動播放
     if (state.auto) {
-      let z = state.stage + state.t + dt * 0.235;
-      if (z >= STAGES.length - 1) { z = STAGES.length - 1; autoStop(); }
-      const idx = clamp(Math.floor(z), 0, STAGES.length - 1);
-      const t = clamp(z - idx, 0, 1);
-      if (idx !== state.stage) { flash(0.26); applyStage(idx, true); }
-      state.t = t;
+      const next = state.t + dt * AUTO_RATE;
+      if (next > 1) {
+        if (state.stage >= STAGES.length - 1) { state.t = 1; autoStop(); }
+        else {
+          applyStage(state.stage + 1, false);
+          startTransition('in');
+          state.t = 0;
+        }
+      } else {
+        state.t = next;
+      }
     }
 
-    // 幕內微動畫
-    const grp = stageRoot.children[state.stage];
-    if (grp.userData.popT !== undefined) {
-      grp.userData.popT = Math.min(1, grp.userData.popT + dt * 3.2);
-      const k = 1 + 0.045 * (1 - grp.userData.popT);
-      grp.scale.setScalar(k);
-      if (grp.userData.popT >= 1) { grp.scale.setScalar(1); grp.userData.popT = undefined; }
+    // 切幕過渡動畫
+    if (transition) {
+      transition.p = Math.min(1, transition.p + dt / TRANSITION_DUR);
+      if (transition.p >= 1) {
+        transition = null;
+        labelLayer.style.opacity = '1';
+        svg.style.opacity = '1';
+      }
     }
+    const grp = stageRoot.children[state.stage];
+    grp.scale.setScalar(transitionScale());
 
     updateCamera(dt);
     stages[state.stage].update(dt, elapsed, camera);
@@ -1368,6 +1419,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
       stage: state.stage,
       t: Number(state.t.toFixed(3)),
       zoom: Number((state.stage + state.t).toFixed(3)),
+      rDef: Number((STAGES[state.stage].r0 * 2).toFixed(2)),
+      rFar: Number((STAGES[state.stage].r0 * 4).toFixed(2)),
+      transition: transition ? transition.dir : null,
       auto: state.auto,
       nucleon: nucleonKind(),
       composition: (QUARK_COMP[nucleonKind()] || []).map((f) => (f === 'up' ? 'u' : 'd')).join(''),
@@ -1405,7 +1459,9 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
                w: Math.round(x1 - x0), h: Math.round(y1 - y0) };
     },
     setStage: (i) => { setStage(i); return window.__MODEL__.getState(); },
-    setZoom: (z) => { requestZoom(z - (state.stage + state.t)); return window.__MODEL__.getState(); },
+    setT: (t) => { targetT = null; setT(clamp(t, Z_FAR, 1)); return window.__MODEL__.getState(); },
+    setZoom: (t) => { targetT = null; setT(clamp(t, Z_FAR, 1)); return window.__MODEL__.getState(); },
+    nudge: (dT) => { nudgeT(dT); return window.__MODEL__.getState(); },
     setAuto: (on) => { if (on !== state.auto) toggleAuto(); return state.auto; },
     setNucleon: (kind) => { setNucleon(kind); return window.__MODEL__.getState(); },
     setOrbit: (az, el) => { state.az = az; state.el = el; },

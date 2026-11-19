@@ -120,7 +120,7 @@ button { color: inherit; }
 
 .brand h1 {
   margin: 0;
-  font-size: clamp(30px, 3.4vw, 48px);
+  font-size: clamp(28px, 3.0vw, 42px);
   line-height: 1.04;
   letter-spacing: 0.035em;
   font-weight: 850;
@@ -240,16 +240,16 @@ button { color: inherit; }
   position: absolute;
   top: 0;
   left: 0;
-  min-width: 104px;
-  max-width: 240px;
-  padding: 7px 11px 8px 12px;
+  min-width: 132px;
+  max-width: 330px;
+  padding: 10px 14px 11px 15px;
   border: 1px solid rgba(122, 183, 212, 0.24);
-  border-left: 3px solid var(--accent);
-  border-radius: 8px;
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
   background: linear-gradient(180deg, rgba(8, 20, 30, 0.94), rgba(5, 13, 20, 0.92));
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
   color: var(--text);
-  line-height: 1.2;
+  line-height: 1.12;
   white-space: nowrap;
   transform: translate3d(-999px, -999px, 0);
   will-change: transform;
@@ -257,15 +257,16 @@ button { color: inherit; }
 
 .tag b {
   display: block;
-  font-size: 15px;
+  font-size: clamp(26px, 1.62vw, 30px);
   font-weight: 800;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
+  line-height: 1.08;
 }
 
 .tag span {
   display: block;
-  margin-top: 2px;
-  font-size: 12.5px;
+  margin-top: 3px;
+  font-size: clamp(15px, 0.92vw, 18px);
   color: var(--muted);
   letter-spacing: 0.04em;
 }
@@ -6516,7 +6517,7 @@ THREE.GLTFLoader = GLTFLoader;
     g.fill();
     g.stroke();
     g.fillStyle = '#ffffff';
-    g.font = '700 92px "Microsoft JhengHei", "Noto Sans TC", sans-serif';
+    g.font = '700 104px "Microsoft JhengHei", "Noto Sans TC", sans-serif';
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText('法線', 256, 132);
@@ -6524,7 +6525,7 @@ THREE.GLTFLoader = GLTFLoader;
     tex.colorSpace = THREE.SRGBColorSpace;
     var mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false });
     var sprite = new THREE.Sprite(mat);
-    sprite.scale.set(0.92, 0.46, 1);
+    sprite.scale.set(1.18, 0.59, 1);
     sprite.renderOrder = 21;
     return sprite;
   }
@@ -6652,10 +6653,17 @@ THREE.GLTFLoader = GLTFLoader;
         t.dot.style.opacity = '0';
         return;
       }
-      var tw = t.el.offsetWidth || 120;
-      var th = t.el.offsetHeight || 40;
-      var tx = clamp(ax + d.offset[0], 10, sw - tw - 10);
-      var ty = clamp(ay + d.offset[1], 10, sh - th - 10);
+      var tw = t.el.offsetWidth || 180;
+      var th = t.el.offsetHeight || 60;
+      var bottomPad = 66;
+      var ox = d.offset[0];
+      var oy = d.offset[1];
+      if (viewMode === 'projection' && d.id === 'deep') {
+        ox = -340;
+        oy = -82;
+      }
+      var tx = clamp(ax + ox, 10, sw - tw - 10);
+      var ty = clamp(ay + oy, 10, sh - th - bottomPad);
       t.el.style.opacity = '1';
       t.el.style.transform = 'translate3d(' + tx.toFixed(1) + 'px,' + ty.toFixed(1) + 'px,0)';
       var nx = clamp(ax, tx, tx + tw);

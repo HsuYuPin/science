@@ -1,0 +1,1553 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>光電效應｜2.5D 互動教學</title>
+<style>
+  :root{
+    --bg:#05080f;
+    --ink:#eef4ff;
+    --dim:#93a6c8;
+    --line:rgba(140,175,235,.16);
+    --line-strong:rgba(150,185,245,.32);
+    --accent:#4ade80;
+    --accent-soft:rgba(74,222,128,.16);
+    --card:linear-gradient(180deg, rgba(22,31,52,.94), rgba(12,18,33,.94));
+    --fs-k:26px;
+    --fs-v:40px;
+    --fs-s:19px;
+    --fs-t:15px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);overflow:hidden;
+    font-family:"Noto Sans TC","Microsoft JhengHei","PingFang TC","Heiti TC",system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(900px 620px at 18% 8%, rgba(46,70,128,.28), transparent 70%),
+                     radial-gradient(900px 700px at 92% 100%, rgba(38,30,96,.22), transparent 70%);
+  }
+  .app{
+    height:100vh;height:100dvh;display:grid;
+    grid-template-columns:minmax(0,1fr) clamp(350px, 25.5vw, 500px);
+    gap:12px;padding:12px;
+  }
+  /* ---------------------------------------------------------------- stage */
+  .stage{
+    position:relative;min-width:0;border-radius:22px;overflow:hidden;
+    border:1px solid var(--line);background:#060a14;
+    box-shadow:0 30px 80px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  #stageCanvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .stage-head{position:absolute;left:clamp(16px,2vw,30px);top:clamp(14px,2vh,24px);pointer-events:none;line-height:1}
+  .stage-head h1{
+    margin:0;font-size:clamp(23px,2.25vw,44px);font-weight:900;letter-spacing:.14em;
+    text-shadow:0 2px 22px rgba(0,0,0,.65);
+  }
+  .stage-head p{
+    margin:.5em 0 0;font-size:clamp(14px,1.35vw,30px);font-weight:700;letter-spacing:.04em;
+    color:var(--dim);
+  }
+  .stage-head sub{font-size:.62em}
+  /* ---------------------------------------------------------------- side */
+  .side{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:12px 14px;min-width:0;
+    box-shadow:0 18px 46px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.045);
+  }
+  .controls{padding-bottom:10px}
+
+  .ctrl-top{display:flex;align-items:baseline;gap:16px;min-width:0}
+  .k{font-size:var(--fs-k);font-weight:800;letter-spacing:.05em;color:#bccde8;white-space:nowrap}
+  .chip{
+    margin-left:auto;display:flex;align-items:center;gap:9px;flex:none;
+    font-size:var(--fs-s);font-weight:800;color:#dce8ff;
+    border:1px solid var(--line-strong);border-radius:999px;padding:3px 12px;
+    background:rgba(255,255,255,.035);
+  }
+  .chip i{width:.72em;height:.72em;border-radius:50%;background:var(--accent);box-shadow:0 0 14px var(--accent);flex:none}
+
+  .fval{
+    font-size:var(--fs-v);font-weight:900;line-height:1.05;white-space:nowrap;
+    letter-spacing:-.01em;font-variant-numeric:tabular-nums;
+  }
+  .fval small{font-size:.48em;font-weight:700;letter-spacing:0;color:var(--dim);margin-left:.16em}
+  .fval sup{font-size:.68em}
+
+  .slider{position:relative;margin-top:4px;padding-top:20px}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;display:block;width:100%;
+    height:34px;margin:0;background:transparent;outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:12px;border-radius:99px;
+    background:linear-gradient(90deg,#ff4d4d 0%,#ff9a3c 21%,#ffe066 38%,#4ade80 55%,#4d8dff 75%,#b06bff 100%);
+    box-shadow:inset 0 1px 3px rgba(0,0,0,.55);
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:30px;height:30px;margin-top:-9px;border-radius:50%;
+    background:#fff;border:5px solid var(--accent);
+    box-shadow:0 0 0 3px rgba(5,8,15,.7), 0 0 18px var(--accent);
+    transition:border-color .18s, box-shadow .18s;
+  }
+  input[type=range]::-moz-range-track{
+    height:12px;border-radius:99px;
+    background:linear-gradient(90deg,#ff4d4d 0%,#ff9a3c 21%,#ffe066 38%,#4ade80 55%,#4d8dff 75%,#b06bff 100%);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:24px;height:24px;border-radius:50%;background:#fff;border:5px solid var(--accent);
+    box-shadow:0 0 16px var(--accent);
+  }
+  input[type=range]:focus-visible{outline:2px solid #8ed8ff;outline-offset:4px;border-radius:99px}
+  #intSlider::-webkit-slider-runnable-track{
+    background:linear-gradient(90deg, rgba(147,166,200,.28), var(--accent));
+  }
+  #intSlider::-moz-range-track{
+    background:linear-gradient(90deg, rgba(147,166,200,.28), var(--accent));
+  }
+  .scale{
+    display:flex;justify-content:space-between;padding:6px 1px 0;
+    font-size:var(--fs-t);font-weight:700;color:var(--dim);
+    font-variant-numeric:tabular-nums;
+  }
+  .f0{
+    position:absolute;top:18px;height:36px;width:0;pointer-events:none;
+    border-left:2px dashed rgba(125,211,252,.85);
+    left:calc(15px + (100% - 30px) * var(--p, 0));
+    transition:left .16s ease;
+  }
+  .f0 span{
+    position:absolute;top:-19px;left:5px;white-space:nowrap;
+    font-size:var(--fs-t);font-weight:800;color:#8ed8ff;letter-spacing:.02em;
+    text-shadow:0 0 10px rgba(60,160,255,.5);
+  }
+  .f0.right span{left:auto;right:5px}
+
+  .int-row{display:flex;align-items:center;gap:14px;margin-top:9px}
+  .int-row input[type=range]{flex:1;padding-top:0;height:34px}
+  .int-row .slider{flex:1;margin:0;padding:0}
+  .int-val{
+    font-size:calc(var(--fs-v) * .72);font-weight:900;font-variant-numeric:tabular-nums;
+    min-width:2.1em;text-align:right;line-height:1;
+  }
+  .int-unit{font-size:var(--fs-t);font-weight:700;color:var(--dim);white-space:nowrap}
+
+  .metals{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:11px}
+  .metals button{
+    appearance:none;border:1px solid var(--line);border-radius:12px;
+    background:rgba(255,255,255,.03);color:var(--ink);font-family:inherit;
+    padding:6px 4px 5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;
+    transition:border-color .15s, background .15s, box-shadow .15s, transform .1s;
+  }
+  .metals button b{font-size:var(--fs-k);font-weight:900;letter-spacing:.02em;line-height:1.15}
+  .metals button small{font-size:var(--fs-t);font-weight:700;color:var(--dim);font-variant-numeric:tabular-nums}
+  .metals button:hover{background:rgba(255,255,255,.06)}
+  .metals button:active{transform:translateY(1px)}
+  .metals button[aria-pressed=true]{
+    border-color:var(--accent);background:var(--accent-soft);
+    box-shadow:inset 0 0 0 1px var(--accent), 0 0 20px -6px var(--accent);
+  }
+  .metals button[aria-pressed=true] small{color:#e6f2ff}
+  .metals button:focus-visible{outline:2px solid #8ed8ff;outline-offset:2px}
+
+  .metal-line{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;
+    font-size:var(--fs-t);font-weight:700;color:var(--dim);
+  }
+  .metal-line .chip{font-size:var(--fs-t);padding:2px 10px;gap:6px}
+  .metal-line .chip i{width:.62em;height:.62em}
+  .metal-line b{color:#e4efff;font-weight:900;font-size:1.12em;letter-spacing:.01em}
+
+  /* ---------------------------------------------------------------- metrics */
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:5px 8px;padding:10px 14px 9px}
+  .m{display:flex;flex-direction:column;gap:1px;min-width:0}
+  .m > span{font-size:var(--fs-t);font-weight:800;letter-spacing:.03em;color:var(--dim);white-space:nowrap}
+  .m b{
+    font-size:calc(var(--fs-v) * .76);font-weight:900;line-height:1.08;
+    font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+  .m b em{font-size:.55em;font-style:normal;font-weight:700;color:var(--dim);margin-left:2px}
+  .m i{font-style:normal;font-size:max(12px, calc(var(--fs-t) * .84));font-weight:700;color:var(--dim);line-height:1.1;white-space:nowrap}
+  #ekVal{color:var(--accent)}
+  .verdict{
+    grid-column:1/-1;margin-top:5px;padding-top:7px;border-top:1px solid var(--line);
+    font-size:var(--fs-s);font-weight:900;letter-spacing:.03em;color:var(--accent);
+  }
+
+  /* ---------------------------------------------------------------- chart */
+  .chart{flex:1;min-height:0;display:flex;flex-direction:column;padding:9px 12px 6px}
+  .chart-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .chart-head b{font-size:var(--fs-k);font-weight:900;letter-spacing:.04em}
+  .chart-head span{font-size:var(--fs-t);font-weight:700;color:var(--dim);letter-spacing:.01em}
+  .chart-body{position:relative;flex:1;min-height:0;margin-top:2px}
+  #graphCanvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+  /* ---------------------------------------------------------------- fullscreen */
+  .fs-btn{
+    position:fixed;top:14px;right:14px;z-index:90;
+    width:44px;height:44px;border-radius:50%;
+    display:grid;place-items:center;padding:0;
+    background:rgba(13,20,36,.82);
+    border:1px solid rgba(150,185,245,.3);
+    color:#e8f2ff;cursor:pointer;
+    -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+    box-shadow:0 8px 24px rgba(0,0,0,.35);
+    transition:background .15s ease, border-color .15s ease, transform .12s ease;
+  }
+  .fs-btn:hover{background:rgba(32,48,78,.92);border-color:rgba(160,205,255,.6)}
+  .fs-btn:active{transform:scale(.94)}
+  .fs-btn:focus-visible{outline:2px solid #8ed8ff;outline-offset:3px}
+  .fs-btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .fs-btn .fs-collapse{display:none}
+  .fs-btn[aria-pressed="true"] .fs-expand{display:none}
+  .fs-btn[aria-pressed="true"] .fs-collapse{display:block}
+
+  @media (max-width:1500px){
+    :root{--fs-k:23px;--fs-v:34px;--fs-s:17px;--fs-t:13.5px}
+    .app{gap:10px;padding:10px}
+  }
+  @media (max-width:1180px){
+    :root{--fs-k:20px;--fs-v:30px;--fs-s:15px;--fs-t:12.5px}
+    .app{gap:9px;padding:9px}
+    .card{padding:11px 12px}
+    .metals{gap:5px}
+  }
+  @media (max-width:980px){
+    body{overflow:auto}
+    .fs-btn{position:absolute}
+    .app{
+      height:auto;min-height:100vh;min-height:100dvh;
+      grid-template-columns:1fr;gap:10px;padding:10px;
+    }
+    .stage{height:52vh;min-height:300px;max-height:440px}
+    .side{gap:10px}
+    .chart{height:330px;flex:none}
+    :root{--fs-k:17px;--fs-v:28px;--fs-s:14px;--fs-t:12.5px}
+    .fval small{font-size:.46em}
+  }
+  @media (max-width:540px){
+    :root{--fs-k:15px;--fs-v:26px;--fs-s:13px;--fs-t:12.5px}
+    .metals{grid-template-columns:repeat(2,1fr)}
+    .metrics{grid-template-columns:repeat(2,1fr)}
+    .stage{height:46vh}
+    .chart{height:300px}
+  }
+</style>
+</head>
+<body>
+<button id="fsBtn" class="fs-btn" type="button" aria-label="全螢幕" title="全螢幕" aria-pressed="false">
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path class="fs-expand" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
+    <path class="fs-collapse" d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>
+  </svg>
+</button>
+<div class="app">
+  <main class="stage" id="stage">
+    <canvas id="stageCanvas" role="img" aria-label="光電效應實驗動畫：光源發出光子撞擊金屬板，電子自表面逸出"></canvas>
+    <div class="stage-head">
+      <h1>光電效應</h1>
+      <p>E<sub>k</sub> = hf − W</p>
+    </div>
+  </main>
+
+  <aside class="side">
+    <section class="card controls" aria-label="實驗控制">
+      <div class="ctrl-top">
+        <span class="k">頻率 f</span>
+        <span class="fval"><span id="fNum">6.0</span><small>×10<sup>14</sup> Hz</small></span>
+      </div>
+      <div class="slider">
+        <input id="freqSlider" type="range" min="4" max="8" step="0.1" value="6" aria-label="頻率（10 的 14 次方赫茲）">
+        <div class="f0" id="f0Mark"><span>f₀ 4.4</span></div>
+        <div class="scale"><span>4.0</span><span>5.0</span><span>6.0</span><span>7.0</span><span>8.0</span></div>
+      </div>
+
+      <div class="int-row">
+        <span class="k">強度</span>
+        <div class="slider"><input id="intSlider" type="range" min="1" max="20" step="1" value="10" aria-label="強度（光子數每秒）"></div>
+        <span class="int-val" id="intVal">10</span>
+        <span class="int-unit">光子/秒</span>
+      </div>
+
+      <div class="metals" id="metals" role="group" aria-label="金屬選擇"></div>
+      <div class="metal-line">
+        <span>底限頻率 f₀ <b id="f0Val">4.4 ×10¹⁴ Hz</b></span>
+        <span class="chip"><i id="colorDot"></i><b id="colorName">綠</b></span>
+      </div>
+    </section>
+
+    <section class="card metrics" aria-label="數據">
+      <div class="m"><span>hf</span><b><span id="hfVal">2.48</span><em>eV</em></b></div>
+      <div class="m"><span>功函數 W</span><b><span id="wVal">1.82</span><em>eV</em></b></div>
+      <div class="m"><span>E<sub>k</sub></span><b id="ekVal"><span id="ekNum">0.66</span><em>eV</em></b></div>
+      <div class="m"><span>V<sub>stop</sub></span><b><span id="vVal">0.66</span><em>V</em></b><i>= E<sub>k</sub> / e</i></div>
+      <div class="verdict" id="verdict">hf ≥ W　電子逸出</div>
+    </section>
+
+    <section class="card chart" aria-label="E_k 對 f 圖">
+      <div class="chart-head">
+        <b>E<sub>k</sub> – f 圖</b>
+        <span>斜率 = h = 4.14×10⁻¹⁵ eV·s</span>
+      </div>
+      <div class="chart-body"><canvas id="graphCanvas" role="img" aria-label="E_k 對 f 作圖：斜率為 h，與頻率軸交於 f0"></canvas></div>
+    </section>
+  </aside>
+</div>
+
+<script>
+/* ------------------------------------------------------------------
+ * 光電效應核心物理（不依賴 DOM，可單獨用 node/vm 測試）
+ *
+ *   h = 4.14 × 10⁻¹⁵ eV·s
+ *   hf(eV) = h × f = 0.414 × f₁₄      （f₁₄ 以 10¹⁴ Hz 為單位）
+ *   Eₖ = hf − W
+ *   V_stop = Eₖ / e                   （數值上等於 Eₖ 的 eV 值）
+ *
+ * 圖表直線以「底限頻率 f₀」為截點，斜率為 h：
+ *   Eₖ(f) = 0.414 × (f₁₄ − f₀)
+ * 課本給的 f₀ 與 W 都只取到小數點後 1～2 位，兩者換算會有
+ * 0.005 eV 以內的捨入差，因此邊界判定保留 EDGE_TOL 的容差。
+ * ------------------------------------------------------------------ */
+(function (root) {
+  'use strict';
+
+  const H_EV_S = 4.14e-15;            // eV·s
+  const SLOPE = H_EV_S * 1e14;        // 0.414 eV per 10¹⁴ Hz
+  const EDGE_TOL = 0.02;              // eV，課本數值捨入容差
+  const F_MIN = 4.0;
+  const F_MAX = 8.0;
+  const F_STEP = 0.1;
+  const I_MIN = 1;
+  const I_MAX = 20;
+  const EK_MAX = 1.6;                 // 圖表縱軸上限（eV）
+
+  const METALS = {
+    sodium:    { key: 'sodium',    name: '鈉', symbol: 'Na', f0: 4.4, W: 1.82, tint: '#b6c0d2' },
+    potassium: { key: 'potassium', name: '鉀', symbol: 'K',  f0: 4.6, W: 1.91, tint: '#adb7c9' },
+    zinc:      { key: 'zinc',      name: '鋅', symbol: 'Zn', f0: 8.0, W: 3.32, tint: '#a7b9d0' },
+    calcium:   { key: 'calcium',   name: '鈣', symbol: 'Ca', f0: 6.0, W: 2.48, tint: '#c9bda2' },
+  };
+  const METAL_ORDER = ['sodium', 'potassium', 'zinc', 'calcium'];
+
+  const BANDS = [
+    { max: 4.75, name: '紅', hex: '#ff4d4d' },
+    { max: 5.15, name: '橙', hex: '#ff9a3c' },
+    { max: 5.5,  name: '黃', hex: '#ffe066' },
+    { max: 6.15, name: '綠', hex: '#4ade80' },
+    { max: 6.85, name: '藍', hex: '#4d8dff' },
+    { max: Infinity, name: '紫', hex: '#b06bff' },
+  ];
+
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const round1 = (v) => Math.round(v * 10) / 10;
+
+  function clampFrequency(f) {
+    if (!Number.isFinite(f)) return F_MIN;
+    return clamp(round1(f), F_MIN, F_MAX);
+  }
+  function clampIntensity(n) {
+    if (!Number.isFinite(n)) return I_MIN;
+    return Math.round(clamp(n, I_MIN, I_MAX));
+  }
+  function metal(key) {
+    return METALS[key] || METALS.sodium;
+  }
+
+  /** hf，單位 eV。 */
+  function hfEv(f14) {
+    return H_EV_S * f14 * 1e14;
+  }
+  /** 最大動能 hf − W，可為負（未達底限）。 */
+  function ekEv(f14, work) {
+    return hfEv(f14) - work;
+  }
+  /** 逸出電子的動能（未達底限時為 0）。 */
+  function ekEvClamped(f14, work) {
+    return Math.max(0, ekEv(f14, work));
+  }
+  /** 截止電壓（V）；數值上等於 Eₖ(eV)。 */
+  function stopVoltage(f14, work) {
+    return ekEvClamped(f14, work);
+  }
+  /** 圖上的理論直線：通過 (f₀, 0)，斜率 0.414 eV / 10¹⁴ Hz。 */
+  function lineEk(f14, f0) {
+    return SLOPE * (f14 - f0);
+  }
+  /** 是否達到底限（含課本數值捨入容差）。 */
+  function canEmit(f14, work) {
+    return hfEv(f14) >= work - EDGE_TOL;
+  }
+  /** 三態：emit / edge / none。 */
+  function regime(f14, work) {
+    const ek = ekEv(f14, work);
+    if (ek > EDGE_TOL) return 'emit';
+    if (ek >= -EDGE_TOL) return 'edge';
+    return 'none';
+  }
+  function colorAt(f14) {
+    const f = clampFrequency(f14);
+    for (const band of BANDS) {
+      if (f < band.max) return band;
+    }
+    return BANDS[BANDS.length - 1];
+  }
+
+  root.PhotoCore = {
+    H_EV_S, SLOPE, EDGE_TOL,
+    F_MIN, F_MAX, F_STEP, I_MIN, I_MAX, EK_MAX,
+    METALS, METAL_ORDER, BANDS,
+    clampFrequency, clampIntensity, metal,
+    hfEv, ekEv, ekEvClamped, stopVoltage, lineEk, canEmit, regime, colorAt,
+  };
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+<script>
+(function () {
+  'use strict';
+
+  var Core = window.PhotoCore;
+  var METALS = Core.METALS;
+  var FONT = '"Noto Sans TC","Microsoft JhengHei","PingFang TC","Heiti TC",system-ui,sans-serif';
+
+  function $(id) { return document.getElementById(id); }
+
+  /* ------------------------------------------------------------ utilities */
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  var rng = mulberry32(0x5eed1e);
+
+  function hexA(hex, a) {
+    var n = parseInt(hex.slice(1), 16);
+    return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+  }
+  function shade(hex, k) {
+    var n = parseInt(hex.slice(1), 16);
+    var r = Math.min(255, Math.round(((n >> 16) & 255) * k));
+    var g = Math.min(255, Math.round(((n >> 8) & 255) * k));
+    var b = Math.min(255, Math.round((n & 255) * k));
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+  }
+  function mixHex(hex, target, t) {
+    var a = parseInt(hex.slice(1), 16), b = parseInt(target.slice(1), 16);
+    var r = Math.round(((a >> 16) & 255) * (1 - t) + ((b >> 16) & 255) * t);
+    var g = Math.round(((a >> 8) & 255) * (1 - t) + ((b >> 8) & 255) * t);
+    var bl = Math.round((a & 255) * (1 - t) + (b & 255) * t);
+    return 'rgb(' + r + ',' + g + ',' + bl + ')';
+  }
+  function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+  function rr(ctx, x, y, w, h, r) {
+    var rad = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rad, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rad);
+    ctx.arcTo(x + w, y + h, x, y + h, rad);
+    ctx.arcTo(x, y + h, x, y, rad);
+    ctx.arcTo(x, y, x + w, y, rad);
+    ctx.closePath();
+  }
+  function fmt2(v) { return (Math.abs(v) < 0.005 ? 0 : v).toFixed(2); }
+
+  /* ------------------------------------------------------------ sprites */
+  var spriteCache = new Map();
+  function glowSprite(hex) {
+    var hit = spriteCache.get(hex);
+    if (hit) return hit;
+    var size = 128, c = document.createElement('canvas');
+    c.width = c.height = size;
+    var x = c.getContext('2d');
+    var g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.16, hexA(hex, 0.96));
+    g.addColorStop(0.42, hexA(hex, 0.34));
+    g.addColorStop(0.72, hexA(hex, 0.08));
+    g.addColorStop(1, hexA(hex, 0));
+    x.fillStyle = g;
+    x.fillRect(0, 0, size, size);
+    spriteCache.set(hex, c);
+    return c;
+  }
+
+  /* ------------------------------------------------------------ state */
+  var state = {
+    f: 6.0,
+    intensity: 10,
+    metal: 'sodium',
+    paused: false,
+    time: 0,
+    lum: 0.7,
+    emissionAcc: 0,
+    photons: [],
+    electrons: [],
+    particles: [],
+    points: [],
+    ejected: 0,
+    blocked: 0,
+    dirtyGraph: true
+  };
+
+  var ui = {
+    freq: $('freqSlider'),
+    intensity: $('intSlider'),
+    fNum: $('fNum'),
+    intVal: $('intVal'),
+    colorName: $('colorName'),
+    colorDot: $('colorDot'),
+    f0Mark: $('f0Mark'),
+    f0Val: $('f0Val'),
+    metals: $('metals'),
+    hfVal: $('hfVal'),
+    wVal: $('wVal'),
+    ekNum: $('ekNum'),
+    ekVal: $('ekVal'),
+    vVal: $('vVal'),
+    verdict: $('verdict')
+  };
+
+  /* ------------------------------------------------------------ metal buttons */
+  Core.METAL_ORDER.forEach(function (key) {
+    var m = METALS[key];
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.metal = key;
+    b.setAttribute('aria-pressed', key === state.metal ? 'true' : 'false');
+    b.innerHTML = '<b>' + m.name + ' ' + m.symbol + '</b><small>' + m.W.toFixed(2) + ' eV</small>';
+    b.addEventListener('click', function () { setMetal(key); });
+    ui.metals.appendChild(b);
+  });
+
+  /* ------------------------------------------------------------ UI sync */
+  function metal() { return METALS[state.metal]; }
+
+  /** 光源亮度：強度 1 → 0.26，強度 20 → 1.0（略帶 gamma，中段更亮）。 */
+  function intensityLum() {
+    var t = (state.intensity - Core.I_MIN) / (Core.I_MAX - Core.I_MIN);
+    t = Math.max(0, Math.min(1, t));
+    return 0.26 + 0.74 * Math.pow(t, 0.72);
+  }
+
+  function refreshUI() {
+    var m = metal();
+    var hf = Core.hfEv(state.f);
+    var ekSigned = Core.ekEv(state.f, m.W);
+    var ek = Math.max(0, ekSigned);
+    var stop = Core.stopVoltage(state.f, m.W);
+    var band = Core.colorAt(state.f);
+    var reg = Core.regime(state.f, m.W);
+    state.lum = intensityLum();
+
+    document.documentElement.style.setProperty('--accent', band.hex);
+    document.documentElement.style.setProperty('--accent-soft', hexA(band.hex, 0.16));
+    ui.colorName.textContent = band.name;
+    ui.colorDot.style.background = band.hex;
+    ui.fNum.textContent = state.f.toFixed(1);
+    ui.intVal.textContent = String(state.intensity);
+    ui.freq.value = state.f.toFixed(1);
+    ui.intensity.value = String(state.intensity);
+
+    var pct = (m.f0 - Core.F_MIN) / (Core.F_MAX - Core.F_MIN);
+    ui.f0Mark.style.setProperty('--p', pct.toFixed(4));
+    ui.f0Mark.classList.toggle('right', pct > 0.9);
+    ui.f0Mark.querySelector('span').textContent = 'f₀ ' + m.f0.toFixed(1);
+    ui.f0Val.textContent = m.f0.toFixed(1) + ' ×10¹⁴ Hz';
+
+    ui.hfVal.textContent = fmt2(hf);
+    ui.wVal.textContent = m.W.toFixed(2);
+    ui.ekNum.textContent = fmt2(ek);
+    ui.vVal.textContent = fmt2(stop);
+    ui.ekVal.style.color = reg === 'none' ? '#ff9d9d' : band.hex;
+
+    if (reg === 'emit') {
+      ui.verdict.textContent = 'hf ≥ W　電子逸出';
+      ui.verdict.style.color = '#6ef0b0';
+    } else if (reg === 'edge') {
+      ui.verdict.textContent = 'hf ≈ W　底限（Eₖ ≈ 0）';
+      ui.verdict.style.color = '#ffd166';
+    } else {
+      ui.verdict.textContent = 'hf < W　無電子逸出';
+      ui.verdict.style.color = '#ff8f8f';
+    }
+
+    var buttons = ui.metals.querySelectorAll('button');
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].setAttribute('aria-pressed', buttons[i].dataset.metal === state.metal ? 'true' : 'false');
+    }
+    state.dirtyGraph = true;
+  }
+
+  function setFrequency(v) {
+    state.f = Core.clampFrequency(v);
+    refreshUI();
+  }
+  function setIntensity(v) {
+    state.intensity = Core.clampIntensity(v);
+    refreshUI();
+  }
+  function setMetal(key) {
+    if (!METALS[key] || key === state.metal) return;
+    state.metal = key;
+    state.points.length = 0;
+    state.photons.length = 0;
+    state.particles.length = 0;
+    state.ejected = 0;
+    state.blocked = 0;
+    refreshUI();
+    drawGraph();
+  }
+
+  ui.freq.addEventListener('input', function () { setFrequency(parseFloat(ui.freq.value)); });
+  ui.intensity.addEventListener('input', function () { setIntensity(parseFloat(ui.intensity.value)); });
+
+  /* ------------------------------------------------------------ canvas sizing */
+  var stage = $('stage');
+  var stageCanvas = $('stageCanvas');
+  var graphCanvas = $('graphCanvas');
+  var sctx = stageCanvas.getContext('2d');
+  var gctx = graphCanvas.getContext('2d');
+  var stageBox = { w: 0, h: 0 };
+  var graphBox = { w: 0, h: 0 };
+
+  function fitCanvas(canvas, ctx, box) {
+    var rect = canvas.getBoundingClientRect();
+    var w = Math.max(1, Math.round(rect.width));
+    var h = Math.max(1, Math.round(rect.height));
+    var dpr = Math.min(3, window.devicePixelRatio || 1);
+    var bw = Math.round(w * dpr), bh = Math.round(h * dpr);
+    if (canvas.width !== bw || canvas.height !== bh) {
+      canvas.width = bw;
+      canvas.height = bh;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    box.w = w; box.h = h;
+  }
+
+  var resizeTimer = 0;
+  function onResize() {
+    fitCanvas(stageCanvas, sctx, stageBox);
+    fitCanvas(graphCanvas, gctx, graphBox);
+    state.dirtyGraph = true;
+    drawStage();
+    drawGraph();
+  }
+  if (window.ResizeObserver) {
+    var ro = new ResizeObserver(function () { onResize(); });
+    ro.observe(stage);
+    ro.observe(graphCanvas.parentElement);
+  }
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(onResize, 60);
+  });
+
+  /* ------------------------------------------------------------ scene layout */
+  function computeScene(w, h) {
+    var compact = w < 640;
+    var kx = 0.52, ky = 0.3;
+    var slab = compact
+      ? { x0: 0.2, x1: 2.75, z0: -0.95, z1: 0.95, topY: -1.02, t: 0.22 }
+      : { x0: 0.4, x1: 4.3, z0: -1.4, z1: 1.4, topY: -1.0, t: 0.3 };
+    slab.tableY = slab.topY - slab.t;
+    var source = compact ? { x: -3.15, y: 2.55 } : { x: -4.95, y: 3.3 };
+    var top = 5.7;
+    var bottom = slab.tableY - 1.15;
+    var left = source.x - 1.15;
+    var right = slab.x1 + slab.z1 * kx + 2.6;
+    var needW = right - left;
+    var needH = top - bottom;
+    var viewH = compact ? 8.7 : 10.6;
+    var viewW = viewH * (w / h);
+    if (viewW < needW) { viewW = needW; viewH = viewW * (h / w); }
+    if (viewH < needH) { viewH = needH; viewW = viewH * (w / h); }
+    var u = Math.min(w / viewW, h / viewH);
+    var cx = (left + right) / 2;
+    var cy = (top + bottom) / 2;
+    return {
+      compact: compact, slab: slab, source: source, kx: kx, ky: ky,
+      u: u, cx: cx, cy: cy, viewW: viewW, viewH: viewH, top: top, bottom: bottom
+    };
+  }
+
+  /* ------------------------------------------------------------ simulation */
+  function spawnPhoton() {
+    var S = scene;
+    var slab = S.slab, src = S.source;
+    var lensX = src.x + 0.55, lensY = src.y - 0.12;
+    var tx = slab.x0 + 0.32 + rng() * (slab.x1 - slab.x0 - 0.64);
+    var tz = slab.z0 + 0.22 + rng() * (slab.z1 - slab.z0 - 0.44);
+    var ty = slab.topY + 0.02;
+    var px1 = tx + tz * S.kx;
+    var py1 = ty + tz * S.ky;
+    var dist = Math.hypot(px1 - lensX, py1 - lensY);
+    var mm = metal();
+    var f = clamp(state.f + (rng() * 2 - 1) * 0.08, Core.F_MIN, Core.F_MAX);
+    if (Core.canEmit(f, mm.W) !== Core.canEmit(state.f, mm.W)) f = state.f;
+    state.photons.push({
+      x0: lensX, y0: lensY, x1: px1, y1: py1,
+      t: 0, dur: Math.max(0.42, dist / 8.4),
+      f: f, band: Core.colorAt(f),
+      jitter: rng() * Math.PI * 2
+    });
+  }
+
+  function spawnElectron(x, y, ek, f) {
+    var v = 1.15 + 3.1 * Math.sqrt(Math.max(0, ek));
+    var ang = (36 + rng() * 28) * Math.PI / 180;
+    state.electrons.push({
+      x: x, y: y,
+      vx: Math.cos(ang) * v, vy: Math.sin(ang) * v,
+      life: 2.7, max: 2.7,
+      trail: [], ek: ek, f: f
+    });
+  }
+
+  function burst(x, y, hex, n, spread) {
+    for (var i = 0; i < n; i++) {
+      var a = rng() * Math.PI * 2;
+      var sp = spread * (0.3 + rng() * 0.7);
+      state.particles.push({
+        x: x, y: y,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp + 0.4,
+        life: 0.3 + rng() * 0.25, max: 0.55,
+        size: 0.03 + rng() * 0.035, hex: hex
+      });
+    }
+  }
+
+  function impact(p) {
+    var m = metal();
+    var ek = Core.ekEv(p.f, m.W);
+    var emit = Core.canEmit(p.f, m.W);
+    state.particles.push({
+      x: p.x1, y: p.y1, vx: 0, vy: 0,
+      life: 0.34, max: 0.34, size: 0.05,
+      hex: p.band.hex, ring: true, strong: emit
+    });
+    if (emit) {
+      spawnElectron(p.x1 + 0.05, p.y1, Math.max(0, ek), p.f);
+      burst(p.x1, p.y1, p.band.hex, 6, 2.2);
+      state.ejected += 1;
+      state.points.push({ f: p.f, ek: Math.max(0, ek) });
+      if (state.points.length > 520) state.points.shift();
+      state.dirtyGraph = true;
+    } else {
+      state.blocked += 1;
+      burst(p.x1, p.y1, '#8fa2bd', 4, 1.2);
+      if (rng() < 0.55) {
+        var back = 0.9 + rng() * 0.7;
+        state.photons.push({
+          x0: p.x1, y0: p.y1,
+          x1: p.x1 - back * 1.5, y1: p.y1 + (rng() < 0.5 ? 0.45 : -0.45) * back,
+          t: 0, dur: 0.5, f: p.f, band: p.band, jitter: rng() * 6.283, dim: true
+        });
+      }
+    }
+  }
+
+  function advance(dt) {
+    state.time += dt;
+    var m = metal();
+    state.emissionAcc += dt * state.intensity;
+    var guard = 0;
+    while (state.emissionAcc >= 1 && guard < 60) {
+      state.emissionAcc -= 1;
+      spawnPhoton();
+      guard += 1;
+    }
+
+    for (var i = state.photons.length - 1; i >= 0; i--) {
+      var p = state.photons[i];
+      p.t += dt / p.dur;
+      if (p.t >= 1) {
+        state.photons.splice(i, 1);
+        if (!p.dim) impact(p);
+      }
+    }
+
+    for (var j = state.electrons.length - 1; j >= 0; j--) {
+      var e = state.electrons[j];
+      e.trail.push({ x: e.x, y: e.y });
+      if (e.trail.length > 18) e.trail.shift();
+      e.x += e.vx * dt;
+      e.y += e.vy * dt;
+      e.life -= dt;
+      if (e.life <= 0 || e.x > scene.cx + scene.viewW / 2 + 2 || e.y > scene.cy + scene.viewH / 2 + 2) {
+        state.electrons.splice(j, 1);
+      }
+    }
+
+    for (var k = state.particles.length - 1; k >= 0; k--) {
+      var q = state.particles[k];
+      q.life -= dt;
+      if (!q.ring) {
+        q.x += q.vx * dt;
+        q.y += q.vy * dt;
+        q.vy -= 1.6 * dt;
+      }
+      if (q.life <= 0) state.particles.splice(k, 1);
+    }
+  }
+
+  /* ------------------------------------------------------------ stage render */
+  var scene = computeScene(1200, 1000);
+
+  function drawStage() {
+    var w = stageBox.w, h = stageBox.h;
+    if (!w || !h) return;
+    var ctx = sctx;
+    var S = computeScene(w, h);
+    scene = S;
+    var u = S.u, cx = S.cx, cy = S.cy;
+    var slab = S.slab, src = S.source;
+    var KX = S.kx, KY = S.ky;
+    var band = Core.colorAt(state.f);
+    var m = metal();
+    var lum = state.lum;
+
+    function X(x) { return (x - cx) * u + w / 2; }
+    function Y(y) { return (cy - y) * u + h / 2; }
+    function PR(x, y, z) { return { x: X(x + z * KX), y: Y(y + z * KY) }; }
+
+    ctx.clearRect(0, 0, w, h);
+
+    /* background */
+    var bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#0b1428');
+    bg.addColorStop(0.55, '#070c18');
+    bg.addColorStop(1, '#04060c');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    var slabC = PR((slab.x0 + slab.x1) / 2, slab.topY, (slab.z0 + slab.z1) / 2);
+    var plateCx = slabC.x;
+    var plateCy = slabC.y;
+    var halo = ctx.createRadialGradient(plateCx, plateCy, 0, plateCx, plateCy, Math.max(w, h) * 0.62);
+    halo.addColorStop(0, hexA(band.hex, 0.03 + 0.09 * lum));
+    halo.addColorStop(0.4, hexA(band.hex, 0.01 + 0.03 * lum));
+    halo.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = halo;
+    ctx.fillRect(0, 0, w, h);
+
+    var lensX = X(src.x + 0.55), lensY = Y(src.y - 0.12);
+    var srcGlow = ctx.createRadialGradient(lensX, lensY, 0, lensX, lensY, u * 4.6);
+    srcGlow.addColorStop(0, hexA(band.hex, 0.09 + 0.18 * lum));
+    srcGlow.addColorStop(0.45, hexA(band.hex, 0.02 + 0.07 * lum));
+    srcGlow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = srcGlow;
+    ctx.fillRect(0, 0, w, h);
+
+    /* ---- table plane */
+    var tableY = slab.tableY;
+    var tzF = -4.4, tzB = 4.4, txL = -11, txR = 11;
+    var tA = PR(txL, tableY, tzF), tB = PR(txR, tableY, tzF);
+    var tC = PR(txR, tableY, tzB), tD = PR(txL, tableY, tzB);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(tA.x, tA.y);
+    ctx.lineTo(tB.x, tB.y);
+    ctx.lineTo(tC.x, tC.y);
+    ctx.lineTo(tD.x, tD.y);
+    ctx.closePath();
+    var floorGrad = ctx.createLinearGradient(0, tD.y, 0, tA.y);
+    floorGrad.addColorStop(0, 'rgba(10,17,31,0)');
+    floorGrad.addColorStop(0.3, 'rgba(12,20,37,.85)');
+    floorGrad.addColorStop(0.75, 'rgba(8,13,24,.98)');
+    floorGrad.addColorStop(1, 'rgba(4,7,13,1)');
+    ctx.fillStyle = floorGrad;
+    ctx.fill();
+    ctx.clip();
+
+    ctx.strokeStyle = 'rgba(120,160,230,.075)';
+    ctx.lineWidth = 1;
+    for (var gx = -10; gx <= 10.01; gx += 1.35) {
+      var ga = PR(gx, tableY, tzF), gb = PR(gx, tableY, tzB);
+      ctx.beginPath();
+      ctx.moveTo(ga.x, ga.y);
+      ctx.lineTo(gb.x, gb.y);
+      ctx.stroke();
+    }
+    for (var gz = tzF; gz <= tzB; gz += 1.25) {
+      var gc = PR(txL, tableY, gz), gd = PR(txR, tableY, gz);
+      ctx.beginPath();
+      ctx.moveTo(gc.x, gc.y);
+      ctx.lineTo(gd.x, gd.y);
+      ctx.stroke();
+    }
+
+    var pool = ctx.createRadialGradient(plateCx, plateCy + u * 0.35, 0, plateCx, plateCy + u * 0.35, u * 4.2);
+    pool.addColorStop(0, hexA(band.hex, 0.04 + 0.11 * lum));
+    pool.addColorStop(0.45, hexA(band.hex, 0.015 + 0.035 * lum));
+    pool.addColorStop(1, hexA(band.hex, 0));
+    ctx.fillStyle = pool;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+
+    /* beam */
+    var hitL = PR(slab.x0, slab.topY, slab.z0);
+    var hitR = PR(slab.x1, slab.topY, slab.z1);
+    var hitFR = PR(slab.x1, slab.topY, slab.z0);
+    var hitBL = PR(slab.x0, slab.topY, slab.z1);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    var beamK = 0.34 + 0.66 * lum;
+    var beam = ctx.createLinearGradient(lensX, lensY, hitL.x, hitL.y);
+    beam.addColorStop(0, hexA(band.hex, 0.24 * beamK));
+    beam.addColorStop(0.55, hexA(band.hex, 0.07 * beamK));
+    beam.addColorStop(1, hexA(band.hex, 0.02 * beamK));
+    ctx.fillStyle = beam;
+    ctx.beginPath();
+    ctx.moveTo(lensX, lensY);
+    ctx.lineTo(hitL.x, hitL.y);
+    ctx.lineTo(hitFR.x, hitFR.y);
+    ctx.lineTo(hitR.x, hitR.y);
+    ctx.lineTo(hitBL.x, hitBL.y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    /* ---- lamp */
+    var aim = PR((slab.x0 + slab.x1) / 2, slab.topY, 0);
+    var ang = Math.atan2(aim.y - lensY, aim.x - lensX);
+    ctx.save();
+    ctx.translate(X(src.x), Y(src.y));
+    ctx.rotate(ang);
+    var lw = u * 1.55, lh = u * 0.66;
+    var bodyGrad = ctx.createLinearGradient(0, -lh / 2, 0, lh / 2);
+    bodyGrad.addColorStop(0, '#3d4b6b');
+    bodyGrad.addColorStop(0.45, '#232d45');
+    bodyGrad.addColorStop(1, '#131a2b');
+    rr(ctx, -lw * 0.52, -lh / 2, lw, lh, lh * 0.28);
+    ctx.fillStyle = bodyGrad;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(140,168,215,.42)';
+    ctx.lineWidth = Math.max(1, u * 0.016);
+    ctx.stroke();
+
+    rr(ctx, -lw * 0.52, -lh / 2, lw * 0.16, lh, lh * 0.12);
+    ctx.fillStyle = 'rgba(10,14,24,.55)';
+    ctx.fill();
+
+    for (var fi = 0; fi < 3; fi++) {
+      var fx = -lw * 0.24 + fi * lw * 0.13;
+      ctx.beginPath();
+      ctx.moveTo(fx, -lh * 0.42);
+      ctx.lineTo(fx, lh * 0.42);
+      ctx.strokeStyle = 'rgba(9,13,22,.45)';
+      ctx.lineWidth = Math.max(1, u * 0.018);
+      ctx.stroke();
+    }
+
+    var lensR = u * 0.31;
+    var lensGrad = ctx.createRadialGradient(lw * 0.47, 0, 0, lw * 0.47, 0, lensR);
+    lensGrad.addColorStop(0, mixHex('#ffffff', band.hex, 0.42 - 0.38 * lum));
+    lensGrad.addColorStop(0.35, mixHex(band.hex, '#ffffff', 0.22 + 0.3 * lum));
+    lensGrad.addColorStop(1, hexA(band.hex, 0.14 + 0.22 * lum));
+    ctx.save();
+    ctx.globalAlpha = 0.55 + 0.45 * lum;
+    ctx.beginPath();
+    ctx.arc(lw * 0.47, 0, lensR, 0, Math.PI * 2);
+    ctx.fillStyle = lensGrad;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(220,238,255,.55)';
+    ctx.lineWidth = Math.max(1, u * 0.02);
+    ctx.stroke();
+    ctx.restore();
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.18 + 0.82 * lum;
+    var ls = u * (1.9 + 1.4 * lum);
+    ctx.drawImage(glowSprite(band.hex), lensX - ls / 2, lensY - ls / 2, ls, ls);
+    ctx.restore();
+
+    /* label 光源 */
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = '800 ' + Math.round(Math.max(12, u * 0.36)) + 'px ' + FONT;
+    ctx.fillStyle = 'rgba(160,182,218,.92)';
+    ctx.fillText('光源', X(src.x), Y(src.y) - u * 0.92);
+    ctx.restore();
+
+    /* ---- slab (horizontal metal sheet on a table) */
+    var pFL = PR(slab.x0, slab.topY, slab.z0);
+    var pFR = PR(slab.x1, slab.topY, slab.z0);
+    var pBR = PR(slab.x1, slab.topY, slab.z1);
+    var pBL = PR(slab.x0, slab.topY, slab.z1);
+    var pFLb = PR(slab.x0, slab.tableY, slab.z0);
+    var pFRb = PR(slab.x1, slab.tableY, slab.z0);
+
+    /* contact shadow */
+    ctx.save();
+    ctx.translate(plateCx - u * 0.1, plateCy + u * 0.46);
+    ctx.scale(1, 0.34);
+    var shR = ((slab.x1 - slab.x0) / 2 + (slab.z1 - slab.z0) / 2 * KX + 0.75) * u;
+    var sh = ctx.createRadialGradient(0, 0, 0, 0, 0, shR);
+    sh.addColorStop(0, 'rgba(0,0,0,.58)');
+    sh.addColorStop(0.62, 'rgba(0,0,0,.22)');
+    sh.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = sh;
+    ctx.beginPath();
+    ctx.arc(0, 0, shR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    /* right edge */
+    ctx.beginPath();
+    ctx.moveTo(pFR.x, pFR.y);
+    ctx.lineTo(pBR.x, pBR.y);
+    ctx.lineTo(pBR.x, pBR.y + slab.t * u);
+    ctx.lineTo(pFR.x, pFR.y + slab.t * u);
+    ctx.closePath();
+    var sideGrad = ctx.createLinearGradient(pFR.x, pFR.y, pFR.x, pFR.y + slab.t * u);
+    sideGrad.addColorStop(0, shade(m.tint, 0.44));
+    sideGrad.addColorStop(1, shade(m.tint, 0.15));
+    ctx.fillStyle = sideGrad;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.12)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    /* front edge (thickness) */
+    ctx.beginPath();
+    ctx.moveTo(pFL.x, pFL.y);
+    ctx.lineTo(pFR.x, pFR.y);
+    ctx.lineTo(pFRb.x, pFRb.y);
+    ctx.lineTo(pFLb.x, pFLb.y);
+    ctx.closePath();
+    var faceGrad = ctx.createLinearGradient(0, pFL.y, 0, pFLb.y);
+    faceGrad.addColorStop(0, shade(m.tint, 0.62));
+    faceGrad.addColorStop(0.4, shade(m.tint, 0.4));
+    faceGrad.addColorStop(1, shade(m.tint, 0.17));
+    ctx.fillStyle = faceGrad;
+    ctx.fill();
+    var sideShade = ctx.createLinearGradient(pFL.x, 0, pFR.x, 0);
+    sideShade.addColorStop(0, 'rgba(255,255,255,.07)');
+    sideShade.addColorStop(0.5, 'rgba(0,0,0,.04)');
+    sideShade.addColorStop(1, 'rgba(0,0,0,.34)');
+    ctx.fillStyle = sideShade;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(226,238,255,.22)';
+    ctx.stroke();
+
+    /* top face */
+    ctx.beginPath();
+    ctx.moveTo(pFL.x, pFL.y);
+    ctx.lineTo(pFR.x, pFR.y);
+    ctx.lineTo(pBR.x, pBR.y);
+    ctx.lineTo(pBL.x, pBL.y);
+    ctx.closePath();
+    var topGrad = ctx.createLinearGradient(pFL.x, pFL.y, pBR.x, pBR.y);
+    topGrad.addColorStop(0, shade(m.tint, 0.92));
+    topGrad.addColorStop(0.42, shade(m.tint, 0.66));
+    topGrad.addColorStop(1, shade(m.tint, 0.44));
+    ctx.fillStyle = topGrad;
+    ctx.fill();
+
+    ctx.save();
+    ctx.clip();
+    var brushStep = (slab.z1 - slab.z0) / 9;
+    for (var bz = slab.z0 + brushStep * 0.5; bz < slab.z1; bz += brushStep) {
+      var ba = PR(slab.x0 + 0.05, slab.topY, bz);
+      var bb = PR(slab.x1 - 0.05, slab.topY, bz);
+      ctx.beginPath();
+      ctx.moveTo(ba.x, ba.y);
+      ctx.lineTo(bb.x, bb.y);
+      ctx.strokeStyle = 'rgba(255,255,255,.075)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    for (var si = 0; si < 3; si++) {
+      var sz = slab.z0 + (slab.z1 - slab.z0) * (0.22 + si * 0.28);
+      var sa = PR(slab.x0 + 0.1, slab.topY, sz);
+      var sb = PR(slab.x1 - 0.1, slab.topY, sz);
+      ctx.beginPath();
+      ctx.moveTo(sa.x, sa.y);
+      ctx.lineTo(sb.x, sb.y);
+      ctx.strokeStyle = 'rgba(255,255,255,.1)';
+      ctx.lineWidth = Math.max(1, u * 0.012);
+      ctx.stroke();
+    }
+    var litC = PR((slab.x0 + slab.x1) / 2, slab.topY, 0);
+    var lit = ctx.createRadialGradient(litC.x, litC.y, 0, litC.x, litC.y, (slab.x1 - slab.x0) * 0.8 * u);
+    lit.addColorStop(0, hexA(band.hex, 0.05 + 0.22 * lum));
+    lit.addColorStop(0.45, hexA(band.hex, 0.02 + 0.06 * lum));
+    lit.addColorStop(1, hexA(band.hex, 0));
+    ctx.fillStyle = lit;
+    var topBoxX = Math.min(pFL.x, pBL.x) - 10;
+    var topBoxY = Math.min(pFL.y, pBL.y) - 10;
+    ctx.fillRect(topBoxX, topBoxY, Math.abs(pBR.x - pBL.x) + 40, Math.abs(pFL.y - pBL.y) + 30);
+    var sheen = ctx.createLinearGradient(pFL.x, pFL.y, pBL.x, pBL.y);
+    sheen.addColorStop(0, 'rgba(255,255,255,.15)');
+    sheen.addColorStop(0.55, 'rgba(255,255,255,.03)');
+    sheen.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sheen;
+    ctx.fillRect(topBoxX, topBoxY, Math.abs(pBR.x - pBL.x) + 40, Math.abs(pFL.y - pBL.y) + 30);
+    ctx.restore();
+
+    ctx.strokeStyle = 'rgba(236,246,255,.34)';
+    ctx.lineWidth = Math.max(1, u * 0.012);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(pFL.x, pFL.y);
+    ctx.lineTo(pFR.x, pFR.y);
+    ctx.strokeStyle = 'rgba(255,255,255,.55)';
+    ctx.lineWidth = Math.max(1.2, u * 0.018);
+    ctx.stroke();
+
+    /* bolts on the top face */
+    var boltR = Math.max(2.1, u * 0.038);
+    [[slab.x0 + 0.26, slab.z0 + 0.26], [slab.x1 - 0.26, slab.z0 + 0.26],
+     [slab.x0 + 0.26, slab.z1 - 0.26], [slab.x1 - 0.26, slab.z1 - 0.26]]
+      .forEach(function (pt) {
+        var bp = PR(pt[0], slab.topY, pt[1]);
+        var bg2 = ctx.createRadialGradient(bp.x - boltR * 0.3, bp.y - boltR * 0.3, 0, bp.x, bp.y, boltR);
+        bg2.addColorStop(0, 'rgba(240,248,255,.8)');
+        bg2.addColorStop(1, 'rgba(86,100,126,.85)');
+        ctx.beginPath();
+        ctx.ellipse(bp.x, bp.y, boltR, boltR * 0.62, 0, 0, Math.PI * 2);
+        ctx.fillStyle = bg2;
+        ctx.fill();
+      });
+
+    /* metal label on the table */
+    ctx.save();
+    ctx.textAlign = 'center';
+    var fs = Math.max(12.5, Math.min(30, h * 0.03));
+    var labelX = (pFLb.x + pFRb.x) / 2;
+    var labelY = pFLb.y + fs * 1.4;
+    ctx.font = '900 ' + Math.round(fs * 1.02) + 'px ' + FONT;
+    ctx.fillStyle = 'rgba(238,246,255,.96)';
+    ctx.fillText(m.name + ' ' + m.symbol, labelX, labelY);
+    ctx.font = '700 ' + Math.round(Math.max(12, fs * 0.68)) + 'px ' + FONT;
+    ctx.fillStyle = 'rgba(158,180,214,.92)';
+    ctx.fillText('W = ' + m.W.toFixed(2) + ' eV', labelX, labelY + fs * 0.92);
+    ctx.restore();
+
+    /* ---- impact flashes / particles */
+    for (var pi = 0; pi < state.particles.length; pi++) {
+      var q = state.particles[pi];
+      var a = Math.max(0, q.life / q.max);
+      var px = X(q.x), py = Y(q.y);
+      if (q.ring) {
+        var rr2 = (1 - a) * u * (q.strong ? 0.5 : 0.34);
+        ctx.beginPath();
+        ctx.ellipse(px, py, Math.max(1, rr2), Math.max(0.8, rr2 * 0.42), 0, 0, Math.PI * 2);
+        ctx.strokeStyle = hexA(q.hex, a * 0.85);
+        ctx.lineWidth = Math.max(1.2, u * 0.035 * a);
+        ctx.stroke();
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        var rs = u * 0.46 * a;
+        if (rs > 0) {
+          ctx.globalAlpha = Math.min(1, a * 0.6);
+          ctx.translate(px, py);
+          ctx.scale(1, 0.55);
+          ctx.drawImage(glowSprite(q.hex), -rs / 2, -rs / 2, rs, rs);
+        }
+        ctx.restore();
+      } else {
+        ctx.beginPath();
+        ctx.arc(px, py, Math.max(1, q.size * u), 0, Math.PI * 2);
+        ctx.fillStyle = hexA(q.hex, a * 0.9);
+        ctx.fill();
+      }
+    }
+
+    /* ---- photons */
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (var ph = 0; ph < state.photons.length; ph++) {
+      var p = state.photons[ph];
+      var t = Math.min(1, p.t);
+      var wx = p.x0 + (p.x1 - p.x0) * t;
+      var wy = p.y0 + (p.y1 - p.y0) * t;
+      var sx = X(wx), sy = Y(wy);
+      var pulse = 0.9 + 0.2 * Math.sin(state.time * 16 + p.jitter);
+      var r = u * (0.062 + 0.045 * t) * pulse;
+      if (p.dim) r *= 0.7;
+      var gs = r * 6;
+      ctx.globalAlpha = p.dim ? 0.72 * (1 - t) : 1;
+      ctx.drawImage(glowSprite(p.band.hex), sx - gs / 2, sy - gs / 2, gs, gs);
+
+      var tt = Math.max(0, t - 0.12);
+      var tx = X(p.x0 + (p.x1 - p.x0) * tt);
+      var ty = Y(p.y0 + (p.y1 - p.y0) * tt);
+      var tg = ctx.createLinearGradient(tx, ty, sx, sy);
+      tg.addColorStop(0, hexA(p.band.hex, 0));
+      tg.addColorStop(1, hexA(p.band.hex, p.dim ? 0.25 : 0.75));
+      ctx.strokeStyle = tg;
+      ctx.lineWidth = Math.max(1, r * 0.9);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(sx, sy);
+      ctx.stroke();
+
+      ctx.globalAlpha = p.dim ? 0.55 : 1;
+      ctx.beginPath();
+      ctx.arc(sx, sy, Math.max(1.2, r * 0.52), 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    }
+    ctx.restore();
+
+    /* ---- electrons */
+    for (var ei = 0; ei < state.electrons.length; ei++) {
+      var e = state.electrons[ei];
+      var ex = X(e.x), ey = Y(e.y);
+      var topEdge = scene.cy + scene.viewH / 2;
+      var rightEdge = scene.cx + scene.viewW / 2;
+      var edgeFade = Math.min(
+        1,
+        Math.max(0, (topEdge - e.y) / 1.4),
+        Math.max(0, (rightEdge - e.x) / 1.2)
+      );
+      var fade = Math.min(1, e.life / 0.7) * edgeFade;
+      if (fade <= 0.01) continue;
+      var er = Math.max(2.6, u * 0.085);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (var ti = 1; ti < e.trail.length; ti++) {
+        var f0 = ti / e.trail.length;
+        ctx.beginPath();
+        ctx.moveTo(X(e.trail[ti - 1].x), Y(e.trail[ti - 1].y));
+        ctx.lineTo(X(e.trail[ti].x), Y(e.trail[ti].y));
+        ctx.strokeStyle = hexA('#7fe9ff', 0.34 * f0 * f0 * fade);
+        ctx.lineWidth = er * 0.9 * f0;
+        ctx.stroke();
+      }
+      var eg = er * 6;
+      ctx.globalAlpha = fade;
+      ctx.drawImage(glowSprite('#7fe9ff'), ex - eg / 2, ey - eg / 2, eg, eg);
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalAlpha = fade;
+      ctx.beginPath();
+      ctx.arc(ex, ey, er, 0, Math.PI * 2);
+      ctx.fillStyle = '#e9fdff';
+      ctx.fill();
+      ctx.strokeStyle = hexA('#0a2b3a', 0.9);
+      ctx.lineWidth = Math.max(1, er * 0.28);
+      ctx.beginPath();
+      ctx.moveTo(ex - er * 0.42, ey);
+      ctx.lineTo(ex + er * 0.42, ey);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    /* ---- legend */
+    var legF = Math.max(12, Math.min(22, u * 0.3));
+    var lx = Math.max(14, u * 0.3);
+    var ly = h - Math.max(14, u * 0.32);
+    ctx.save();
+    ctx.font = '800 ' + Math.round(legF) + 'px ' + FONT;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    var dotR = legF * 0.3;
+    ctx.beginPath();
+    ctx.arc(lx + dotR, ly, dotR, 0, Math.PI * 2);
+    ctx.fillStyle = band.hex;
+    ctx.fill();
+    ctx.fillStyle = 'rgba(196,212,238,.9)';
+    ctx.fillText('光子', lx + dotR * 2 + 7, ly);
+    var ex2 = lx + dotR * 2 + 7 + legF * 2.5;
+    ctx.beginPath();
+    ctx.arc(ex2 + dotR, ly, dotR, 0, Math.PI * 2);
+    ctx.fillStyle = '#9ff0ff';
+    ctx.fill();
+    ctx.fillStyle = 'rgba(196,212,238,.9)';
+    ctx.fillText('電子', ex2 + dotR * 2 + 7, ly);
+    ctx.restore();
+  }
+
+  /* ------------------------------------------------------------ graph */
+  function drawGraph() {
+    var w = graphBox.w, h = graphBox.h;
+    if (!w || !h) return;
+    var ctx = gctx;
+    var m = metal();
+    var band = Core.colorAt(state.f);
+    var fs = Math.max(13.5, Math.min(30, w * 0.05));
+    var small = Math.max(11, fs * 0.78);
+
+    ctx.clearRect(0, 0, w, h);
+
+    var left = fs * 2.7, right = w - fs * 0.8;
+    var top = fs * 1.45, bottom = h - fs * 2.5;
+    if (right - left < 40 || bottom - top < 40) return;
+
+    function FX(f) { return left + (f - Core.F_MIN) / (Core.F_MAX - Core.F_MIN) * (right - left); }
+    function FY(e) { return bottom - clamp(e, 0, Core.EK_MAX) / Core.EK_MAX * (bottom - top); }
+
+    /* grid */
+    ctx.save();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(140,175,235,.13)';
+    ctx.setLineDash([2, 5]);
+    for (var f = Core.F_MIN; f <= Core.F_MAX + 1e-9; f += 0.5) {
+      var gx = FX(f);
+      ctx.beginPath();
+      ctx.moveTo(gx, top);
+      ctx.lineTo(gx, bottom);
+      ctx.stroke();
+    }
+    for (var ev = 0; ev <= Core.EK_MAX + 1e-9; ev += Core.EK_MAX / 4) {
+      var gy = FY(ev);
+      ctx.beginPath();
+      ctx.moveTo(left, gy);
+      ctx.lineTo(right, gy);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    /* axes */
+    ctx.strokeStyle = 'rgba(170,196,238,.55)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(left, top);
+    ctx.lineTo(left, bottom);
+    ctx.lineTo(right, bottom);
+    ctx.stroke();
+
+    /* tick labels */
+    ctx.fillStyle = 'rgba(147,166,200,.95)';
+    ctx.font = '700 ' + Math.round(small) + 'px ' + FONT;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    for (var fi = 4; fi <= 8; fi += 1) {
+      ctx.fillText(String(fi), FX(fi), bottom + fs * 0.34);
+    }
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (var yi = 0; yi <= Core.EK_MAX + 1e-9; yi += Core.EK_MAX / 4) {
+      ctx.fillText(yi.toFixed(1), left - fs * 0.32, FY(yi) + 0.5);
+    }
+
+    /* axis titles */
+    ctx.fillStyle = 'rgba(210,226,250,.95)';
+    ctx.font = '800 ' + Math.round(fs * 0.9) + 'px ' + FONT;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText('f（×10¹⁴ Hz）', right, bottom + fs * 1.22);
+    ctx.textAlign = 'left';
+    ctx.fillText('Eₖ（eV）', left - fs * 0.1, top - fs * 1.12);
+
+    /* f0 dashed marker */
+    var f0x = FX(m.f0);
+    ctx.save();
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = 'rgba(125,211,252,.5)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(f0x, bottom);
+    ctx.lineTo(f0x, top);
+    ctx.stroke();
+    ctx.restore();
+
+    /* theoretical line */
+    var lx0 = Math.max(Core.F_MIN, m.f0);
+    var ekEnd = Core.lineEk(Core.F_MAX, m.f0);
+    if (lx0 < Core.F_MAX) {
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = 'rgba(255,209,102,.28)';
+      ctx.lineWidth = fs * 0.42;
+      ctx.beginPath();
+      ctx.moveTo(FX(lx0), FY(0));
+      ctx.lineTo(FX(Core.F_MAX), FY(ekEnd));
+      ctx.stroke();
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = Math.max(2.2, fs * 0.12);
+      ctx.beginPath();
+      ctx.moveTo(FX(lx0), FY(0));
+      ctx.lineTo(FX(Core.F_MAX), FY(Math.min(ekEnd, Core.EK_MAX)));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    /* intercept dot */
+    ctx.beginPath();
+    ctx.arc(f0x, FY(0), Math.max(3, fs * 0.16), 0, Math.PI * 2);
+    ctx.fillStyle = '#7dd3fc';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(9,16,28,.9)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    /* f0 label */
+    var label = 'f₀ = ' + m.f0.toFixed(1);
+    ctx.font = '800 ' + Math.round(small) + 'px ' + FONT;
+    var tw = ctx.measureText(label).width;
+    var flip = f0x + tw + fs * 0.7 > right;
+    var bx = flip ? f0x - tw - fs * 0.5 : f0x + fs * 0.3;
+    var by = top + fs * 0.15;
+    rr(ctx, bx, by, tw + fs * 0.4, fs * 1.02, fs * 0.3);
+    ctx.fillStyle = 'rgba(13,30,52,.86)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(125,211,252,.35)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#9adcff';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, bx + fs * 0.2, by + fs * 0.53);
+
+    /* empty-range note (e.g. zinc f0 = 8.0) */
+    if (m.f0 >= Core.F_MAX - 0.01) {
+      ctx.fillStyle = 'rgba(147,166,200,.6)';
+      ctx.font = '700 ' + Math.round(fs * 0.8) + 'px ' + FONT;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('此範圍 f < f₀，無電子逸出', (left + right) / 2, (top + bottom) / 2 + fs * 0.4);
+    }
+
+    /* scattered points */
+    ctx.save();
+    var pr = Math.max(2.6, fs * 0.17);
+    for (var pi = 0; pi < state.points.length; pi++) {
+      var pt = state.points[pi];
+      var pxc = FX(pt.f), pyc = FY(pt.ek);
+      ctx.beginPath();
+      ctx.arc(pxc, pyc, pr, 0, Math.PI * 2);
+      ctx.fillStyle = hexA(Core.colorAt(pt.f).hex, 0.8);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    /* current operating point */
+    var ekNow = Core.ekEvClamped(state.f, m.W);
+    if (Core.canEmit(state.f, m.W)) {
+      var cxp = FX(state.f), cyp = FY(ekNow);
+      ctx.beginPath();
+      ctx.arc(cxp, cyp, Math.max(5, fs * 0.3), 0, Math.PI * 2);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(2, fs * 0.1);
+      ctx.stroke();
+    }
+
+  }
+
+  /* ------------------------------------------------------------ loop */
+  var last = performance.now();
+  function frame(now) {
+    var dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+    last = now;
+    if (!state.paused) advance(dt);
+    drawStage();
+    if (state.dirtyGraph) {
+      drawGraph();
+      state.dirtyGraph = false;
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ------------------------------------------------------------ boot */
+  refreshUI();
+  onResize();
+  drawStage();
+  drawGraph();
+  requestAnimationFrame(frame);
+
+  /* ------------------------------------------------------------ fullscreen */
+  (function () {
+    var btn = document.getElementById('fsBtn');
+    if (!btn) return;
+    var root = document.documentElement;
+    function fsEl() {
+      return document.fullscreenElement || document.webkitFullscreenElement || null;
+    }
+    function syncFs() {
+      var on = !!fsEl();
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.setAttribute('aria-label', on ? '結束全螢幕' : '全螢幕');
+      btn.title = on ? '結束全螢幕' : '全螢幕';
+    }
+    btn.addEventListener('click', function () {
+      if (fsEl()) {
+        var exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (exit) exit.call(document);
+        return;
+      }
+      var req = root.requestFullscreen || root.webkitRequestFullscreen;
+      if (!req) return;
+      var p = req.call(root);
+      if (p && p.catch) p.catch(function () {});
+    });
+    document.addEventListener('fullscreenchange', syncFs);
+    document.addEventListener('webkitfullscreenchange', syncFs);
+    syncFs();
+  })();
+
+  window.__PHOTO__ = {
+    getState: function () {
+      var m = metal();
+      var reg = Core.regime(state.f, m.W);
+      return {
+        f: state.f, intensity: state.intensity, metal: state.metal,
+        f0: m.f0, W: m.W,
+        hf: Core.hfEv(state.f),
+        ek: Math.max(0, Core.ekEv(state.f, m.W)),
+        ekSigned: Core.ekEv(state.f, m.W),
+        vStop: Core.stopVoltage(state.f, m.W),
+        color: Core.colorAt(state.f).name,
+        regime: reg,
+        luminance: Math.round(state.lum * 1000) / 1000,
+        ejected: state.ejected, blocked: state.blocked,
+        points: state.points.length,
+        photons: state.photons.length, electrons: state.electrons.length,
+        paused: state.paused,
+        stage: { w: stageBox.w, h: stageBox.h },
+        graph: { w: graphBox.w, h: graphBox.h }
+      };
+    },
+    setFrequency: function (v) { setFrequency(v); return state.f; },
+    setIntensity: function (v) { setIntensity(v); return state.intensity; },
+    setMetal: function (k) { setMetal(k); return state.metal; },
+    setPaused: function (b) { state.paused = !!b; return state.paused; },
+    reset: function () {
+      state.photons.length = 0;
+      state.electrons.length = 0;
+      state.particles.length = 0;
+      state.points.length = 0;
+      state.ejected = 0;
+      state.blocked = 0;
+      state.emissionAcc = 0;
+      state.dirtyGraph = true;
+      drawStage();
+      drawGraph();
+    },
+    resetPlot: function () { state.points.length = 0; state.dirtyGraph = true; drawGraph(); },
+    step: function (sec) {
+      var n = Math.max(1, Math.round(sec * 60));
+      for (var i = 0; i < n; i++) advance(1 / 60);
+      drawStage();
+      drawGraph();
+      return state.points.length;
+    },
+    getPlotPoints: function () {
+      return state.points.map(function (p) { return { f: p.f, ek: p.ek }; });
+    },
+    seed: function (n) { rng = mulberry32(n | 0); },
+    getCanvasBox: function () {
+      return {
+        stage: { w: stageBox.w, h: stageBox.h },
+        graph: { w: graphBox.w, h: graphBox.h }
+      };
+    }
+  };
+  window.__APP_READY__ = true;
+})();
+</script>
+</body>
+</html>

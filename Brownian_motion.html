@@ -1,0 +1,2239 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>花粉的布朗運動｜2D 互動教學</title>
+<style>
+  :root{
+    --bg:#040c12;
+    --ink:#effaff;
+    --muted:#91adb8;
+    --muted-2:#68848f;
+    --cyan:#63e5ff;
+    --cyan-2:#1fb9df;
+    --amber:#ffc857;
+    --amber-2:#f49a22;
+    --coral:#ff6b61;
+    --green:#4fe3a4;
+    --panel:rgba(8,24,33,.82);
+    --panel-2:rgba(11,31,42,.9);
+    --line:rgba(159,215,227,.14);
+    --line-2:rgba(159,215,227,.25);
+    --shadow:0 28px 80px rgba(0,0,0,.42);
+    --radius:22px;
+    --font:"Noto Sans TC","Microsoft JhengHei","PingFang TC","Heiti TC","Segoe UI",system-ui,-apple-system,sans-serif;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{
+    color:var(--ink);
+    font-family:var(--font);
+    background:
+      radial-gradient(1100px 700px at 16% -12%,rgba(26,103,119,.25),transparent 62%),
+      radial-gradient(900px 650px at 102% 112%,rgba(44,67,91,.25),transparent 62%),
+      var(--bg);
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  button,input{font:inherit}
+  button{color:inherit}
+  button:focus-visible,input:focus-visible,.check-ui{outline:none}
+  button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+  .app{
+    position:relative;
+    width:100%;
+    max-width:1980px;
+    height:100dvh;
+    margin:0 auto;
+    padding:clamp(14px,2.1vh,26px) clamp(16px,2.3vw,42px) clamp(14px,2.1vh,26px);
+    display:flex;
+    flex-direction:column;
+    min-height:0;
+  }
+  .fullscreen-btn{
+    position:absolute;
+    z-index:30;
+    top:clamp(6px,1vh,14px);
+    right:clamp(14px,2vw,34px);
+    width:clamp(30px,2.1vw,40px);
+    height:clamp(30px,2.1vw,40px);
+    padding:0;
+    border-radius:11px;
+    border:1px solid rgba(159,215,227,.24);
+    background:rgba(5,20,28,.72);
+    color:#c8f5ff;
+    display:inline-flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    box-shadow:0 8px 24px rgba(0,0,0,.3);
+    backdrop-filter:blur(8px);
+    transition:background .18s,border-color .18s,color .18s,transform .18s;
+  }
+  .fullscreen-btn svg{
+    width:56%;height:56%;display:block;
+    stroke:currentColor;fill:none;
+    pointer-events:none;
+  }
+  .fullscreen-btn:hover{
+    background:rgba(99,229,255,.14);
+    border-color:rgba(99,229,255,.46);
+    color:#eaffff;
+  }
+  .fullscreen-btn:active{transform:scale(.95)}
+  .fullscreen-btn:focus-visible{outline:2px solid #a9eefc;outline-offset:3px}
+
+  /* ---------- top ---------- */
+  .topbar{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:clamp(18px,3vw,60px);
+    padding-bottom:clamp(12px,1.8vh,22px);
+    flex:0 0 auto;
+  }
+  .eyebrow{
+    display:flex;align-items:center;gap:9px;
+    color:#9ed8e3;
+    font-size:clamp(12px,.86vw,15px);
+    font-weight:700;
+    letter-spacing:.2em;
+  }
+  .eyebrow::before{
+    content:"";width:22px;height:2px;border-radius:2px;
+    background:linear-gradient(90deg,var(--cyan),rgba(99,229,255,.12));
+  }
+  h1{
+    margin:clamp(5px,.6vh,9px) 0 0;
+    font-size:clamp(34px,3.05vw,58px);
+    line-height:1.08;
+    font-weight:900;
+    letter-spacing:.035em;
+    color:#f2fcff;
+  }
+  h1 span{
+    background:linear-gradient(180deg,#fff8dc 5%,#ffd36f 48%,#f1a62d 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .subtitle{
+    margin:clamp(5px,.7vh,10px) 0 0;
+    color:var(--muted);
+    font-size:clamp(14px,1.03vw,19px);
+    letter-spacing:.035em;
+  }
+  .relation{
+    flex:0 0 auto;
+    min-width:clamp(248px,20vw,340px);
+    padding:clamp(10px,1.2vh,14px) 0 clamp(10px,1.2vh,14px) clamp(16px,1.5vw,24px);
+    border-left:2px solid rgba(255,200,87,.58);
+    display:flex;flex-direction:column;gap:4px;
+  }
+  .relation-line{
+    display:flex;align-items:baseline;gap:10px;white-space:nowrap;
+    font-size:clamp(15px,1.22vw,23px);
+    font-weight:800;
+    letter-spacing:.04em;
+  }
+  .relation-line .down{color:var(--amber);font-size:1.08em}
+  .relation-line .arrow{color:var(--muted-2);font-weight:600;font-size:.9em}
+  .relation-line strong{color:#fff4d3;font-weight:900}
+  .relation p{
+    margin:0;color:var(--muted-2);
+    font-size:clamp(12px,.85vw,15px);
+    letter-spacing:.04em;
+  }
+
+  /* ---------- layout ---------- */
+  .workspace{
+    flex:1 1 auto;
+    min-height:0;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) clamp(324px,23.8vw,394px);
+    gap:clamp(12px,1.15vw,20px);
+  }
+
+  /* ---------- microscope stage ---------- */
+  .stage{
+    position:relative;
+    min-width:0;min-height:0;
+    border-radius:var(--radius);
+    overflow:hidden;
+    border:1px solid rgba(147,211,224,.18);
+    background:
+      radial-gradient(78% 82% at 43% 38%,rgba(25,112,128,.4),transparent 64%),
+      radial-gradient(55% 60% at 80% 16%,rgba(99,229,255,.11),transparent 72%),
+      radial-gradient(65% 60% at 50% 112%,rgba(19,62,77,.5),transparent 66%),
+      linear-gradient(152deg,#071b25 0%,#05141d 49%,#030c12 100%);
+    box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.025);
+    isolation:isolate;
+  }
+  .stage::before{
+    content:"";
+    position:absolute;inset:0;
+    background-image:
+      radial-gradient(rgba(161,229,243,.075) 1px,transparent 1.25px);
+    background-size:31px 31px;
+    mask-image:radial-gradient(ellipse at 50% 48%,black 0%,rgba(0,0,0,.55) 58%,transparent 88%);
+    opacity:.55;
+    pointer-events:none;
+    z-index:0;
+  }
+  .stage::after{
+    content:"";
+    position:absolute;inset:0;
+    box-shadow:inset 0 0 120px rgba(0,0,0,.62),inset 0 0 26px rgba(0,0,0,.5);
+    pointer-events:none;
+    z-index:1;
+  }
+  #scene{
+    position:absolute;inset:0;
+    display:block;width:100%;height:100%;
+    z-index:0;
+  }
+  .stage-top,.stage-bottom{
+    position:absolute;z-index:2;
+    display:flex;align-items:center;gap:10px;
+    pointer-events:none;
+  }
+  .stage-top{
+    top:clamp(12px,1.6vw,22px);left:clamp(12px,1.6vw,22px);right:clamp(12px,1.6vw,22px);
+    justify-content:space-between;align-items:flex-start;
+  }
+  .live-pill{
+    display:inline-flex;align-items:center;gap:9px;
+    height:clamp(32px,3.2vh,40px);
+    padding:0 clamp(11px,1vw,15px);
+    border-radius:999px;
+    background:rgba(5,20,28,.72);
+    border:1px solid rgba(129,219,235,.2);
+    color:#d8f9ff;
+    font-size:clamp(12px,.9vw,16px);
+    font-weight:800;
+    letter-spacing:.08em;
+    backdrop-filter:blur(10px);
+    box-shadow:0 10px 24px rgba(0,0,0,.2);
+    white-space:nowrap;
+  }
+  .live-pill i{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 0 0 rgba(79,227,164,.38);
+    animation:livePulse 2.2s ease-out infinite;
+    flex:0 0 auto;
+  }
+  @keyframes livePulse{
+    0%{box-shadow:0 0 0 0 rgba(79,227,164,.38)}
+    65%{box-shadow:0 0 0 8px rgba(79,227,164,0)}
+    100%{box-shadow:0 0 0 0 rgba(79,227,164,0)}
+  }
+  .stage.is-paused .live-pill{
+    border-color:rgba(255,200,87,.36);
+    color:#ffe5aa;
+    background:rgba(32,25,8,.62);
+  }
+  .stage.is-paused .live-pill i{
+    background:var(--amber);
+    box-shadow:none;
+    animation:none;
+    border-radius:2px;
+  }
+  .stage-meta{
+    display:flex;align-items:center;gap:8px;
+    flex-wrap:wrap;justify-content:flex-end;
+  }
+  .meta-chip{
+    display:inline-flex;align-items:baseline;gap:6px;
+    padding:clamp(6px,.75vh,9px) clamp(10px,.9vw,14px);
+    border-radius:999px;
+    background:rgba(5,20,28,.66);
+    border:1px solid rgba(154,215,227,.14);
+    color:#9bbac4;
+    font-size:clamp(12.5px,.9vw,17px);
+    letter-spacing:.045em;
+    backdrop-filter:blur(8px);
+    white-space:nowrap;
+  }
+  .meta-chip b{
+    color:#f2fcff;font-family:var(--mono);font-size:1.05em;font-weight:700;
+    font-variant-numeric:tabular-nums;
+  }
+  .stage-bottom{
+    left:clamp(14px,1.8vw,24px);
+    right:clamp(14px,1.8vw,24px);
+    bottom:clamp(12px,1.5vw,20px);
+    justify-content:space-between;align-items:flex-end;
+    gap:16px;
+  }
+  .legend{
+    display:flex;align-items:center;gap:clamp(12px,1.2vw,20px);
+    padding:clamp(7px,.8vh,10px) clamp(11px,1vw,15px);
+    border-radius:12px;
+    background:rgba(4,16,23,.68);
+    border:1px solid rgba(143,204,217,.12);
+    color:#a9c4cd;
+    font-size:clamp(13px,1vw,18px);
+    font-weight:600;
+    letter-spacing:.04em;
+    backdrop-filter:blur(8px);
+  }
+  .legend-item{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+  .wg{
+    width:7px;height:7px;border-radius:50%;
+    background:#d5fbff;
+    box-shadow:0 0 7px rgba(99,229,255,.9),0 0 2px #fff;
+  }
+  .pg{
+    width:16px;height:16px;border-radius:50%;
+    background:radial-gradient(circle at 34% 30%,#fff3b8,#ffc857 48%,#c77b14 100%);
+    box-shadow:0 0 10px rgba(255,185,65,.38);
+  }
+  .legend-note{color:var(--muted-2);font-weight:500}
+  .stage-hint{
+    text-align:right;
+    color:#aec8d1;
+    font-size:clamp(13px,.98vw,18px);
+    line-height:1.55;
+    letter-spacing:.035em;
+    text-shadow:0 1px 8px rgba(0,0,0,.65);
+  }
+  .stage-hint b{color:#ffe1a0;font-weight:900}
+  .stage-hint small{display:block;color:#68848f;font-size:.82em;letter-spacing:.06em}
+
+  /* ---------- sidebar ---------- */
+  .sidebar{
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+  }
+  .panel{
+    position:relative;
+    border-radius:var(--radius);
+    background:linear-gradient(162deg,rgba(13,35,46,.88),rgba(7,22,30,.9));
+    border:1px solid var(--line);
+    box-shadow:0 20px 48px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.035);
+    min-width:0;
+  }
+  .panel::after{
+    content:"";position:absolute;inset:0;border-radius:inherit;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.018);
+    pointer-events:none;
+  }
+  .controls{
+    padding:clamp(14px,1.55vw,22px);
+    flex:1 1 auto;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+  }
+  .panel-head{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    position:relative;z-index:1;
+  }
+  .panel-head h2{
+    display:flex;align-items:center;gap:9px;
+    margin:0;
+    font-size:clamp(24px,1.72vw,28px);
+    line-height:1.15;
+    font-weight:900;
+    letter-spacing:.08em;
+    color:#effbff;
+  }
+  .panel-head h2::before{
+    content:"";width:3px;height:1.1em;border-radius:2px;
+    background:linear-gradient(180deg,var(--cyan),rgba(99,229,255,.2));
+    box-shadow:0 0 12px rgba(99,229,255,.4);
+  }
+  .mode{
+    display:inline-flex;align-items:center;gap:6px;
+    color:#99bdc8;font-size:clamp(12px,.82vw,14px);font-weight:700;letter-spacing:.06em;
+    white-space:nowrap;
+  }
+  .mode i{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px rgba(79,227,164,.6)}
+  .mode.is-paused{color:#ffda8b}
+  .mode.is-paused i{background:var(--amber);box-shadow:0 0 8px rgba(255,200,87,.55)}
+
+  .control{margin-top:clamp(13px,1.5vh,20px)}
+  .control-head{
+    display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+    margin-bottom:clamp(5px,.7vh,9px);
+  }
+  .control-head label{
+    color:#c8dde3;
+    font-size:clamp(18px,1.72vw,26px);
+    font-weight:700;
+    letter-spacing:.035em;
+    line-height:1.25;
+  }
+  .control-head output{
+    display:inline-flex;align-items:baseline;gap:7px;
+    color:#eafcff;
+    font-weight:700;
+  }
+  .control-head output .word{color:var(--amber);font-size:clamp(17px,1.35vw,23px)}
+  .control-head output .num{
+    font-family:var(--mono);
+    font-size:clamp(18px,1.25vw,22px);
+    font-variant-numeric:tabular-nums;
+    letter-spacing:-.01em;
+  }
+  .range{
+    --pct:50%;
+    -webkit-appearance:none;appearance:none;
+    width:100%;height:28px;margin:0;
+    background:transparent;
+    cursor:pointer;
+    display:block;
+    border-radius:8px;
+  }
+  .range:focus-visible{outline:2px solid rgba(99,229,255,.86);outline-offset:3px}
+  .range::-webkit-slider-runnable-track{
+    height:7px;border-radius:999px;
+    background:linear-gradient(90deg,var(--fill-a) 0%,var(--fill-b) var(--pct),rgba(140,190,203,.14) var(--pct),rgba(140,190,203,.14) 100%);
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.4);
+  }
+  .range::-moz-range-track{
+    height:7px;border-radius:999px;background:rgba(140,190,203,.14);
+  }
+  .range::-moz-range-progress{
+    height:7px;border-radius:999px;background:linear-gradient(90deg,var(--fill-a),var(--fill-b));
+  }
+  .range::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;
+    width:23px;height:23px;margin-top:-8px;
+    border-radius:50%;
+    background:radial-gradient(circle at 36% 32%,#ffffff,#dffaff 36%,var(--fill-b) 74%,var(--fill-a) 100%);
+    border:2px solid #eafcff;
+    box-shadow:0 0 0 4px rgba(99,229,255,.11),0 3px 12px rgba(0,0,0,.5);
+    transition:box-shadow .18s,transform .18s;
+  }
+  .range::-webkit-slider-thumb:hover{box-shadow:0 0 0 6px rgba(99,229,255,.14),0 3px 14px rgba(0,0,0,.55)}
+  .range:active::-webkit-slider-thumb{transform:scale(1.08)}
+  .range::-moz-range-thumb{
+    width:23px;height:23px;border-radius:50%;
+    background:radial-gradient(circle at 36% 32%,#fff,#dffaff 36%,var(--fill-b) 74%,var(--fill-a) 100%);
+    border:2px solid #eafcff;
+    box-shadow:0 0 0 4px rgba(99,229,255,.11),0 3px 12px rgba(0,0,0,.5);
+  }
+  .range-pollen{--fill-a:#e08a16;--fill-b:#ffd166}
+  .range-water{--fill-a:#168eae;--fill-b:#73edff}
+  .range-temp{--fill-a:#c2521f;--fill-b:#ff9a52}
+  .range-limits{
+    display:flex;justify-content:space-between;
+    margin-top:-2px;color:#698691;font-size:clamp(11px,.72vw,12.5px);letter-spacing:.1em;
+  }
+
+  .live-readout{
+    flex:1 1 auto;
+    min-height:clamp(86px,13vh,190px);
+    margin-top:clamp(12px,1.7vh,22px);
+    padding:clamp(10px,1.3vh,16px) 0;
+    border-top:1px solid rgba(159,215,227,.1);
+    border-bottom:1px solid rgba(159,215,227,.1);
+    display:flex;flex-direction:column;justify-content:center;
+    gap:clamp(10px,1.7vh,20px);
+  }
+  .readout-caption{
+    display:flex;align-items:center;gap:8px;
+    color:#7e9aa4;font-size:clamp(11px,.75vw,12.5px);
+    font-weight:700;letter-spacing:.16em;
+  }
+  .readout-caption::after{
+    content:"";flex:1 1 auto;height:1px;
+    background:linear-gradient(90deg,rgba(139,205,220,.16),transparent);
+  }
+  .readout-top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .readout-top > span{
+    color:#bdd6de;font-size:clamp(13px,.92vw,16px);font-weight:700;letter-spacing:.04em;
+  }
+  .readout-top b{
+    color:#effdff;font-family:var(--mono);
+    font-size:clamp(23px,1.9vw,34px);font-weight:700;line-height:1;
+    letter-spacing:-.03em;font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+  .readout-top b em{
+    font-family:var(--font);font-style:normal;
+    font-size:.38em;font-weight:600;color:#718f9a;letter-spacing:.02em;margin-left:3px;
+  }
+  .meter{
+    height:6px;border-radius:999px;overflow:hidden;
+    background:rgba(139,192,205,.1);margin-top:7px;
+  }
+  .meter i{display:block;height:100%;width:0%;border-radius:inherit;transition:width .3s ease}
+  #speedBar{background:linear-gradient(90deg,#1d9fc2,#7cecff)}
+  #hitBar{background:linear-gradient(90deg,#d06c25,#ffcf6f)}
+
+  .force-row{
+    margin-top:clamp(12px,1.4vh,18px);
+    min-height:clamp(48px,5.2vh,58px);
+    display:flex;align-items:center;justify-content:space-between;gap:14px;
+    padding:clamp(8px,.9vh,11px) clamp(11px,1vw,14px);
+    border-radius:13px;
+    border:1px solid rgba(159,215,227,.13);
+    background:rgba(3,15,21,.44);
+    cursor:pointer;
+    transition:border-color .2s,background .2s,box-shadow .2s;
+    position:relative;
+  }
+  .force-row:hover{border-color:rgba(255,107,97,.32);background:rgba(18,28,30,.58)}
+  .force-row:has(input:checked){
+    border-color:rgba(255,107,97,.36);
+    background:linear-gradient(90deg,rgba(255,107,97,.095),rgba(3,15,21,.4));
+    box-shadow:inset 2px 0 0 rgba(255,107,97,.72);
+  }
+  .force-label{display:flex;align-items:center;gap:10px;min-width:0}
+  .force-swatch{
+    width:8px;height:24px;border-radius:4px;flex:0 0 auto;
+    background:linear-gradient(180deg,#ff9f84,var(--coral));
+    box-shadow:0 0 10px rgba(255,107,97,.38);
+    transform:rotate(0.001deg);
+  }
+  .force-label b{
+    display:block;color:#e9f9fc;font-size:clamp(17px,1.25vw,22px);line-height:1.2;font-weight:800;letter-spacing:.03em;
+  }
+  .force-label small{
+    display:block;margin-top:2px;color:#7895a0;font-size:clamp(10.5px,.72vw,12.5px);line-height:1.2;
+    white-space:nowrap;
+  }
+  .force-row input{position:absolute;opacity:0;width:1px;height:1px}
+  .check-ui{
+    width:26px;height:26px;flex:0 0 auto;
+    border-radius:8px;
+    border:1.5px solid rgba(180,223,233,.28);
+    background:rgba(2,11,16,.5);
+    position:relative;
+    transition:background .18s,border-color .18s,box-shadow .18s;
+  }
+  .check-ui::after{
+    content:"";position:absolute;left:8px;top:4px;
+    width:7px;height:12px;
+    border:solid #2a1009;border-width:0 2.5px 2.5px 0;
+    transform:rotate(40deg) scale(.2);
+    opacity:0;transition:opacity .15s,transform .15s;
+  }
+  .force-row input:checked + .check-ui{
+    background:linear-gradient(145deg,#ff9a7e,var(--coral));
+    border-color:#ffb19d;
+    box-shadow:0 0 14px rgba(255,107,97,.32);
+  }
+  .force-row input:checked + .check-ui::after{opacity:1;transform:rotate(40deg) scale(1)}
+  .force-row input:focus-visible + .check-ui{outline:2px solid #a9eefc;outline-offset:3px}
+
+  .buttons{
+    display:grid;grid-template-columns:1.35fr 1fr;gap:10px;
+    margin-top:clamp(12px,1.4vh,18px);
+  }
+  .btn{
+    height:clamp(48px,5.4vh,58px);
+    border-radius:13px;
+    border:1px solid transparent;
+    display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    font-size:clamp(16px,1.04vw,18px);font-weight:900;letter-spacing:.08em;
+    cursor:pointer;
+    transition:filter .18s,transform .18s,border-color .18s,background .18s;
+    user-select:none;
+  }
+  .btn svg{width:1.15em;height:1.15em;display:block;flex:0 0 auto}
+  .btn:hover{filter:brightness(1.08)}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{
+    color:#03212a;
+    background:linear-gradient(180deg,#b8f7ff,#5fe4ff 48%,#2ac5e8);
+    box-shadow:0 10px 26px rgba(35,192,226,.24),inset 0 1px 0 rgba(255,255,255,.7);
+  }
+  .btn-primary.is-paused{
+    color:#2a1504;
+    background:linear-gradient(180deg,#ffeab1,#ffc857 52%,#efa32a);
+    box-shadow:0 10px 26px rgba(255,180,55,.2),inset 0 1px 0 rgba(255,255,255,.65);
+  }
+  .btn-ghost{
+    color:#bed5dc;
+    background:rgba(7,24,32,.55);
+    border-color:rgba(159,215,227,.16);
+  }
+  .btn-ghost:hover{border-color:rgba(159,215,227,.32);background:rgba(14,37,47,.68)}
+  .btn:focus-visible{outline:2px solid #a9eefc;outline-offset:3px}
+
+  .relation-note{
+    margin:clamp(12px,1.4vh,18px) 0 0;
+    padding-top:clamp(9px,1.1vh,13px);
+    border-top:1px solid rgba(159,215,227,.09);
+    color:#97b6c0;
+    font-size:clamp(12px,.8vw,14px);
+    line-height:1.55;
+    letter-spacing:.03em;
+    display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 6px;
+  }
+  .relation-note strong{color:#e7fbff;font-weight:800}
+  .relation-note .down{color:var(--amber);font-weight:900}
+  .relation-note small{
+    margin-left:auto;color:#66838e;font-family:var(--mono);font-size:.92em;white-space:nowrap;
+  }
+
+  /* ---------- trajectory inset ---------- */
+  .stage-trail{
+    position:absolute;
+    z-index:3;
+    top:clamp(52px,6.4vh,76px);
+    left:clamp(12px,1.6vw,22px);
+    width:clamp(252px,23vw,340px);
+    padding:clamp(10px,1vw,14px);
+    border-radius:16px;
+    border:1px solid rgba(148,215,228,.2);
+    background:linear-gradient(160deg,rgba(6,24,33,.95),rgba(4,16,23,.92));
+    box-shadow:0 20px 52px rgba(0,0,0,.44),inset 0 1px 0 rgba(255,255,255,.045);
+    display:flex;flex-direction:column;min-height:0;
+    pointer-events:auto;
+  }
+  .stage-trail .panel-head h2{
+    font-size:clamp(14px,.98vw,18px);
+    gap:7px;
+    letter-spacing:.07em;
+  }
+  .stage-trail .panel-head h2::before{
+    width:2px;
+    box-shadow:0 0 9px rgba(99,229,255,.34);
+  }
+  .stage-trail .text-btn{
+    padding:3px 0 3px 7px;
+    font-size:clamp(11.5px,.75vw,12.5px);
+  }
+  .stage-trail .trail-frame{
+    flex:0 0 auto;
+    height:clamp(92px,12.2vh,148px);
+    min-height:82px;
+    margin-top:clamp(6px,.8vh,9px);
+    border-radius:10px;
+  }
+  .stage-trail .trail-stats{
+    margin-top:clamp(6px,.85vh,10px);
+    padding-top:clamp(5px,.7vh,8px);
+  }
+  .stage-trail .trail-stat{padding:0 clamp(6px,.8vw,10px)}
+  .stage-trail .trail-stat span{font-size:clamp(10.5px,.7vw,12px)}
+  .stage-trail .trail-stat b{font-size:clamp(15px,1.08vw,19px);margin-top:1px}
+  .stage-trail .trail-stat em{font-size:clamp(9px,.6vw,10.5px)}
+  .text-btn{
+    border:0;background:transparent;color:#87a6b1;
+    padding:5px 2px 5px 8px;border-radius:6px;
+    font-size:clamp(11.5px,.8vw,14px);font-weight:700;letter-spacing:.08em;
+    cursor:pointer;
+  }
+  .text-btn:hover{color:#e1fbff}
+  .text-btn:focus-visible{outline:2px solid #a9eefc;outline-offset:2px}
+  .trail-frame{
+    position:relative;flex:1 1 auto;min-height:112px;
+    margin-top:clamp(9px,1vh,13px);
+    border-radius:14px;
+    overflow:hidden;
+    border:1px solid rgba(132,196,210,.12);
+    background:
+      radial-gradient(90% 90% at 50% 43%,rgba(22,78,91,.22),transparent 74%),
+      #05151d;
+  }
+  #trail{position:absolute;inset:0;display:block;width:100%;height:100%}
+  .trail-stats{
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+    margin-top:clamp(9px,1vh,13px);
+    border-top:1px solid rgba(159,215,227,.09);
+    padding-top:clamp(8px,.95vh,12px);
+  }
+  .trail-stat{min-width:0;padding:0 clamp(8px,1vw,13px);border-left:1px solid rgba(159,215,227,.08)}
+  .trail-stat:first-child{padding-left:0;border-left:0}
+  .trail-stat span{
+    display:block;color:#7895a0;font-size:clamp(10.5px,.72vw,12.5px);
+    letter-spacing:.08em;white-space:nowrap;
+  }
+  .trail-stat b{
+    display:inline-block;margin-top:3px;
+    font-family:var(--mono);font-size:clamp(17px,1.25vw,23px);font-weight:700;
+    color:#e8fbff;font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+    max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .trail-stat em{
+    font-style:normal;color:#6f8d98;font-family:var(--font);
+    font-size:clamp(10px,.68vw,12px);font-weight:600;margin-left:2px;
+  }
+
+  @media (max-width:1180px){
+    .relation{min-width:0;max-width:300px}
+    .workspace{grid-template-columns:minmax(0,1fr) clamp(306px,29vw,340px)}
+    .legend-note{display:none}
+    .stage-trail{width:clamp(200px,20vw,240px);padding:9px 10px;border-radius:13px}
+    .stage-trail .trail-frame{height:84px;min-height:76px}
+    .stage-trail .trail-stat b{font-size:15px}
+    .stage-trail .trail-stat span{font-size:10px}
+  }
+  @media (max-height:840px) and (min-width:941px){
+    .controls{padding:12px 15px}
+    .control{margin-top:7px}
+    .control-head{margin-bottom:2px}
+    .range{height:24px}
+    .live-readout{min-height:76px;margin-top:10px;padding:8px 0;gap:9px}
+    .readout-top b{font-size:clamp(21px,1.65vw,28px)}
+    .force-row{margin-top:8px;min-height:44px;padding:6px 10px}
+    .buttons{margin-top:8px}
+    .btn{height:44px}
+    .relation-note{margin-top:8px;padding-top:6px}
+    .stage-trail{padding:10px 12px;border-radius:14px}
+    .stage-trail .trail-frame{height:92px;margin-top:6px}
+    .stage-trail .trail-stats{margin-top:5px;padding-top:5px}
+  }
+  @media (max-width:940px){
+    body{overflow-y:auto;overflow-x:hidden}
+    .app{height:auto;min-height:100svh;padding:16px 14px 22px}
+    .topbar{align-items:flex-start;gap:12px;flex-wrap:wrap;padding-bottom:14px}
+    .relation{min-width:0;max-width:none;padding:0 0 0 13px;flex:1 1 100%;border-left-width:2px;flex-direction:row;align-items:baseline;gap:9px;flex-wrap:wrap}
+    .relation p{display:none}
+    .workspace{display:flex;flex-direction:column;gap:13px}
+    .stage{height:min(58svh,540px);min-height:345px;flex:0 0 auto}
+    .sidebar{display:flex;flex-direction:column;gap:13px;min-height:0}
+    .controls{flex:0 0 auto}
+    .live-readout{flex:0 0 auto;min-height:0}
+    .stage-trail{top:52px;left:12px;width:clamp(230px,34vw,300px)}
+    .stage-meta{gap:5px}
+    .meta-chip{font-size:12px;padding:6px 9px}
+    .stage-hint small{display:none}
+    .relation-note{font-size:13px}
+  }
+  @media (max-width:560px){
+    h1{font-size:30px}
+    .subtitle{font-size:13.5px;line-height:1.5}
+    .eyebrow{font-size:11.5px}
+    .relation-line{font-size:14px}
+    .stage{height:min(54svh,460px);min-height:320px;border-radius:18px}
+    .stage-top{top:9px;left:9px;right:9px;gap:6px}
+    .stage-meta{flex-direction:column;align-items:flex-end;gap:4px}
+    .meta-chip{font-size:12.5px;padding:4px 7px;gap:4px}
+    .live-pill{height:30px;font-size:12.5px;padding:0 10px}
+    .stage-trail{top:44px;left:8px;width:min(60vw,220px);padding:7px 8px;border-radius:11px}
+    .stage-trail .panel-head h2{font-size:14.5px;letter-spacing:.03em;gap:5px}
+    .stage-trail .panel-head h2::before{width:2px;height:1em}
+    .stage-trail .text-btn{font-size:11.5px;padding:2px 0 2px 6px}
+    .stage-trail .trail-frame{height:78px;min-height:72px;margin-top:5px;border-radius:8px}
+    .stage-trail .trail-stats{margin-top:4px;padding-top:4px}
+    .stage-trail .trail-stat{padding:0 6px}
+    .stage-trail .trail-stat span{font-size:11.5px;letter-spacing:.02em}
+    .stage-trail .trail-stat b{font-size:15.5px}
+    .stage-trail .trail-stat em{font-size:9px}
+    .stage-bottom{left:10px;right:10px;bottom:9px;align-items:flex-end;gap:8px}
+    .legend{font-size:12.5px;gap:10px;padding:6px 8px}
+    .legend-note{display:none}
+    .stage-hint{display:none}
+    .wg{width:6px;height:6px}.pg{width:13px;height:13px}
+    .controls{padding:14px}
+    .panel-head h2{font-size:17px}
+    .control{margin-top:13px}
+    .control-head label{font-size:14px}
+    .control-head output .word{font-size:14px}
+    .control-head output .num{font-size:15px}
+    .range-limits{font-size:12.5px}
+    .live-readout{min-height:0;margin-top:14px;padding:11px 0;gap:11px}
+    .readout-caption{font-size:11px}
+    .readout-top > span{font-size:13px}
+    .readout-top b{font-size:25px}
+    .force-label b{font-size:15px}
+    .force-label small{font-size:12.5px}
+    .btn{height:49px;font-size:15px}
+    .relation-note{font-size:12.5px}
+    .relation-note small{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .live-pill i{animation:none}
+    *{scroll-behavior:auto!important}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <button class="fullscreen-btn" id="fullscreenBtn" type="button" aria-label="全螢幕" title="全螢幕" aria-pressed="false">
+    <svg id="fullscreenIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>
+    </svg>
+  </button>
+  <header class="topbar">
+    <div class="title-block">
+      <div class="eyebrow">高中物理・分子運動</div>
+      <h1>花粉的<span>布朗運動</span></h1>
+      <p class="subtitle">水分子的隨機撞擊，讓懸浮的花粉走出不規則的軌跡。</p>
+    </div>
+    <div class="relation" role="note" aria-label="粒徑愈小，布朗運動愈劇烈">
+      <div class="relation-line">
+        <span>花粉粒徑</span><span class="down">↓</span>
+        <span class="arrow">→</span><strong>布朗運動 ↑</strong>
+      </div>
+      <p>粒徑愈小，質量愈小，轉折愈明顯。</p>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <section class="stage" id="stage" aria-label="布朗運動顯微視野">
+      <canvas id="scene" role="img" aria-label="大量水分子在視野中隨機運動，中央有一顆花粉顆粒"></canvas>
+      <div class="stage-top">
+        <div class="live-pill" id="livePill"><i></i><span id="liveText">即時模擬</span></div>
+        <div class="stage-meta">
+          <span class="meta-chip">花粉直徑 <b id="metaDiameter">—</b> px</span>
+          <span class="meta-chip">水分子 <b id="metaCount">—</b> 個</span>
+        </div>
+      </div>
+      <section class="stage-trail" aria-labelledby="trailTitle">
+        <div class="panel-head">
+          <h2 id="trailTitle">花粉軌跡</h2>
+          <button class="text-btn" id="clearTrail" type="button">清除</button>
+        </div>
+        <div class="trail-frame" id="trailFrame">
+          <canvas id="trail" role="img" aria-label="花粉目前為止的隨機運動軌跡圖"></canvas>
+        </div>
+        <div class="trail-stats">
+          <div class="trail-stat"><span>路徑長</span><b id="pathValue">0</b><em>px</em></div>
+          <div class="trail-stat"><span>位移</span><b id="dispValue">0</b><em>px</em></div>
+          <div class="trail-stat"><span>時間</span><b id="timeValue">0.0</b><em>s</em></div>
+        </div>
+      </section>
+      <div class="stage-bottom">
+        <div class="legend">
+          <span class="legend-item"><i class="wg"></i>水分子</span>
+          <span class="legend-item"><i class="pg"></i>花粉粒</span>
+          <span class="legend-item legend-note">花粉遠大於水分子</span>
+        </div>
+        <div class="stage-hint">
+          <span id="hintText">按 <b>暫停</b> 定格，觀察合力與轉折</span>
+          <small>2D 示意・質量比與溫度效應經調整</small>
+        </div>
+      </div>
+    </section>
+
+    <aside class="sidebar">
+      <section class="panel controls" aria-labelledby="controlsTitle">
+        <div class="panel-head">
+          <h2 id="controlsTitle">實驗控制</h2>
+          <span class="mode" id="mode"><i></i><span id="modeText">進行中</span></span>
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <label for="pollenSize">花粉顆粒大小</label>
+            <output for="pollenSize"><span class="word" id="pollenWord">中</span><span class="num" id="pollenPx">—</span></output>
+          </div>
+          <input class="range range-pollen" id="pollenSize" type="range" min="1" max="5" step="1" value="3" aria-label="花粉顆粒大小" aria-valuetext="中">
+          <div class="range-limits"><span>小</span><span>大</span></div>
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <label for="waterCount">水分子數量</label>
+            <output for="waterCount"><span class="num" id="waterPx">—</span></output>
+          </div>
+          <input class="range range-water" id="waterCount" type="range" min="200" max="1600" step="100" value="700" aria-label="水分子數量">
+          <div class="range-limits"><span>200</span><span>1600</span></div>
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <label for="temperature">溫度</label>
+            <output for="temperature"><span class="num" id="tempValue">25 °C</span></output>
+          </div>
+          <input class="range range-temp" id="temperature" type="range" min="10" max="90" step="1" value="25" aria-label="水溫">
+          <div class="range-limits"><span>10 °C</span><span>90 °C</span></div>
+        </div>
+
+        <div class="live-readout" aria-label="即時觀察數值">
+          <div class="readout-caption">即時觀察</div>
+          <div class="readout-item">
+            <div class="readout-top"><span>水分子速率</span><b id="speedIndex">1.00×</b></div>
+            <div class="meter"><i id="speedBar"></i></div>
+          </div>
+          <div class="readout-item">
+            <div class="readout-top"><span>撞擊頻率</span><b><span id="hitRate">—</span><em>次／秒</em></b></div>
+            <div class="meter"><i id="hitBar"></i></div>
+          </div>
+        </div>
+
+        <label class="force-row" for="showForce">
+          <span class="force-label">
+            <span class="force-swatch" aria-hidden="true"></span>
+            <span><b>顯示瞬時合力向量</b><small>箭頭＝近期撞擊的合力</small></span>
+          </span>
+          <input id="showForce" type="checkbox" checked>
+          <span class="check-ui" aria-hidden="true"></span>
+        </label>
+
+        <div class="buttons">
+          <button class="btn btn-primary" id="pauseBtn" type="button" aria-pressed="false">
+            <span class="btn-icon" id="pauseIcon" aria-hidden="true"></span>
+            <span id="pauseLabel">暫停</span>
+          </button>
+          <button class="btn btn-ghost" id="resetBtn" type="button">重新開始</button>
+        </div>
+
+        <p class="relation-note">
+          <span>粒徑 ↓</span><span>→</span><span>質量 ↓</span><span>→</span><strong>速度變化 ↑</strong>
+          <small>質量 ∝ 粒徑²</small>
+        </p>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ============================================================
+   基礎工具
+   ============================================================ */
+const TAU = Math.PI * 2;
+const STEP = 1 / 120;
+const WATER_R = 2.5;
+const POLLEN_DENSITY = 0.022;
+const MIN_POLLEN_MASS = 6;
+const DRAG_TAU = 0.5;
+const FORCE_TAU = 0.3;
+const RESTITUTION = 0.96;
+const TRAIL_INTERVAL = 1 / 40;
+const MAX_TRAIL = 4800;
+const BASE_SEED = 0x5eedb0b;
+const SIZE_WORDS = ['小', '偏小', '中', '偏大', '大'];
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+
+function mulberry32(a){
+  return function(){
+    a |= 0;
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function roundRectPath(ctx, x, y, w, h, r){
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+/* ============================================================
+   元素與狀態
+   ============================================================ */
+const stage = document.getElementById('stage');
+const sceneCanvas = document.getElementById('scene');
+const trailCanvas = document.getElementById('trail');
+const trailFrame = document.getElementById('trailFrame');
+const sctx = sceneCanvas.getContext('2d');
+const tctx = trailCanvas.getContext('2d');
+
+const els = {
+  liveText: document.getElementById('liveText'),
+  hintText: document.getElementById('hintText'),
+  metaDiameter: document.getElementById('metaDiameter'),
+  metaCount: document.getElementById('metaCount'),
+  mode: document.getElementById('mode'),
+  modeText: document.getElementById('modeText'),
+  pollenSize: document.getElementById('pollenSize'),
+  pollenWord: document.getElementById('pollenWord'),
+  pollenPx: document.getElementById('pollenPx'),
+  waterCount: document.getElementById('waterCount'),
+  waterPx: document.getElementById('waterPx'),
+  temperature: document.getElementById('temperature'),
+  tempValue: document.getElementById('tempValue'),
+  speedIndex: document.getElementById('speedIndex'),
+  hitRate: document.getElementById('hitRate'),
+  speedBar: document.getElementById('speedBar'),
+  hitBar: document.getElementById('hitBar'),
+  showForce: document.getElementById('showForce'),
+  pauseBtn: document.getElementById('pauseBtn'),
+  pauseIcon: document.getElementById('pauseIcon'),
+  pauseLabel: document.getElementById('pauseLabel'),
+  resetBtn: document.getElementById('resetBtn'),
+  clearTrail: document.getElementById('clearTrail'),
+  pathValue: document.getElementById('pathValue'),
+  dispValue: document.getElementById('dispValue'),
+  timeValue: document.getElementById('timeValue'),
+  fullscreenBtn: document.getElementById('fullscreenBtn'),
+  fullscreenIcon: document.getElementById('fullscreenIcon')
+};
+const UI_FONT = getComputedStyle(document.body).fontFamily;
+const fsPath = els.fullscreenIcon ? els.fullscreenIcon.querySelector('path') : null;
+
+const state = {
+  ready: false,
+  paused: false,
+  showForce: true,
+  sizeLevel: 3,
+  waterTarget: 700,
+  temperatureC: 25,
+  speedScale: 1,
+  collisionTimes: [],
+  hitRate: null,
+  w: 0,
+  h: 0,
+  dpr: 1,
+  margin: 16,
+  initialized: false,
+  pollen: { x: 0, y: 0, vx: 0, vy: 0, r: 32, mass: 120 },
+  pollenSprite: null,
+  pollenSpriteR: 0,
+  pollenSpriteSize: 0,
+  pollenSpriteRes: 2,
+  mols: [],
+  forceX: 0,
+  forceY: 0,
+  flashes: [],
+  trail: [],
+  pathLength: 0,
+  trailElapsed: 0,
+  elapsed: 0,
+  collisions: 0,
+  speedEma: 0,
+  trailAccum: 0,
+  lastTrailX: 0,
+  lastTrailY: 0,
+  sceneDirty: true,
+  trailDirty: true,
+  lastUI: 0,
+  lastTime: 0,
+  acc: 0,
+  sizeTimer: 0,
+  waterTimer: 0
+};
+
+let rng = mulberry32(BASE_SEED);
+
+const decorRng = mulberry32(0x0badcafe);
+const pollenSpecks = [];
+for (let i = 0; i < 34; i++){
+  const a = decorRng() * TAU;
+  const rr = Math.sqrt(decorRng()) * 0.82;
+  pollenSpecks.push({
+    x: Math.cos(a) * rr,
+    y: Math.sin(a) * rr,
+    s: 0.012 + decorRng() * 0.032,
+    a: 0.12 + decorRng() * 0.24
+  });
+}
+const pollenSpikes = [];
+for (let i = 0; i < 34; i++){
+  pollenSpikes.push({ a: (i / 34) * TAU + (decorRng() - 0.5) * 0.04, len: 0.05 + decorRng() * 0.055 });
+}
+
+const sprites = [];
+function makeSprites(){
+  const specs = [
+    ['rgba(233,255,255,1)', 'rgba(126,236,255,.95)', 'rgba(47,160,205,.34)'],
+    ['rgba(237,252,255,1)', 'rgba(151,219,255,.92)', 'rgba(63,132,214,.3)']
+  ];
+  specs.forEach((col) => {
+    const c = document.createElement('canvas');
+    c.width = 32; c.height = 32;
+    const x = c.getContext('2d');
+    const g = x.createRadialGradient(16, 16, 0, 16, 16, 16);
+    g.addColorStop(0, col[0]);
+    g.addColorStop(0.18, col[0]);
+    g.addColorStop(0.31, col[1]);
+    g.addColorStop(0.62, col[2]);
+    g.addColorStop(1, 'rgba(20,91,125,0)');
+    x.fillStyle = g;
+    x.beginPath(); x.arc(16, 16, 16, 0, TAU); x.fill();
+    sprites.push(c);
+  });
+}
+makeSprites();
+
+/* ============================================================
+   尺寸與初始化
+   ============================================================ */
+function radiusForLevel(level){
+  const minSide = Math.min(state.w, state.h);
+  const unit = clamp(minSide / 700, 0.82, 1.12);
+  const raw = (19 + (Number(level) - 1) * 8.6) * unit;
+  return clamp(raw, 14, minSide * 0.165);
+}
+
+function baseMoleculeSpeed(){
+  return 210 * clamp(state.h / 820, 0.72, 1.12);
+}
+
+function updateSizeLabels(){
+  const r = radiusForLevel(state.sizeLevel);
+  const diameter = Math.round(r * 2);
+  els.pollenWord.textContent = SIZE_WORDS[state.sizeLevel - 1];
+  els.pollenPx.textContent = diameter + ' px';
+  els.metaDiameter.textContent = String(diameter);
+  els.pollenSize.setAttribute('aria-valuetext', SIZE_WORDS[state.sizeLevel - 1] + '，直徑 ' + diameter + ' 像素');
+  const pct = ((state.sizeLevel - 1) / 4) * 100;
+  els.pollenSize.style.setProperty('--pct', pct + '%');
+}
+
+function updateWaterLabels(){
+  els.waterPx.textContent = state.waterTarget + ' 個';
+  els.metaCount.textContent = String(state.waterTarget);
+  els.waterCount.setAttribute('aria-valuetext', state.waterTarget + ' 個水分子');
+  const pct = ((state.waterTarget - 200) / 1400) * 100;
+  els.waterCount.style.setProperty('--pct', pct + '%');
+}
+
+// 溫度效應以示意倍率呈現：25 °C 為 1.00×，10 °C 約 0.72×，90 °C 約 2.20×
+function tempSpeedScale(c){
+  return 1 + (c - 25) * 1.2 / 65;
+}
+
+function updateTemperatureLabels(){
+  const c = state.temperatureC;
+  els.tempValue.textContent = c + ' °C';
+  els.temperature.value = String(c);
+  els.temperature.setAttribute('aria-valuetext', c + ' 度');
+  els.temperature.style.setProperty('--pct', ((c - 10) / 80) * 100 + '%');
+}
+
+function applyTemperature(c){
+  const next = clamp(Math.round(Number(c)), 10, 90);
+  const nextScale = tempSpeedScale(next);
+  const ratio = nextScale / (state.speedScale || 1);
+  if (Number.isFinite(ratio) && ratio !== 1){
+    for (let i = 0; i < state.mols.length; i++){
+      state.mols[i].vx *= ratio;
+      state.mols[i].vy *= ratio;
+    }
+  }
+  state.temperatureC = next;
+  state.speedScale = nextScale;
+  updateTemperatureLabels();
+  updateReadouts();
+  state.sceneDirty = true;
+  return next;
+}
+
+function currentHitRate(){
+  const cutoff = state.elapsed - 2;
+  while (state.collisionTimes.length && state.collisionTimes[0] < cutoff){
+    state.collisionTimes.shift();
+  }
+  if (state.elapsed < 0.5) return null;
+  const window = Math.min(2, state.elapsed);
+  if (!(window > 0)) return null;
+  return state.collisionTimes.length / window;
+}
+
+function updateReadouts(){
+  const scale = state.speedScale || 1;
+  els.speedIndex.textContent = scale.toFixed(2) + '×';
+  els.speedBar.style.width = clamp(scale / 2.2 * 100, 3, 100).toFixed(1) + '%';
+
+  const rate = currentHitRate();
+  state.hitRate = rate;
+  els.hitRate.textContent = rate == null ? '—' : rate.toFixed(1);
+  els.hitBar.style.width = clamp((rate || 0) / 60 * 100, 0, 100).toFixed(1) + '%';
+}
+
+function makeMolecule(){
+  const p = state.pollen;
+  const b = {
+    left: state.margin + WATER_R,
+    right: state.w - state.margin - WATER_R,
+    top: state.margin + WATER_R,
+    bottom: state.h - state.margin - WATER_R
+  };
+  let x = 0, y = 0;
+  for (let tries = 0; tries < 90; tries++){
+    x = lerp(b.left, b.right, rng());
+    y = lerp(b.top, b.bottom, rng());
+    const dx = x - p.x, dy = y - p.y;
+    if (dx * dx + dy * dy > (p.r + WATER_R + 7) * (p.r + WATER_R + 7)) break;
+  }
+  const a = rng() * TAU;
+  const sp = baseMoleculeSpeed() * state.speedScale * (0.72 + rng() * 0.56);
+  return {
+    x, y,
+    vx: Math.cos(a) * sp,
+    vy: Math.sin(a) * sp,
+    s: 0.84 + rng() * 0.38,
+    sprite: rng() < 0.76 ? 0 : 1
+  };
+}
+
+function rebuildMolecules(){
+  state.mols = [];
+  for (let i = 0; i < state.waterTarget; i++) state.mols.push(makeMolecule());
+}
+
+function syncMoleculeCount(){
+  while (state.mols.length < state.waterTarget) state.mols.push(makeMolecule());
+  while (state.mols.length > state.waterTarget) state.mols.pop();
+}
+
+function clearTrailData(){
+  const p = state.pollen;
+  state.trail = [{ x: p.x, y: p.y }];
+  state.pathLength = 0;
+  state.trailElapsed = 0;
+  state.trailAccum = 0;
+  state.lastTrailX = p.x;
+  state.lastTrailY = p.y;
+  state.trailDirty = true;
+  updateTrailStats();
+}
+
+function resetSimulation(opts){
+  const options = opts || {};
+  if (!state.w || !state.h) return;
+  if (options.reseed !== false) rng = mulberry32(BASE_SEED);
+  state.speedScale = tempSpeedScale(state.temperatureC);
+  state.pollen.r = radiusForLevel(state.sizeLevel);
+  state.pollen.mass = Math.max(MIN_POLLEN_MASS, POLLEN_DENSITY * state.pollen.r * state.pollen.r);
+  if (options.recenter !== false || !Number.isFinite(state.pollen.x)){
+    state.pollen.x = state.w * 0.5;
+    state.pollen.y = state.h * 0.53;
+  } else {
+    state.pollen.x = clamp(state.pollen.x, state.pollen.r, state.w - state.pollen.r);
+    state.pollen.y = clamp(state.pollen.y, state.pollen.r, state.h - state.pollen.r);
+  }
+  state.pollen.vx = 0;
+  state.pollen.vy = 0;
+  state.forceX = 0;
+  state.forceY = 0;
+  state.flashes = [];
+  state.elapsed = 0;
+  state.collisions = 0;
+  state.collisionTimes = [];
+  state.hitRate = null;
+  state.lastCollisionAt = 0;
+  state.speedEma = 0;
+  state.acc = 0;
+  rebuildMolecules();
+  clearTrailData();
+  updateSizeLabels();
+  updateWaterLabels();
+  updateStatsUI();
+  state.sceneDirty = true;
+  state.trailDirty = true;
+}
+
+function initializeSimulation(){
+  state.margin = clamp(Math.min(state.w, state.h) * 0.021, 12, 23);
+  resetSimulation({ recenter: true, reseed: true });
+  state.initialized = true;
+}
+
+/* ============================================================
+   物理
+   ============================================================ */
+function handlePollenCollision(m, p){
+  const dx = m.x - p.x;
+  const dy = m.y - p.y;
+  const rr = p.r + WATER_R;
+  const d2 = dx * dx + dy * dy;
+  if (d2 >= rr * rr) return;
+  const d = Math.sqrt(d2) || 0.0001;
+  const nx = dx / d;
+  const ny = dy / d;
+
+  // 把分子推到花粉表面，避免卡在內部
+  m.x = p.x + nx * (rr + 0.05);
+  m.y = p.y + ny * (rr + 0.05);
+
+  const rvx = m.vx - p.vx;
+  const rvy = m.vy - p.vy;
+  const vn = rvx * nx + rvy * ny;
+  if (vn >= 0) return;
+
+  const j = -(1 + RESTITUTION) * vn / (1 + 1 / p.mass);
+  m.vx += j * nx;
+  m.vy += j * ny;
+  p.vx -= (j / p.mass) * nx;
+  p.vy -= (j / p.mass) * ny;
+
+  state.forceX += -j * nx;
+  state.forceY += -j * ny;
+  state.collisions++;
+  state.lastCollisionAt = state.elapsed;
+  state.collisionTimes.push(state.elapsed);
+  if (state.collisionTimes.length > 400) state.collisionTimes.shift();
+
+  const fx = p.x + nx * (p.r + 0.8);
+  const fy = p.y + ny * (p.r + 0.8);
+  if (state.flashes.length < 56){
+    state.flashes.push({ x: fx, y: fy, age: 0, life: 0.48, nx, ny });
+  }
+}
+
+function physics(h){
+  const p = state.pollen;
+  const b = {
+    left: state.margin + WATER_R,
+    right: state.w - state.margin - WATER_R,
+    top: state.margin + WATER_R,
+    bottom: state.h - state.margin - WATER_R
+  };
+  const mols = state.mols;
+  const pl = state.margin + p.r;
+  const pr = state.w - state.margin - p.r;
+  const pt = state.margin + p.r;
+  const pb = state.h - state.margin - p.r;
+
+  for (let i = 0; i < mols.length; i++){
+    const m = mols[i];
+    m.x += m.vx * h;
+    m.y += m.vy * h;
+
+    if (m.x < b.left){ m.x = b.left; m.vx = Math.abs(m.vx); }
+    else if (m.x > b.right){ m.x = b.right; m.vx = -Math.abs(m.vx); }
+    if (m.y < b.top){ m.y = b.top; m.vy = Math.abs(m.vy); }
+    else if (m.y > b.bottom){ m.y = b.bottom; m.vy = -Math.abs(m.vy); }
+
+    handlePollenCollision(m, p);
+  }
+
+  // 黏滯阻尼：讓花粉的隨機位移維持在可觀察的範圍
+  const damp = Math.exp(-h / DRAG_TAU);
+  p.vx *= damp;
+  p.vy *= damp;
+  p.x += p.vx * h;
+  p.y += p.vy * h;
+
+  // 與觀察室邊界的碰撞
+  if (p.x < pl){ p.x = pl; p.vx = Math.abs(p.vx) * 0.52; }
+  else if (p.x > pr){ p.x = pr; p.vx = -Math.abs(p.vx) * 0.52; }
+  if (p.y < pt){ p.y = pt; p.vy = Math.abs(p.vy) * 0.52; }
+  else if (p.y > pb){ p.y = pb; p.vy = -Math.abs(p.vy) * 0.52; }
+
+  // 顯示用：最近碰撞衝量的指數衰減，形成「瞬時合力」
+  const fd = Math.exp(-h / FORCE_TAU);
+  state.forceX *= fd;
+  state.forceY *= fd;
+
+  // 碰撞閃光的生命週期
+  for (let i = state.flashes.length - 1; i >= 0; i--){
+    state.flashes[i].age += h;
+    if (state.flashes[i].age >= state.flashes[i].life) state.flashes.splice(i, 1);
+  }
+
+  const speed2 = p.vx * p.vx + p.vy * p.vy;
+  state.speedEma += (speed2 - state.speedEma) * clamp(h / 0.35, 0, 1);
+
+  state.elapsed += h;
+  state.trailElapsed += h;
+  state.pathLength += Math.hypot(p.x - state.lastTrailX, p.y - state.lastTrailY);
+  state.lastTrailX = p.x;
+  state.lastTrailY = p.y;
+
+  state.trailAccum += h;
+  if (state.trailAccum >= TRAIL_INTERVAL){
+    state.trailAccum = 0;
+    state.trail.push({ x: p.x, y: p.y });
+    if (state.trail.length > MAX_TRAIL) state.trail.splice(1, 1);
+    state.trailDirty = true;
+  }
+
+  state.sceneDirty = true;
+}
+
+function simulateSeconds(seconds){
+  let remaining = Math.max(0, Number(seconds) || 0);
+  let guard = 0;
+  while (remaining > 0 && guard < 50000){
+    const h = Math.min(STEP, remaining);
+    physics(h);
+    remaining -= h;
+    guard++;
+  }
+}
+
+/* ============================================================
+   繪製：主視野
+   ============================================================ */
+function drawChamberFrame(ctx){
+  const inset = state.margin + 2;
+  const w = state.w - inset * 2;
+  const h = state.h - inset * 2;
+  if (w <= 0 || h <= 0) return;
+  ctx.save();
+  roundRectPath(ctx, inset, inset, w, h, 18);
+  ctx.strokeStyle = 'rgba(152,218,231,.09)';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  // 四個角落的觀測記號
+  const L = clamp(Math.min(w, h) * 0.035, 14, 28);
+  ctx.strokeStyle = 'rgba(152,218,231,.18)';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  ctx.moveTo(inset + 18, inset + 18 + L); ctx.lineTo(inset + 18, inset + 18); ctx.lineTo(inset + 18 + L, inset + 18);
+  ctx.moveTo(inset + w - 18 - L, inset + 18); ctx.lineTo(inset + w - 18, inset + 18); ctx.lineTo(inset + w - 18, inset + 18 + L);
+  ctx.moveTo(inset + 18, inset + h - 18 - L); ctx.lineTo(inset + 18, inset + h - 18); ctx.lineTo(inset + 18 + L, inset + h - 18);
+  ctx.moveTo(inset + w - 18 - L, inset + h - 18); ctx.lineTo(inset + w - 18, inset + h - 18); ctx.lineTo(inset + w - 18, inset + h - 18 - L);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawMolecules(ctx){
+  const mols = state.mols;
+  if (!mols.length) return;
+
+  // 動態拖尾
+  ctx.save();
+  ctx.beginPath();
+  for (let i = 0; i < mols.length; i++){
+    const m = mols[i];
+    ctx.moveTo(m.x - m.vx * 0.012, m.y - m.vy * 0.012);
+    ctx.lineTo(m.x, m.y);
+  }
+  ctx.strokeStyle = 'rgba(113,224,255,.12)';
+  ctx.lineWidth = 1.15;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+  ctx.restore();
+
+  // 預先繪製的光暈粒子
+  ctx.save();
+  for (let i = 0; i < mols.length; i++){
+    const m = mols[i];
+    const size = 10.5 * m.s;
+    ctx.drawImage(sprites[m.sprite], m.x - size / 2, m.y - size / 2, size, size);
+  }
+  ctx.restore();
+}
+
+function drawFlashes(ctx){
+  const flashes = state.flashes;
+  if (!flashes.length) return;
+  ctx.save();
+  for (let i = 0; i < flashes.length; i++){
+    const f = flashes[i];
+    const q = clamp(f.age / f.life, 0, 1);
+    const a = (1 - q) * (1 - q);
+    const rad = 3 + q * 11;
+    ctx.globalAlpha = a * 0.9;
+    ctx.strokeStyle = 'rgba(198,250,255,.95)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, rad, 0, TAU);
+    ctx.stroke();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = '#e7feff';
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, 1.7, 0, TAU);
+    ctx.fill();
+    ctx.globalAlpha = a * 0.38;
+    ctx.strokeStyle = '#9defff';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(f.x, f.y);
+    ctx.lineTo(f.x + f.nx * (10 + q * 10), f.y + f.ny * (10 + q * 10));
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function buildPollenSprite(){
+  const r = state.pollen.r;
+  if (!(r > 0)) return;
+  const res = 2;
+  const size = Math.ceil(r * 4.9);
+  const S = Math.ceil(size * res);
+  const c = document.createElement('canvas');
+  c.width = S;
+  c.height = S;
+  const x = c.getContext('2d');
+  const cx = S * 0.5;
+  const cy = S * 0.5;
+  const rr = r * res;
+  const line = (v, lo, hi) => clamp(v, lo, hi);
+
+  // 外層光暈
+  const glow = x.createRadialGradient(cx, cy, rr * 0.5, cx, cy, rr * 2.35);
+  glow.addColorStop(0, 'rgba(255,183,56,.24)');
+  glow.addColorStop(0.55, 'rgba(255,151,36,.09)');
+  glow.addColorStop(1, 'rgba(255,151,36,0)');
+  x.fillStyle = glow;
+  x.beginPath(); x.arc(cx, cy, rr * 2.35, 0, TAU); x.fill();
+
+  // 花粉表面的短棘
+  x.strokeStyle = 'rgba(255,206,105,.62)';
+  x.lineWidth = line(rr * 0.035, 1.2, 2.6) * res;
+  x.lineCap = 'round';
+  x.beginPath();
+  for (let i = 0; i < pollenSpikes.length; i++){
+    const s = pollenSpikes[i];
+    const ca = Math.cos(s.a), sa = Math.sin(s.a);
+    const r0 = rr * 0.97;
+    const r1 = rr * (1 + s.len);
+    x.moveTo(cx + ca * r0, cy + sa * r0);
+    x.lineTo(cx + ca * r1, cy + sa * r1);
+  }
+  x.stroke();
+
+  // 本體
+  x.save();
+  x.shadowColor = 'rgba(255,171,49,.48)';
+  x.shadowBlur = line(rr * 0.4, 12, 34) * res;
+  const body = x.createRadialGradient(
+    cx - rr * 0.34, cy - rr * 0.42, rr * 0.08,
+    cx, cy, rr
+  );
+  body.addColorStop(0, '#fff7ce');
+  body.addColorStop(0.2, '#ffe39a');
+  body.addColorStop(0.53, '#ffc857');
+  body.addColorStop(0.82, '#e89b22');
+  body.addColorStop(1, '#9b5a0b');
+  x.fillStyle = body;
+  x.beginPath(); x.arc(cx, cy, rr, 0, TAU); x.fill();
+  x.restore();
+
+  // 花粉表面的紋理
+  x.save();
+  x.beginPath(); x.arc(cx, cy, rr * 0.965, 0, TAU); x.clip();
+  for (let i = 0; i < pollenSpecks.length; i++){
+    const sp = pollenSpecks[i];
+    x.globalAlpha = sp.a;
+    x.fillStyle = sp.a > 0.24 ? '#8f4f08' : '#fff0b4';
+    x.beginPath();
+    x.arc(cx + sp.x * rr, cy + sp.y * rr, sp.s * rr, 0, TAU);
+    x.fill();
+  }
+  x.globalAlpha = 0.16;
+  x.fillStyle = '#fff6cf';
+  x.beginPath();
+  x.ellipse(cx - rr * 0.36, cy - rr * 0.4, rr * 0.32, rr * 0.15, -0.67, 0, TAU);
+  x.fill();
+  x.restore();
+
+  // 邊緣
+  x.save();
+  x.strokeStyle = 'rgba(255,231,161,.72)';
+  x.lineWidth = line(rr * 0.035, 1.3, 2.4) * res;
+  x.beginPath(); x.arc(cx, cy, rr * 0.985, 0, TAU); x.stroke();
+  x.strokeStyle = 'rgba(115,63,5,.33)';
+  x.lineWidth = 1 * res;
+  x.beginPath(); x.arc(cx, cy, rr * 0.91, 0.1, Math.PI * 1.45); x.stroke();
+  x.restore();
+
+  state.pollenSprite = c;
+  state.pollenSpriteR = r;
+  state.pollenSpriteSize = size;
+  state.pollenSpriteRes = res;
+}
+
+function drawPollen(ctx){
+  const p = state.pollen;
+  const r = p.r;
+  if (r <= 0) return;
+  if (!state.pollenSprite || Math.abs(state.pollenSpriteR - r) > 0.01){
+    buildPollenSprite();
+  }
+  if (!state.pollenSprite) return;
+  const size = state.pollenSpriteSize;
+  ctx.drawImage(state.pollenSprite, p.x - size * 0.5, p.y - size * 0.5, size, size);
+}
+
+function drawForce(ctx){
+  if (!state.showForce) return;
+  const mag = Math.hypot(state.forceX, state.forceY);
+  if (mag < 24) return;
+  const p = state.pollen;
+  const ux = state.forceX / mag;
+  const uy = state.forceY / mag;
+  const maxLen = clamp(Math.min(state.w, state.h) * 0.25, 76, 165);
+  const desiredMinLen = p.r * 1.7 + 22;
+  const minLen = Math.min(maxLen, desiredMinLen);
+  const len = clamp(Math.sqrt(mag) * 4.2, minLen, maxLen);
+  const sx = p.x + ux * p.r * 0.12;
+  const sy = p.y + uy * p.r * 0.12;
+  const ex = p.x + ux * (p.r * 0.24 + len);
+  const ey = p.y + uy * (p.r * 0.24 + len);
+  const head = clamp(11 + len * 0.06, 13, 22);
+
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // 箭頭外描邊，讓它在花粉上仍清楚
+  ctx.strokeStyle = 'rgba(23,7,6,.72)';
+  ctx.lineWidth = 11;
+  ctx.beginPath();
+  ctx.moveTo(sx, sy);
+  ctx.lineTo(ex - ux * head * 0.55, ey - uy * head * 0.55);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#ff6b61';
+  ctx.lineWidth = 6;
+  ctx.beginPath();
+  ctx.moveTo(sx, sy);
+  ctx.lineTo(ex - ux * head * 0.55, ey - uy * head * 0.55);
+  ctx.stroke();
+
+  const bx = ex - ux * head;
+  const by = ey - uy * head;
+  const px = -uy;
+  const py = ux;
+  ctx.fillStyle = '#ff6b61';
+  ctx.beginPath();
+  ctx.moveTo(ex, ey);
+  ctx.lineTo(bx + px * head * 0.58, by + py * head * 0.58);
+  ctx.lineTo(bx - px * head * 0.58, by - py * head * 0.58);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,205,177,.9)';
+  ctx.lineWidth = 1.3;
+  ctx.stroke();
+
+  // 合力標籤貼在箭頭末端旁，朝畫面外側偏移
+  const fs = clamp(state.w * 0.027, 15, 30);
+  ctx.font = '900 ' + fs + 'px ' + UI_FONT;
+  const label = '合力';
+  const tw = ctx.measureText(label).width;
+  const labelW = tw + 14;
+  const labelH = fs + 13;
+  let nx = -uy;
+  let ny = ux;
+  if ((ex - state.w * 0.5) * nx + (ey - state.h * 0.5) * ny < 0){
+    nx = -nx;
+    ny = -ny;
+  }
+  const lx = clamp(ex + nx * (fs * 1.3) - labelW * 0.5, 10, state.w - labelW - 10);
+  const ly = clamp(ey + ny * (fs * 1.3) - labelH * 0.5, 10, state.h - labelH - 10);
+  roundRectPath(ctx, lx, ly, labelW, labelH, 7);
+  ctx.fillStyle = 'rgba(20,7,7,.8)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,118,105,.5)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = '#ffd1c8';
+  ctx.fillText(label, lx + 7, ly + fs + 2);
+  ctx.restore();
+}
+
+function drawScene(){
+  if (!state.w || !state.h) return;
+  const ctx = sctx;
+  ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+  ctx.clearRect(0, 0, state.w, state.h);
+
+  drawChamberFrame(ctx);
+  drawMolecules(ctx);
+  drawPollen(ctx);
+  drawFlashes(ctx);
+  drawForce(ctx);
+  state.sceneDirty = false;
+}
+
+/* ============================================================
+   繪製：軌跡分割畫面
+   ============================================================ */
+function fitTrailCanvas(){
+  if (!trailFrame) return;
+  const rect = trailFrame.getBoundingClientRect();
+  if (rect.width < 10 || rect.height < 10) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const bw = Math.round(rect.width * dpr);
+  const bh = Math.round(rect.height * dpr);
+  if (trailCanvas.width !== bw || trailCanvas.height !== bh){
+    trailCanvas.width = bw;
+    trailCanvas.height = bh;
+  }
+  state.trailDirty = true;
+}
+
+function trailMapping(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const w = trailCanvas.width / dpr;
+  const h = trailCanvas.height / dpr;
+  const pad = clamp(Math.min(w, h) * 0.09, 12, 22);
+  const trail = state.trail;
+  const p = state.pollen;
+  let minX = p.x, maxX = p.x, minY = p.y, maxY = p.y;
+  for (let i = 0; i < trail.length; i++){
+    const pt = trail[i];
+    if (pt.x < minX) minX = pt.x;
+    if (pt.x > maxX) maxX = pt.x;
+    if (pt.y < minY) minY = pt.y;
+    if (pt.y > maxY) maxY = pt.y;
+  }
+  // 以較緊的初始取景放大花粉的細碎轉折，路徑變大後自動縮小
+  const minW = Math.max(70, p.r * 1.0);
+  const minH = Math.max(48, p.r * 0.7);
+  let viewW = Math.max(minW, maxX - minX + 74);
+  let viewH = Math.max(minH, maxY - minY + 74);
+  const availW = Math.max(20, w - pad * 2);
+  const availH = Math.max(20, h - pad * 2);
+  const aspect = availW / availH;
+  if (viewW / viewH < aspect) viewW = viewH * aspect;
+  else viewH = viewW / aspect;
+  const cx = (minX + maxX) * 0.5;
+  const cy = (minY + maxY) * 0.5;
+  const scale = Math.min(availW / viewW, availH / viewH);
+  return {
+    w, h, pad, scale, viewW, viewH, cx, cy,
+    ox: w * 0.5 - cx * scale,
+    oy: h * 0.5 - cy * scale
+  };
+}
+
+function drawTrail(){
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const w = trailCanvas.width / dpr;
+  const h = trailCanvas.height / dpr;
+  if (w < 10 || h < 10) return;
+  tctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  tctx.clearRect(0, 0, w, h);
+
+  const map = trailMapping();
+  const X = (x) => map.ox + x * map.scale;
+  const Y = (y) => map.oy + y * map.scale;
+
+  // 軌跡底圖與依軌跡自動調整的網格
+  tctx.save();
+  tctx.fillStyle = 'rgba(7,28,38,.45)';
+  tctx.fillRect(0, 0, w, h);
+  tctx.strokeStyle = 'rgba(132,199,214,.075)';
+  tctx.lineWidth = 1;
+  const grid = 50;
+  const leftWorld = map.cx - map.viewW * 0.5;
+  const topWorld = map.cy - map.viewH * 0.5;
+  const gridStartX = Math.floor(leftWorld / grid) * grid;
+  const gridStartY = Math.floor(topWorld / grid) * grid;
+  for (let gx = gridStartX; gx <= leftWorld + map.viewW + grid; gx += grid){
+    const x = map.ox + gx * map.scale;
+    tctx.beginPath(); tctx.moveTo(x, 0); tctx.lineTo(x, h); tctx.stroke();
+  }
+  for (let gy = gridStartY; gy <= topWorld + map.viewH + grid; gy += grid){
+    const y = map.oy + gy * map.scale;
+    tctx.beginPath(); tctx.moveTo(0, y); tctx.lineTo(w, y); tctx.stroke();
+  }
+  tctx.restore();
+
+  const trail = state.trail;
+  const p = state.pollen;
+  const dispStart = trail.length ? trail[0] : { x: p.x, y: p.y };
+
+  if (trail.length < 2){
+    tctx.save();
+    tctx.fillStyle = 'rgba(151,181,192,.66)';
+    tctx.font = '600 ' + clamp(w * 0.048, 11, 15) + 'px ' + UI_FONT;
+    tctx.textAlign = 'center';
+    tctx.fillText('開始觀察後，這裡會留下花粉的軌跡', w * 0.5, h * 0.5);
+    tctx.restore();
+  } else {
+    // 起點到現在的位移
+    tctx.save();
+    tctx.setLineDash([4, 6]);
+    tctx.strokeStyle = 'rgba(255,200,87,.3)';
+    tctx.lineWidth = 1.25;
+    tctx.beginPath();
+    tctx.moveTo(X(dispStart.x), Y(dispStart.y));
+    tctx.lineTo(X(p.x), Y(p.y));
+    tctx.stroke();
+    tctx.restore();
+
+    // 軌跡
+    const grad = tctx.createLinearGradient(0, 0, w, h);
+    grad.addColorStop(0, 'rgba(91,230,255,.6)');
+    grad.addColorStop(0.48, 'rgba(100,211,255,.92)');
+    grad.addColorStop(1, 'rgba(255,200,87,.95)');
+    tctx.save();
+    tctx.lineCap = 'round';
+    tctx.lineJoin = 'round';
+    tctx.strokeStyle = 'rgba(78,214,255,.18)';
+    tctx.lineWidth = 7;
+    tctx.beginPath();
+    tctx.moveTo(X(trail[0].x), Y(trail[0].y));
+    for (let i = 1; i < trail.length; i++) tctx.lineTo(X(trail[i].x), Y(trail[i].y));
+    tctx.stroke();
+
+    tctx.strokeStyle = grad;
+    tctx.lineWidth = 2.5;
+    tctx.beginPath();
+    tctx.moveTo(X(trail[0].x), Y(trail[0].y));
+    for (let i = 1; i < trail.length; i++) tctx.lineTo(X(trail[i].x), Y(trail[i].y));
+    tctx.stroke();
+
+    // 最近一小段加亮，提示目前方向
+    const from = Math.max(0, trail.length - 14);
+    tctx.strokeStyle = 'rgba(255,211,109,.95)';
+    tctx.lineWidth = 2.8;
+    tctx.beginPath();
+    tctx.moveTo(X(trail[from].x), Y(trail[from].y));
+    for (let i = from + 1; i < trail.length; i++) tctx.lineTo(X(trail[i].x), Y(trail[i].y));
+    tctx.stroke();
+    tctx.restore();
+
+    // 起點
+    tctx.save();
+    tctx.fillStyle = 'rgba(6,22,29,.9)';
+    tctx.strokeStyle = 'rgba(208,251,255,.9)';
+    tctx.lineWidth = 1.7;
+    const startX = X(dispStart.x);
+    const startY = Y(dispStart.y);
+    tctx.beginPath(); tctx.arc(startX, startY, 4.6, 0, TAU); tctx.fill(); tctx.stroke();
+    tctx.restore();
+  }
+
+  // 現在位置
+  tctx.save();
+  const cx = X(p.x), cy = Y(p.y);
+  const glow = tctx.createRadialGradient(cx, cy, 0, cx, cy, 17);
+  glow.addColorStop(0, 'rgba(255,211,109,.55)');
+  glow.addColorStop(1, 'rgba(255,211,109,0)');
+  tctx.fillStyle = glow;
+  tctx.beginPath(); tctx.arc(cx, cy, 17, 0, TAU); tctx.fill();
+  tctx.fillStyle = '#ffd36f';
+  tctx.strokeStyle = '#fff4c9';
+  tctx.lineWidth = 1.2;
+  tctx.beginPath(); tctx.arc(cx, cy, 4.1, 0, TAU); tctx.fill(); tctx.stroke();
+  tctx.restore();
+
+  if (h >= 86){
+    // 固定圖例，避免起點與現在位置接近時文字互相重疊
+    tctx.save();
+    const legendFs = clamp(w * 0.034, 10.5, 12.5);
+    tctx.font = '600 ' + legendFs + 'px ' + UI_FONT;
+    tctx.textAlign = 'right';
+    tctx.textBaseline = 'alphabetic';
+    const nowLegend = '● 現在';
+    tctx.fillStyle = 'rgba(255,214,118,.92)';
+    tctx.fillText(nowLegend, w - map.pad, map.pad + legendFs - 1);
+    const nowW = tctx.measureText(nowLegend).width;
+    tctx.fillStyle = 'rgba(183,237,247,.72)';
+    tctx.fillText('○ 起點', w - map.pad - nowW - 12, map.pad + legendFs - 1);
+    tctx.restore();
+
+    // 取景與比例提示
+    tctx.save();
+    const tagFs = clamp(w * 0.038, 11.5, 13.5);
+    tctx.font = '600 ' + tagFs + 'px ' + UI_FONT;
+    tctx.fillStyle = 'rgba(137,181,193,.66)';
+    tctx.textAlign = 'left';
+    tctx.fillText('軌跡自動取景', map.pad - 4, map.pad + 2);
+
+    const barMin = w * 0.2;
+    const barMax = w * 0.36;
+    let barWorld = 50;
+    while (barWorld * map.scale > barMax) barWorld /= 2;
+    while (barWorld * map.scale < barMin) barWorld *= 2;
+    const barPx = barWorld * map.scale;
+    const bx = map.pad;
+    const by = h - map.pad;
+    tctx.strokeStyle = 'rgba(155,205,216,.4)';
+    tctx.lineWidth = 1.2;
+    tctx.beginPath();
+    tctx.moveTo(bx, by);
+    tctx.lineTo(bx + barPx, by);
+    tctx.moveTo(bx, by - 3);
+    tctx.lineTo(bx, by + 3);
+    tctx.moveTo(bx + barPx, by - 3);
+    tctx.lineTo(bx + barPx, by + 3);
+    tctx.stroke();
+    tctx.fillStyle = 'rgba(137,181,193,.62)';
+    tctx.font = '500 ' + clamp(w * 0.032, 10, 11.5) + 'px ' + UI_FONT;
+    tctx.textAlign = 'center';
+    tctx.fillText(barWorld + ' px', bx + barPx * 0.5, by - 7);
+    tctx.restore();
+  }
+
+  state.trailDirty = false;
+}
+
+/* ============================================================
+   統計與 UI
+   ============================================================ */
+function updateTrailStats(){
+  const p = state.pollen;
+  const start = state.trail.length ? state.trail[0] : p;
+  els.pathValue.textContent = String(Math.round(state.pathLength));
+  els.dispValue.textContent = String(Math.round(Math.hypot(p.x - start.x, p.y - start.y)));
+  els.timeValue.textContent = state.trailElapsed.toFixed(1);
+}
+
+function updateStatsUI(){
+  updateTrailStats();
+  updateSizeLabels();
+  updateWaterLabels();
+  updateTemperatureLabels();
+  updateReadouts();
+}
+
+function updatePauseUI(){
+  const paused = state.paused;
+  stage.classList.toggle('is-paused', paused);
+  els.liveText.textContent = paused ? '已暫停' : '即時模擬';
+  els.hintText.innerHTML = paused
+    ? '已暫停：觀察 <b>合力</b> 與花粉轉折'
+    : '按 <b>暫停</b> 定格，觀察合力與轉折';
+  els.mode.classList.toggle('is-paused', paused);
+  els.modeText.textContent = paused ? '已暫停' : '進行中';
+  els.pauseBtn.classList.toggle('is-paused', paused);
+  els.pauseBtn.setAttribute('aria-pressed', paused ? 'true' : 'false');
+  els.pauseLabel.textContent = paused ? '繼續' : '暫停';
+  els.pauseBtn.setAttribute('aria-label', paused ? '繼續模擬' : '暫停模擬');
+  els.pauseIcon.innerHTML = paused
+    ? '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.2v13.6L19 12z"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="4" height="14" rx="1.1"/><rect x="13.5" y="5" width="4" height="14" rx="1.1"/></svg>';
+  state.sceneDirty = true;
+  state.trailDirty = true;
+}
+
+function setPaused(value){
+  const next = !!value;
+  if (state.paused === next) return;
+  state.paused = next;
+  state.acc = 0;
+  state.lastTime = performance.now();
+  updatePauseUI();
+  if (!next){
+    updateStatsUI();
+  }
+}
+
+function togglePause(){
+  setPaused(!state.paused);
+}
+
+function isFullscreen(){
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+function updateFullscreenUI(){
+  const active = isFullscreen();
+  els.fullscreenBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  els.fullscreenBtn.setAttribute('aria-label', active ? '退出全螢幕' : '全螢幕');
+  els.fullscreenBtn.title = active ? '退出全螢幕' : '全螢幕';
+  if (fsPath){
+    fsPath.setAttribute('d', active
+      ? 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5'
+      : 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5');
+  }
+}
+
+function toggleFullscreen(){
+  if (isFullscreen()){
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exit){
+      const p = exit.call(document);
+      if (p && p.then) p.then(updateFullscreenUI).catch(() => {});
+      setTimeout(updateFullscreenUI, 220);
+    }
+    return;
+  }
+  const el = document.documentElement;
+  const request = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!request) return;
+  try {
+    const p = request.call(el, { navigationUI: 'hide' });
+    if (p && p.then) p.then(updateFullscreenUI).catch(() => {});
+    setTimeout(updateFullscreenUI, 220);
+  } catch (err) {
+    /* 瀏覽器拒絕全螢幕時維持原狀 */
+  }
+}
+
+/* ============================================================
+   事件
+   ============================================================ */
+function scheduleSizeApply(level){
+  clearTimeout(state.sizeTimer);
+  state.sizeTimer = setTimeout(() => applySizeLevel(level), 120);
+}
+
+function applySizeLevel(level){
+  const next = clamp(Math.round(Number(level) || 3), 1, 5);
+  if (next === state.sizeLevel && state.initialized) return;
+  state.sizeLevel = next;
+  els.pollenSize.value = String(next);
+  updateSizeLabels();
+  if (state.initialized) resetSimulation({ recenter: true, reseed: true });
+  updateStatsUI();
+  state.sceneDirty = true;
+  state.trailDirty = true;
+}
+
+function applyWaterCount(count){
+  const next = clamp(Math.round(Number(count) / 100) * 100, 200, 1600);
+  if (next === state.waterTarget && state.initialized) return;
+  state.waterTarget = next;
+  els.waterCount.value = String(next);
+  updateWaterLabels();
+  if (state.initialized){
+    syncMoleculeCount();
+    updateStatsUI();
+    state.sceneDirty = true;
+  }
+}
+
+function clearTrail(){
+  clearTrailData();
+  state.sceneDirty = true;
+  state.trailDirty = true;
+}
+
+function restart(){
+  setPaused(false);
+  resetSimulation({ recenter: true, reseed: true });
+  state.lastTime = performance.now();
+  state.acc = 0;
+  state.sceneDirty = true;
+  state.trailDirty = true;
+}
+
+els.pauseBtn.addEventListener('click', togglePause);
+els.resetBtn.addEventListener('click', restart);
+els.clearTrail.addEventListener('click', clearTrail);
+els.fullscreenBtn.addEventListener('click', toggleFullscreen);
+document.addEventListener('fullscreenchange', updateFullscreenUI);
+document.addEventListener('webkitfullscreenchange', updateFullscreenUI);
+window.addEventListener('resize', updateFullscreenUI);
+
+els.showForce.addEventListener('change', () => {
+  state.showForce = els.showForce.checked;
+  state.sceneDirty = true;
+});
+
+els.pollenSize.addEventListener('input', () => {
+  const level = clamp(Number(els.pollenSize.value), 1, 5);
+  const r = radiusForLevel(level);
+  els.pollenWord.textContent = SIZE_WORDS[level - 1];
+  els.pollenPx.textContent = Math.round(r * 2) + ' px';
+  els.pollenSize.setAttribute('aria-valuetext', SIZE_WORDS[level - 1] + '，直徑 ' + Math.round(r * 2) + ' 像素');
+  els.pollenSize.style.setProperty('--pct', ((level - 1) / 4) * 100 + '%');
+  scheduleSizeApply(level);
+});
+
+els.pollenSize.addEventListener('change', () => {
+  clearTimeout(state.sizeTimer);
+  applySizeLevel(Number(els.pollenSize.value));
+});
+
+els.waterCount.addEventListener('input', () => {
+  const count = Number(els.waterCount.value);
+  els.waterPx.textContent = count + ' 個';
+  els.metaCount.textContent = String(count);
+  els.waterCount.setAttribute('aria-valuetext', count + ' 個水分子');
+  els.waterCount.style.setProperty('--pct', ((count - 200) / 1400) * 100 + '%');
+  clearTimeout(state.waterTimer);
+  state.waterTimer = setTimeout(() => applyWaterCount(count), 90);
+});
+
+els.waterCount.addEventListener('change', () => {
+  clearTimeout(state.waterTimer);
+  applyWaterCount(Number(els.waterCount.value));
+});
+
+els.temperature.addEventListener('input', () => {
+  applyTemperature(Number(els.temperature.value));
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.code !== 'Space') return;
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'BUTTON')) return;
+  e.preventDefault();
+  togglePause();
+});
+
+/* ============================================================
+   尺寸觀測與主迴圈
+   ============================================================ */
+function resizeScene(){
+  const rect = sceneCanvas.getBoundingClientRect();
+  if (rect.width < 30 || rect.height < 30) return;
+  const w = Math.max(30, rect.width);
+  const h = Math.max(30, rect.height);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const bw = Math.round(w * dpr);
+  const bh = Math.round(h * dpr);
+  if (sceneCanvas.width !== bw || sceneCanvas.height !== bh){
+    sceneCanvas.width = bw;
+    sceneCanvas.height = bh;
+  }
+  state.dpr = dpr;
+
+  if (!state.initialized){
+    state.w = w;
+    state.h = h;
+    initializeSimulation();
+    return;
+  }
+
+  if (Math.abs(w - state.w) < 0.8 && Math.abs(h - state.h) < 0.8){
+    state.w = w;
+    state.h = h;
+    return;
+  }
+
+  const sx = w / state.w;
+  const sy = h / state.h;
+  state.w = w;
+  state.h = h;
+  state.margin = clamp(Math.min(w, h) * 0.021, 12, 23);
+
+  const p = state.pollen;
+  p.x *= sx;
+  p.y *= sy;
+  p.vx *= (sx + sy) * 0.5;
+  p.vy *= (sx + sy) * 0.5;
+  p.r = radiusForLevel(state.sizeLevel);
+  p.mass = Math.max(MIN_POLLEN_MASS, POLLEN_DENSITY * p.r * p.r);
+
+  for (let i = 0; i < state.mols.length; i++){
+    const m = state.mols[i];
+    m.x *= sx;
+    m.y *= sy;
+    m.vx *= (sx + sy) * 0.5;
+    m.vy *= (sy + sx) * 0.5;
+    const dx = m.x - p.x, dy = m.y - p.y;
+    const rr = p.r + WATER_R + 1;
+    if (dx * dx + dy * dy < rr * rr){
+      const a = Math.atan2(dy, dx) + rng() * 0.9 - 0.45;
+      m.x = p.x + Math.cos(a) * rr;
+      m.y = p.y + Math.sin(a) * rr;
+    }
+  }
+  for (let i = 0; i < state.trail.length; i++){
+    state.trail[i].x *= sx;
+    state.trail[i].y *= sy;
+  }
+  p.x = clamp(p.x, state.margin + p.r, w - state.margin - p.r);
+  p.y = clamp(p.y, state.margin + p.r, h - state.margin - p.r);
+  state.lastTrailX = p.x;
+  state.lastTrailY = p.y;
+  state.sceneDirty = true;
+  state.trailDirty = true;
+  updateStatsUI();
+  fitTrailCanvas();
+}
+
+function frame(now){
+  if (!state.ready){
+    state.ready = true;
+    window.__APP_READY__ = true;
+  }
+  if (!state.lastTime) state.lastTime = now;
+  const dt = Math.min((now - state.lastTime) / 1000, 0.1);
+  state.lastTime = now;
+
+  if (!state.paused){
+    state.acc += dt;
+    let guard = 0;
+    while (state.acc >= STEP && guard < 14){
+      physics(STEP);
+      state.acc -= STEP;
+      guard++;
+    }
+    if (guard >= 14) state.acc = 0;
+  }
+
+  if (!state.paused || state.sceneDirty){
+    drawScene();
+  }
+  if (state.trailDirty) drawTrail();
+  if (now - state.lastUI > 180){
+    updateStatsUI();
+    state.lastUI = now;
+  }
+
+  requestAnimationFrame(frame);
+}
+
+/* ============================================================
+   測試鉤子
+   ============================================================ */
+function getState(){
+  const p = state.pollen;
+  const start = state.trail.length ? state.trail[0] : p;
+  return {
+    paused: state.paused,
+    showForce: state.showForce,
+    sizeLevel: state.sizeLevel,
+    waterCount: state.mols.length,
+    temperatureC: state.temperatureC,
+    speedScale: state.speedScale,
+    hitRate: state.hitRate,
+    diameter: Math.round(p.r * 2),
+    radius: p.r,
+    mass: p.mass,
+    pollen: { x: p.x, y: p.y, vx: p.vx, vy: p.vy, r: p.r },
+    force: { x: state.forceX, y: state.forceY, magnitude: Math.hypot(state.forceX, state.forceY) },
+    speed: Math.hypot(p.vx, p.vy),
+    rmsSpeed: Math.sqrt(Math.max(0, state.speedEma)),
+    collisions: state.collisions,
+    flashCount: state.flashes.length,
+    sinceCollision: state.elapsed - state.lastCollisionAt,
+    pathLength: state.pathLength,
+    displacement: Math.hypot(p.x - start.x, p.y - start.y),
+    trailElapsed: state.trailElapsed,
+    trailPoints: state.trail.length,
+    scene: { w: state.w, h: state.h }
+  };
+}
+
+window.__BROWN__ = {
+  getState,
+  setPaused,
+  togglePause,
+  advance: (seconds) => {
+    simulateSeconds(seconds);
+    drawScene();
+    drawTrail();
+    updateStatsUI();
+    return getState();
+  },
+  setSizeLevel: (level) => {
+    clearTimeout(state.sizeTimer);
+    applySizeLevel(level);
+    return getState();
+  },
+  setWaterCount: (count) => {
+    clearTimeout(state.waterTimer);
+    applyWaterCount(count);
+    return getState();
+  },
+  setTemperature: (c) => {
+    applyTemperature(c);
+    return getState();
+  },
+  clearTrail: () => {
+    clearTrail();
+    return getState();
+  },
+  reset: () => {
+    resetSimulation({ recenter: true, reseed: true });
+    return getState();
+  }
+};
+
+/* ============================================================
+   啟動
+   ============================================================ */
+updatePauseUI();
+updateFullscreenUI();
+updateSizeLabels();
+updateWaterLabels();
+updateTemperatureLabels();
+updateTrailStats();
+updateReadouts();
+
+const resizeObserver = new ResizeObserver(() => {
+  resizeScene();
+  fitTrailCanvas();
+});
+resizeObserver.observe(stage);
+resizeObserver.observe(trailFrame);
+
+requestAnimationFrame(() => {
+  resizeScene();
+  fitTrailCanvas();
+  drawScene();
+  drawTrail();
+  updateStatsUI();
+  state.lastTime = performance.now();
+  requestAnimationFrame(frame);
+});
+
+})();
+</script>
+</body>
+</html>

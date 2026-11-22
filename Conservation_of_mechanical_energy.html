@@ -1,0 +1,2595 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>力學能守恆｜自由落體・鉛直上拋・拋射角</title>
+<style>
+  :root{
+    --bg:#040b11;
+    --bg-2:#07131c;
+    --ink:#effaff;
+    --muted:#8ea8b5;
+    --muted-2:#617d8a;
+    --amber:#ffc857;
+    --amber-2:#f09a1e;
+    --cyan:#63dcff;
+    --blue:#5c9dff;
+    --green:#4fe3a4;
+    --coral:#ff7b6b;
+    --card:rgba(8,22,32,.86);
+    --card-2:rgba(10,27,39,.94);
+    --line:rgba(143,201,218,.14);
+    --line-2:rgba(143,201,218,.26);
+    --font:"Noto Sans TC","Microsoft JhengHei","PingFang TC","Heiti TC","Segoe UI",system-ui,-apple-system,sans-serif;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+    --shadow:0 26px 70px rgba(0,0,0,.36);
+    --radius:22px;
+    --ease:cubic-bezier(.2,.75,.25,1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    color:var(--ink);
+    font-family:var(--font);
+    background:
+      radial-gradient(1100px 760px at 8% -12%,rgba(24,105,125,.28),transparent 60%),
+      radial-gradient(900px 700px at 104% 110%,rgba(30,63,87,.26),transparent 62%),
+      linear-gradient(180deg,var(--bg),var(--bg-2));
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  body::before{
+    content:"";
+    position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:radial-gradient(rgba(181,225,238,.055) 1px,transparent 1px);
+    background-size:26px 26px;
+    mask-image:linear-gradient(180deg,rgba(0,0,0,.75),transparent 78%);
+  }
+  button,input{font:inherit}
+  button{color:inherit;border:0;background:none;cursor:pointer}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+  button:disabled{opacity:.46;cursor:not-allowed}
+  .app{
+    position:relative;z-index:1;
+    width:100%;max-width:2100px;height:100dvh;margin:0 auto;
+    padding:clamp(14px,2vh,24px) clamp(16px,2.2vw,42px) clamp(14px,2vh,24px);
+    display:flex;flex-direction:column;
+    gap:clamp(10px,1.35vh,18px);
+    min-height:0;
+  }
+
+  /* ---------------- header ---------------- */
+  .topbar{
+    flex:0 0 auto;
+    display:flex;align-items:flex-end;justify-content:space-between;
+    gap:clamp(20px,3vw,64px);
+    padding:0 2px clamp(2px,.6vh,6px);
+  }
+  .eyebrow{
+    display:flex;align-items:center;gap:10px;
+    color:#9ed8e3;font-size:clamp(12px,.82vw,15px);font-weight:800;
+    letter-spacing:.2em;
+  }
+  .eyebrow::before{
+    content:"";width:26px;height:2px;border-radius:2px;
+    background:linear-gradient(90deg,var(--amber),rgba(255,200,87,.12));
+  }
+  h1{
+    margin:clamp(4px,.55vh,8px) 0 0;
+    font-size:clamp(34px,3.05vw,58px);
+    line-height:1.04;font-weight:900;letter-spacing:.035em;
+    color:#f5fcff;
+  }
+  h1 span{
+    color:var(--amber);
+    text-shadow:0 0 34px rgba(255,180,60,.28);
+  }
+  .subtitle{
+    margin:clamp(4px,.6vh,8px) 0 0;
+    color:var(--muted);font-size:clamp(14px,1.02vw,19px);
+    letter-spacing:.07em;font-weight:600;
+  }
+  .formula-card{
+    flex:0 0 auto;
+    padding:clamp(8px,1vh,12px) 0 clamp(8px,1vh,12px) clamp(18px,1.6vw,26px);
+    border-left:2px solid rgba(255,200,87,.66);
+    display:flex;flex-direction:column;gap:5px;
+    min-width:clamp(300px,28vw,510px);
+  }
+  .formula-top{display:flex;align-items:baseline;gap:16px;white-space:nowrap}
+  .formula-label{
+    color:var(--muted-2);font-size:clamp(11px,.78vw,14px);
+    font-weight:800;letter-spacing:.16em;
+  }
+  .formula{
+    font-family:var(--mono);
+    font-size:clamp(26px,2.35vw,42px);
+    line-height:1;font-weight:900;letter-spacing:.01em;color:#f4fcff;
+  }
+  .formula .fk{color:var(--amber);font-weight:900}
+  .formula .fu{color:var(--cyan);font-weight:900}
+  .formula-sub{
+    color:var(--muted);font-size:clamp(11px,.88vw,16px);
+    letter-spacing:.03em;white-space:nowrap;
+  }
+  .formula-sub .sep{color:var(--muted-2);padding:0 6px}
+
+  /* ---------------- layout ---------------- */
+  .workspace{
+    flex:1 1 auto;min-height:0;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) clamp(360px,29vw,520px);
+    gap:clamp(12px,1.3vw,22px);
+  }
+  .left{display:flex;flex-direction:column;gap:clamp(10px,1.2vh,16px);min-height:0}
+  .right{min-height:0;display:flex}
+  .card{
+    background:linear-gradient(180deg,rgba(11,29,40,.92),rgba(7,19,28,.95));
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    backdrop-filter:blur(10px);
+  }
+
+  /* ---------------- scene ---------------- */
+  .scene-card{
+    flex:1 1 auto;min-height:0;
+    padding:clamp(12px,1.3vw,18px) clamp(12px,1.5vw,20px) 0;
+    display:flex;flex-direction:column;
+  }
+  .scene-head{
+    flex:0 0 auto;
+    display:flex;align-items:center;justify-content:space-between;
+    gap:12px;padding:0 2px clamp(8px,.9vh,12px);
+  }
+  .section-title{
+    font-size:clamp(20px,1.88vw,30px);
+    font-weight:900;letter-spacing:.05em;color:#f2fbff;
+    display:flex;align-items:center;gap:10px;
+  }
+  .section-title::before{
+    content:"";width:5px;height:1.04em;border-radius:3px;
+    background:linear-gradient(180deg,var(--amber),rgba(255,200,87,.18));
+    box-shadow:0 0 14px rgba(255,200,87,.18);
+  }
+  .scene-status{display:flex;align-items:center;gap:12px;min-width:0}
+  .pill{
+    display:inline-flex;align-items:center;gap:7px;
+    padding:6px 12px;border-radius:999px;
+    font-size:clamp(12px,.92vw,16px);font-weight:900;letter-spacing:.05em;
+    color:#dff4fb;background:rgba(255,255,255,.055);
+    border:1px solid rgba(143,201,218,.2);
+    white-space:nowrap;
+  }
+  .pill::before{
+    content:"";width:7px;height:7px;border-radius:50%;
+    background:#9bb4bf;box-shadow:0 0 0 3px rgba(155,180,191,.1);
+  }
+  .pill.rise{color:#bdefff;border-color:rgba(99,220,255,.38);background:rgba(44,158,190,.15)}
+  .pill.rise::before{background:var(--cyan);box-shadow:0 0 10px rgba(99,220,255,.7)}
+  .pill.fall{color:#ffe3aa;border-color:rgba(255,200,87,.38);background:rgba(190,132,30,.14)}
+  .pill.fall::before{background:var(--amber);box-shadow:0 0 10px rgba(255,200,87,.65)}
+  .pill.apex{color:#fff2c7;border-color:rgba(255,225,150,.4);background:rgba(190,150,40,.16)}
+  .pill.apex::before{background:#fff0bd;box-shadow:0 0 12px rgba(255,230,150,.8)}
+  .pill.land{color:#ffd8d2;border-color:rgba(255,123,107,.42);background:rgba(180,64,50,.18)}
+  .pill.land::before{background:var(--coral);box-shadow:0 0 10px rgba(255,123,107,.7)}
+  .pill.pause{color:#c4d6de;border-color:rgba(155,190,203,.24);background:rgba(120,160,176,.09)}
+  .pill.pause::before{background:#9fb9c5}
+  .status-detail{
+    color:var(--muted);font-size:clamp(11px,.85vw,15px);
+    font-weight:600;letter-spacing:.02em;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis;
+  }
+  .canvas-wrap{
+    position:relative;flex:1 1 auto;min-height:160px;
+    border-radius:16px;overflow:hidden;
+    border:1px solid rgba(120,180,200,.19);
+    background:#06121a;
+    box-shadow:inset 0 0 60px rgba(0,0,0,.28);
+  }
+  #scene{display:block;width:100%;height:100%}
+  .scene-stats{
+    flex:0 0 auto;
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;
+    padding:clamp(8px,1vh,12px) 4px clamp(10px,1.4vh,16px);
+  }
+  .stat{min-width:0;padding-left:clamp(10px,1.2vw,18px);border-left:1px solid rgba(143,201,218,.13)}
+  .stat:first-child{border-left:0;padding-left:2px}
+  .stat-label{
+    display:block;color:var(--muted-2);
+    font-size:clamp(10px,.76vw,14px);font-weight:800;letter-spacing:.16em;
+    margin-bottom:1px;
+  }
+  .stat-value{
+    display:flex;align-items:baseline;gap:5px;min-width:0;
+    font-size:clamp(24px,1.7vw,32px);font-weight:900;letter-spacing:.015em;
+    color:#f4fcff;font-variant-numeric:tabular-nums;
+    white-space:nowrap;
+  }
+  .stat-value small{font-size:.47em;font-weight:700;color:var(--muted);letter-spacing:.02em}
+  .stat:nth-child(2) .stat-value{color:var(--cyan)}
+  .stat:nth-child(3) .stat-value{color:#d9eaf0}
+
+  /* ---------------- controls ---------------- */
+  .control-card{
+    flex:0 0 auto;
+    padding:clamp(11px,1.25vw,17px) clamp(14px,1.55vw,22px);
+    display:flex;flex-direction:column;gap:clamp(7px,.85vh,11px);
+  }
+  .control-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .control-top .section-title{font-size:clamp(20px,1.7vw,26px)}
+  .control-note{font-size:clamp(10px,.72vw,13px);color:var(--muted-2);letter-spacing:.03em}
+  .sliders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(18px,2.2vw,38px)}
+  .slider-block{min-width:0}
+  .slider-label{
+    display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+    font-size:clamp(16px,1.88vw,30px);font-weight:800;color:#d9edf4;
+    letter-spacing:.012em;
+  }
+  .slider-label em{font-style:normal;color:var(--amber);font-family:var(--mono);font-size:.86em}
+  .slider-label .num{
+    color:#fff;font-family:var(--mono);font-size:1.05em;font-weight:900;
+    font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+  .slider-label .num small{font-family:var(--font);font-size:.52em;color:var(--muted);font-weight:700;margin-left:2px}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;
+    width:100%;height:26px;margin:3px 0 0;background:transparent;
+    cursor:pointer;touch-action:pan-y;
+  }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:8px;border-radius:99px;
+    background:linear-gradient(90deg,var(--amber) 0 var(--pct,50%),rgba(255,255,255,.09) var(--pct,50%) 100%);
+    box-shadow:inset 0 1px 2px rgba(0,0,0,.36);
+  }
+  input[type=range]::-moz-range-track{
+    height:8px;border-radius:99px;background:rgba(255,255,255,.09);
+  }
+  input[type=range]::-moz-range-progress{
+    height:8px;border-radius:99px;background:var(--amber);
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;
+    width:23px;height:23px;margin-top:-7.5px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#fff6d8,#ffc857 48%,#e58a12 100%);
+    border:3px solid #091820;
+    box-shadow:0 0 0 2px rgba(255,200,87,.28),0 3px 12px rgba(0,0,0,.5);
+  }
+  input[type=range]::-moz-range-thumb{
+    width:19px;height:19px;border-radius:50%;
+    background:#ffc857;border:3px solid #091820;
+    box-shadow:0 0 0 2px rgba(255,200,87,.28);
+  }
+  .range-ends{
+    display:flex;justify-content:space-between;
+    color:var(--muted-2);font-size:clamp(9px,.66vw,12px);
+    line-height:1;letter-spacing:.05em;margin-top:1px;
+  }
+  .actions{
+    display:flex;align-items:center;gap:clamp(7px,.8vw,12px);
+    flex-wrap:wrap;
+  }
+  .play-btn{
+    min-height:clamp(42px,5.1vh,52px);
+    padding:0 clamp(18px,1.7vw,28px);
+    border-radius:14px;
+    display:inline-flex;align-items:center;justify-content:center;gap:10px;
+    background:linear-gradient(180deg,#ffdc83,#ffc24c 46%,#efa01b);
+    color:#201604;
+    font-size:clamp(17px,1.35vw,23px);font-weight:900;letter-spacing:.06em;
+    box-shadow:0 8px 24px rgba(240,150,25,.25),inset 0 1px 0 rgba(255,255,255,.55);
+    transition:transform .15s var(--ease),filter .15s var(--ease),box-shadow .15s var(--ease);
+  }
+  .play-btn:hover{filter:brightness(1.055);transform:translateY(-1px);box-shadow:0 11px 28px rgba(240,150,25,.3)}
+  .play-btn:active{transform:translateY(0)}
+  .play-icon{font-size:.84em;line-height:1;transform:translateY(-1px)}
+  .reset-btn{
+    min-height:clamp(42px,5.1vh,52px);
+    padding:0 clamp(12px,1.1vw,18px);
+    border-radius:14px;border:1px solid var(--line-2);
+    background:rgba(255,255,255,.035);
+    color:#d7edf4;font-size:clamp(14px,1.02vw,17px);font-weight:800;
+    letter-spacing:.04em;transition:background .15s var(--ease),border-color .15s var(--ease);
+  }
+  .reset-btn:hover{background:rgba(255,255,255,.065);border-color:rgba(155,215,230,.42)}
+  .drag-switch{
+    margin-left:auto;
+    display:flex;align-items:center;gap:11px;
+    padding:4px 6px 4px 10px;border-radius:12px;
+    cursor:pointer;user-select:none;border:1px solid transparent;
+    transition:background .15s var(--ease),border-color .15s var(--ease);
+  }
+  .drag-switch:hover{background:rgba(255,255,255,.035);border-color:rgba(143,201,218,.13)}
+  .switch-copy{display:flex;flex-direction:column;gap:1px;text-align:right;line-height:1.15}
+  .switch-copy b{font-size:clamp(16px,1.25vw,22px);font-weight:900;letter-spacing:.03em;color:#e6f6fb}
+  .switch-copy small{font-size:clamp(9px,.68vw,12px);font-weight:600;color:var(--muted);letter-spacing:.02em}
+  .switch-input{position:absolute;opacity:0;width:1px;height:1px}
+  .switch-track{
+    position:relative;flex:0 0 auto;
+    width:50px;height:28px;border-radius:999px;
+    background:rgba(255,255,255,.1);
+    border:1px solid rgba(143,201,218,.25);
+    box-shadow:inset 0 2px 5px rgba(0,0,0,.35);
+    transition:background .2s var(--ease),border-color .2s var(--ease),box-shadow .2s var(--ease);
+  }
+  .switch-thumb{
+    position:absolute;left:4px;top:4px;width:18px;height:18px;border-radius:50%;
+    background:linear-gradient(180deg,#d7e9ef,#8faab6);
+    box-shadow:0 2px 5px rgba(0,0,0,.4);
+    transition:transform .2s var(--ease),background .2s var(--ease);
+  }
+  .switch-input:checked + .switch-track{
+    background:linear-gradient(180deg,rgba(255,150,70,.3),rgba(240,90,50,.24));
+    border-color:rgba(255,145,90,.65);
+    box-shadow:inset 0 2px 6px rgba(0,0,0,.28),0 0 16px rgba(255,120,60,.15);
+  }
+  .switch-input:checked + .switch-track .switch-thumb{
+    transform:translateX(22px);
+    background:radial-gradient(circle at 35% 30%,#ffe6b0,#ff9a47 58%,#e7622e);
+  }
+  .switch-input:focus-visible + .switch-track{outline:2px solid var(--cyan);outline-offset:3px}
+  .speed-group{
+    display:flex;align-items:center;gap:3px;
+    padding-left:clamp(8px,.8vw,12px);border-left:1px solid rgba(143,201,218,.14);
+  }
+  .speed-label{
+    color:var(--muted-2);font-size:clamp(10px,.74vw,12px);
+    font-weight:800;letter-spacing:.1em;margin-right:3px;
+  }
+  .speed-btn{
+    min-width:42px;height:32px;padding:0 7px;border-radius:9px;
+    color:var(--muted);font-size:clamp(11px,.82vw,14px);font-weight:800;
+    font-family:var(--mono);
+    border:1px solid transparent;
+    transition:color .15s,background .15s,border-color .15s;
+  }
+  .speed-btn:hover{color:#e8f8fd;background:rgba(255,255,255,.04)}
+  .speed-btn.active{
+    color:#201604;background:var(--amber);border-color:rgba(255,230,160,.75);
+    box-shadow:0 3px 10px rgba(240,150,25,.22);
+  }
+
+  /* ---------------- energy panel ---------------- */
+  .energy-card{
+    width:100%;height:100%;min-height:0;
+    padding:clamp(15px,1.45vw,22px);
+    display:flex;flex-direction:column;
+  }
+  .energy-head{
+    flex:0 0 auto;
+    display:flex;align-items:flex-start;justify-content:space-between;gap:10px;
+    padding-bottom:clamp(8px,.9vh,13px);
+  }
+  .energy-title{
+    font-size:clamp(20px,1.88vw,30px);
+    font-weight:900;letter-spacing:.05em;line-height:1.16;
+    display:flex;align-items:center;gap:9px;
+  }
+  .energy-title::before{
+    content:"";width:5px;height:1.05em;border-radius:3px;
+    background:linear-gradient(180deg,var(--green),rgba(79,227,164,.16));
+    box-shadow:0 0 14px rgba(79,227,164,.17);
+  }
+  .energy-sub{
+    margin:4px 0 0 14px;color:var(--muted);
+    font-size:clamp(11px,.8vw,14px);font-weight:600;letter-spacing:.08em;
+  }
+  .e0-box{
+    flex:0 0 auto;text-align:right;
+    padding:6px 10px 7px;border-radius:11px;
+    border:1px solid rgba(143,201,218,.17);
+    background:rgba(255,255,255,.028);
+  }
+  .e0-box span{
+    display:block;color:var(--muted-2);
+    font-size:clamp(8px,.6vw,10px);font-weight:800;letter-spacing:.12em;
+    margin-bottom:1px;white-space:nowrap;
+  }
+  .e0-long{font-style:normal}
+  .e0-box b{
+    display:block;color:#f7fdff;font-family:var(--mono);
+    font-size:clamp(15px,1.2vw,21px);font-weight:900;letter-spacing:.01em;
+    font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+  .chart{
+    flex:1 1 auto;min-height:0;
+    display:grid;grid-template-rows:auto minmax(0,1fr) auto;
+    gap:clamp(5px,.75vh,9px);
+  }
+  .heads,.vals{
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:clamp(7px,1vw,14px);
+  }
+  .lane-head{
+    min-width:0;display:flex;flex-direction:column;gap:1px;
+    padding-left:1px;
+  }
+  .lane-sym{
+    display:flex;align-items:center;gap:6px;
+    font-family:var(--mono);color:#dff6fd;
+    font-size:clamp(13px,.92vw,16px);font-weight:900;line-height:1;
+  }
+  .lane-sym .dot{
+    width:8px;height:8px;border-radius:2.5px;flex:0 0 auto;
+    background:var(--amber);box-shadow:0 0 9px rgba(255,200,87,.35);
+  }
+  .lane-head.u .lane-sym .dot{background:var(--blue);box-shadow:0 0 9px rgba(92,157,255,.4)}
+  .lane-head.e .lane-sym .dot{background:var(--green);box-shadow:0 0 9px rgba(79,227,164,.4)}
+  .lane-name{
+    color:var(--muted);font-size:clamp(16px,1.88vw,30px);
+    font-weight:900;letter-spacing:0;
+    white-space:nowrap;line-height:1.18;
+  }
+  .lane-head.e .lane-name{color:#cdeee4}
+  .plots{
+    position:relative;min-height:120px;
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:clamp(7px,1vw,14px);
+  }
+  .plot{
+    position:relative;height:100%;min-height:0;
+    border-radius:11px;overflow:hidden;
+    background:
+      linear-gradient(to top,rgba(255,255,255,.055) 1px,transparent 1px) 0 0/100% 25%,
+      linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,.012));
+    border:1px solid rgba(143,201,218,.13);
+    box-shadow:inset 0 0 26px rgba(0,0,0,.18);
+  }
+  .bar{
+    position:absolute;left:0;right:0;bottom:0;height:0;
+    border-radius:9px 9px 0 0;
+    will-change:height;
+  }
+  .bar.k{
+    background:linear-gradient(180deg,#ffe39a 0%,#ffc857 32%,#f39a18 68%,#dc7b08 100%);
+    box-shadow:0 0 24px rgba(255,174,40,.22);
+  }
+  .bar.u{
+    background:linear-gradient(180deg,#b9e9ff 0%,#70c8ff 30%,#3f7cf4 70%,#2458c9 100%);
+    box-shadow:0 0 24px rgba(74,140,255,.22);
+  }
+  .bar.e{
+    background:linear-gradient(180deg,#c9ffe9 0%,#62e9b5 30%,#1fb78b 72%,#0d8668 100%);
+    box-shadow:0 0 26px rgba(79,227,164,.22);
+  }
+  .e-loss{
+    position:absolute;left:0;right:0;bottom:0;height:0;z-index:2;
+    background:
+      repeating-linear-gradient(135deg,rgba(255,157,82,.62) 0 5px,rgba(255,120,60,.17) 5px 10px);
+    border-top:1px solid rgba(255,178,112,.9);
+    box-shadow:0 0 18px rgba(255,120,60,.18);
+    will-change:height,bottom;
+    pointer-events:none;
+  }
+  .ref-line{
+    position:absolute;left:0;right:0;bottom:92.5%;z-index:3;
+    border-top:1px dashed rgba(222,240,247,.54);
+    pointer-events:none;
+    transition:opacity .2s;
+  }
+  .ref-line span{
+    position:absolute;right:3px;top:-17px;
+    padding:1px 4px;border-radius:4px;
+    color:#d8edf4;background:rgba(4,14,20,.82);
+    font-family:var(--mono);
+    font-size:clamp(10px,.7vw,12px);font-weight:900;
+    letter-spacing:.02em;
+  }
+  .vals{align-items:start;padding-top:1px}
+  .lane-val{
+    text-align:center;
+    font-family:var(--mono);
+    font-size:clamp(20px,1.85vw,30px);
+    font-weight:900;line-height:1.1;color:var(--amber);
+    font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+    white-space:nowrap;min-width:0;
+  }
+  .lane-val.u{color:#82c8ff}
+  .lane-val.e{color:var(--green)}
+  .lane-val small{
+    font-family:var(--font);font-size:.43em;font-weight:700;
+    color:var(--muted);letter-spacing:0;margin-left:2px;
+  }
+  .heat-block{
+    flex:0 0 auto;
+    margin-top:clamp(8px,1vh,13px);
+    padding:clamp(8px,1vh,12px) clamp(10px,1vw,14px);
+    border-radius:12px;
+    background:rgba(255,255,255,.025);
+    border:1px solid rgba(143,201,218,.12);
+    transition:border-color .2s,background .2s;
+  }
+  .heat-block.on{
+    border-color:rgba(255,140,80,.32);
+    background:rgba(255,120,60,.045);
+    box-shadow:0 0 24px rgba(255,110,50,.05);
+  }
+  .heat-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .heat-name{
+    color:var(--muted);font-size:clamp(16px,1.2vw,20px);
+    font-weight:800;letter-spacing:.05em;
+  }
+  .heat-name b{color:#ffb36b;font-weight:900}
+  .heat-value{
+    color:#ffbd7b;font-family:var(--mono);
+    font-size:clamp(16px,1.2vw,22px);font-weight:900;
+    font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+  .heat-track{
+    height:8px;border-radius:99px;overflow:hidden;
+    background:rgba(255,255,255,.065);
+    box-shadow:inset 0 1px 3px rgba(0,0,0,.36);
+    margin-top:7px;
+  }
+  .heat-fill{
+    width:0;height:100%;border-radius:99px;
+    background:linear-gradient(90deg,#ffd36b,#ff974d 52%,#ff5e45);
+    box-shadow:0 0 13px rgba(255,120,60,.4);
+    will-change:width;
+  }
+  .hint{
+    flex:0 0 auto;
+    margin:clamp(7px,.8vh,11px) 2px 0;
+    color:var(--muted);
+    font-size:clamp(13px,1.08vw,19px);
+    line-height:1.55;font-weight:600;letter-spacing:.02em;
+  }
+  .hint b{color:#e9f8fd;font-weight:900}
+  .hint .q{color:#ffb36b}
+  .hint .arrow{color:var(--muted-2);padding:0 2px}
+
+  /* ---------------- responsive ---------------- */
+  @media (max-width:1180px){
+    .formula-card{min-width:300px}
+    .formula-label{display:none}
+    .status-detail{display:none}
+    .scene-status{gap:6px}
+    .control-card{padding-top:10px;padding-bottom:10px}
+    .scale-note{display:none}
+  }
+  @media (max-width:980px){
+    body{overflow:auto;overflow-x:hidden}
+    body::before{position:absolute}
+    .app{height:auto;min-height:100dvh;padding:16px 14px 24px}
+    .topbar{flex-direction:column;align-items:stretch;gap:10px}
+    .formula-card{
+      min-width:0;padding:8px 0 0;border-left:0;
+      border-top:1px solid rgba(255,200,87,.25);
+      flex-direction:row;align-items:baseline;justify-content:space-between;
+      gap:12px;flex-wrap:wrap;
+    }
+    .formula-top{gap:10px}
+    .formula{font-size:24px}
+    .formula-sub{font-size:11px}
+    .workspace{display:flex;flex-direction:column;gap:12px}
+    .left{display:contents}
+    .scene-card{order:1;height:auto}
+    .right{order:2;display:block}
+    .control-card{order:3}
+    .canvas-wrap{flex:none;height:clamp(330px,48vh,470px);min-height:330px}
+    .energy-card{height:auto;padding:16px}
+    .chart{flex:none;height:clamp(300px,38vh,390px)}
+    .energy-sub{font-size:11px}
+    .hint{font-size:13px}
+    .scene-stats{padding-bottom:12px}
+  }
+  @media (max-width:640px){
+    .app{padding:12px 11px 22px;gap:10px}
+    h1{font-size:34px;letter-spacing:.02em}
+    .subtitle{font-size:13px}
+    .eyebrow{font-size:11px;letter-spacing:.14em}
+    .formula{font-size:22px}
+    .formula-sub{font-size:10px;white-space:normal;line-height:1.4}
+    .formula-sub .sep{padding:0 3px}
+    .scene-card{padding:11px 11px 0;border-radius:18px}
+    .scene-head{padding-bottom:7px}
+    .section-title{font-size:19px}
+    .pill{font-size:11px;padding:5px 10px}
+    .canvas-wrap{height:330px;min-height:300px;border-radius:13px}
+    .scene-stats{gap:6px;padding:8px 2px 10px}
+    .stat{padding-left:8px}
+    .stat-label{font-size:9px;letter-spacing:.1em}
+    .stat-value{font-size:22px}
+    .control-card{border-radius:18px;padding:11px 13px;gap:9px}
+    .control-top .section-title{font-size:18px}
+    .control-note{font-size:10px}
+    .sliders{grid-template-columns:1fr;gap:7px}
+    .slider-label{font-size:16px}
+    .slider-label .num{font-size:17px}
+    .actions{gap:7px}
+    .play-btn{min-height:43px;padding:0 18px;font-size:17px;flex:1 1 auto}
+    .reset-btn{min-height:43px;font-size:13px;padding:0 12px}
+    .drag-switch{
+      order:5;margin-left:0;flex:1 1 100%;justify-content:space-between;
+      padding:6px 4px 2px;border-top:1px solid rgba(143,201,218,.11);
+      border-radius:0;
+    }
+    .switch-copy{text-align:left}
+    .switch-copy b{font-size:14px}
+    .switch-copy small{font-size:10px}
+    .speed-group{order:4;margin-left:auto;padding-left:4px;border-left:0}
+    .speed-btn{min-width:38px;height:30px;font-size:11px}
+    .speed-label{display:none}
+    .energy-card{border-radius:18px;padding:14px}
+    .energy-title{font-size:19px}
+    .energy-head{gap:6px;padding-bottom:8px}
+    .e0-box{padding:5px 8px}
+    .e0-box b{font-size:15px}
+    .chart{height:300px;gap:5px}
+    .lane-name{font-size:17px}
+    .lane-sym{font-size:12px}
+    .lane-val{font-size:20px}
+    .heat-name{font-size:13px}
+    .heat-value{font-size:15px}
+    .hint{font-size:12.5px;line-height:1.55}
+    .heads,.plots,.vals{gap:6px}
+    .plots{min-height:140px}
+  }
+  @media (max-height:820px) and (min-width:981px){
+    .app{padding-top:12px;padding-bottom:12px;gap:8px}
+    .topbar{padding-bottom:0}
+    h1{font-size:clamp(34px,2.95vw,48px)}
+    .subtitle{font-size:13px;margin-top:3px}
+    .formula{font-size:clamp(24px,2vw,32px)}
+    .formula-sub{font-size:11px}
+    .scene-head{padding-bottom:6px}
+    .section-title{font-size:clamp(20px,1.88vw,28px)}
+    .scene-stats{padding-top:6px;padding-bottom:8px}
+    .stat-value{font-size:25px}
+    .control-card{gap:6px;padding-top:9px;padding-bottom:9px}
+    .control-top .section-title{font-size:24px}
+    .slider-label{font-size:clamp(18px,1.88vw,27px)}
+    .slider-label .num{font-size:clamp(20px,1.7vw,26px)}
+    input[type=range]{height:23px;margin-top:1px}
+    .play-btn,.reset-btn{min-height:40px}
+    .play-btn{font-size:18px}
+    .energy-card{padding:14px}
+    .energy-title{font-size:clamp(20px,1.88vw,28px)}
+    .lane-name{font-size:clamp(17px,1.88vw,27px)}
+    .lane-val{font-size:clamp(20px,1.85vw,27px)}
+    .heat-block{margin-top:6px;padding:7px 10px}
+    .hint{font-size:14.5px;line-height:1.45;margin-top:6px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{scroll-behavior:auto !important}
+    .play-btn,.reset-btn,.switch-track,.switch-thumb,.bar{transition:none !important}
+  }
+  /* ================= compact overlay layout (v2) ================= */
+  :root{--rail-w:clamp(310px,23.5vw,400px)}
+  .app{
+    padding:clamp(10px,1.3vh,16px) clamp(16px,1.8vw,34px) clamp(10px,1.3vh,16px);
+    gap:clamp(6px,.9vh,10px);
+  }
+  .topbar{padding-bottom:1px;gap:24px}
+  h1{font-size:clamp(36px,2.5vw,48px)}
+  .subtitle{font-size:clamp(12px,.82vw,15px);margin-top:3px}
+  .eyebrow{font-size:clamp(11px,.7vw,12px)}
+  .formula-card{min-width:clamp(290px,23vw,420px);padding:6px 0 6px 20px;margin-right:52px}
+  .formula{font-size:clamp(22px,1.7vw,30px)}
+  .formula-sub{font-size:clamp(10px,.72vw,12px)}
+
+  .fs-btn{
+    position:fixed;top:12px;right:14px;z-index:60;
+    width:44px;height:44px;padding:0;border-radius:12px;
+    display:grid;place-items:center;
+    color:#dff6fd;background:rgba(7,20,29,.82);
+    border:1px solid rgba(143,201,218,.28);
+    box-shadow:0 8px 24px rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.05);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    transition:background .15s var(--ease),border-color .15s var(--ease),transform .15s var(--ease);
+  }
+  .fs-btn:hover{background:rgba(18,45,60,.92);border-color:rgba(99,220,255,.5);transform:translateY(-1px)}
+  .fs-btn:active{transform:translateY(0)}
+  .fs-icon{
+    width:20px;height:20px;display:block;
+    fill:none;stroke:currentColor;stroke-width:2;
+    stroke-linecap:round;stroke-linejoin:round;
+  }
+  .fs-collapse{display:none}
+  .fs-btn.is-fullscreen .fs-expand{display:none}
+  .fs-btn.is-fullscreen .fs-collapse{display:block}
+
+  .stage{position:relative;flex:1 1 auto;min-height:0}
+  .stage .scene-card{
+    position:absolute;inset:0;
+    display:block;padding:0;overflow:hidden;
+    background:#06121a;
+  }
+  .stage .canvas-wrap{
+    position:absolute;inset:0;height:100%;min-height:0;
+    border:0;border-radius:calc(var(--radius) - 1px);
+    background:#06121a;
+  }
+  #scene{display:block;width:100%;height:100%;cursor:crosshair;touch-action:none}
+
+  .stage .scene-head{
+    position:absolute;z-index:3;top:14px;left:20px;
+    right:calc(var(--rail-w) + 58px);
+    display:flex;align-items:center;justify-content:flex-start;gap:14px;
+    padding:0;pointer-events:none;
+  }
+  .stage .scene-head .section-title{
+    font-size:clamp(20px,1.55vw,27px);
+    text-shadow:0 2px 18px rgba(0,0,0,.6);
+  }
+  .stage .scene-head .scene-status{pointer-events:auto}
+  .stage .scene-head .pill{font-size:clamp(12px,.88vw,15px);padding:5px 11px}
+  .stage .scene-head .status-detail{font-size:clamp(11px,.78vw,13px)}
+
+  .stage .scene-stats{
+    position:absolute;z-index:3;left:18px;bottom:14px;
+    width:calc(100% - var(--rail-w) - 60px);max-width:660px;
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;
+    padding:7px 14px 8px;
+    background:rgba(4,14,21,.72);
+    border:1px solid rgba(143,201,218,.16);
+    border-radius:14px;
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    box-shadow:0 12px 34px rgba(0,0,0,.25);
+  }
+  .stage .scene-stats .stat{padding-left:14px;border-left:1px solid rgba(143,201,218,.12)}
+  .stage .scene-stats .stat:first-child{padding-left:2px;border-left:0}
+  .stage .scene-stats .stat-label{font-size:clamp(9px,.64vw,11px);margin-bottom:0}
+  .stage .scene-stats .stat-value{font-size:clamp(22px,1.55vw,29px);line-height:1.03}
+
+  .panel{
+    position:absolute;z-index:4;right:16px;width:var(--rail-w);
+    background:linear-gradient(180deg,rgba(8,24,35,.93),rgba(5,16,24,.96));
+    border:1px solid rgba(143,201,218,.24);
+    border-radius:18px;
+    box-shadow:0 22px 60px rgba(0,0,0,.44),inset 0 1px 0 rgba(255,255,255,.04);
+    backdrop-filter:blur(18px);
+    -webkit-backdrop-filter:blur(18px);
+  }
+  .energy-panel{top:14px;padding:13px 15px 11px}
+  .control-panel{bottom:14px;padding:11px 15px 9px}
+  .panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+  .panel-heading{min-width:0}
+  .energy-title{
+    font-size:clamp(18px,1.35vw,23px);
+    line-height:1.15;gap:7px;
+  }
+  .energy-title::before{width:4px;box-shadow:0 0 12px rgba(79,227,164,.17)}
+  .energy-sub{
+    margin:2px 0 0 11px;
+    font-size:clamp(9px,.64vw,11px);
+    letter-spacing:.04em;line-height:1.3;
+  }
+  .e0-box{padding:0;border:0;background:none;text-align:right}
+  .e0-box span{
+    font-size:clamp(8px,.55vw,9.5px);
+    letter-spacing:.08em;margin-bottom:0;
+  }
+  .e0-box b{font-size:clamp(14px,1vw,17px)}
+
+  .mini-rows{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  .mrow{min-width:0}
+  .mrow-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:3px}
+  .mlabel{
+    display:flex;align-items:center;gap:5px;min-width:0;
+    color:#d8edf4;font-size:clamp(16px,1.3vw,20px);
+    font-weight:800;letter-spacing:.01em;white-space:nowrap;
+  }
+  .mlabel i.dot{
+    width:7px;height:7px;border-radius:2px;flex:0 0 auto;
+    background:var(--amber);box-shadow:0 0 8px rgba(255,200,87,.35);
+  }
+  .mrow.u .mlabel i.dot{background:var(--blue);box-shadow:0 0 8px rgba(92,157,255,.4)}
+  .mrow.e .mlabel i.dot{background:var(--green);box-shadow:0 0 8px rgba(79,227,164,.4)}
+  .mlabel b{font-family:var(--mono);font-size:.82em;color:var(--muted);font-weight:900}
+  .mval{
+    font-family:var(--mono);font-size:clamp(18px,1.35vw,23px);
+    font-weight:900;color:var(--amber);white-space:nowrap;
+    font-variant-numeric:tabular-nums;letter-spacing:-.02em;
+  }
+  .mrow.u .mval{color:#82c8ff}
+  .mrow.e .mval{color:var(--green)}
+  .mval small{font-family:var(--font);font-size:.55em;color:var(--muted);margin-left:2px;font-weight:700}
+  .mtrack{
+    position:relative;height:9px;border-radius:99px;
+    background:rgba(255,255,255,.07);
+    box-shadow:inset 0 1px 3px rgba(0,0,0,.36);
+  }
+  .mfill{
+    position:absolute;left:0;top:0;bottom:0;width:0;
+    border-radius:99px;will-change:width;
+  }
+  .mfill.k{background:linear-gradient(90deg,#c57a0c,#ffc857 58%,#ffe39a);box-shadow:0 0 12px rgba(255,174,40,.22)}
+  .mfill.u{background:linear-gradient(90deg,#2458c9,#4f9dff 58%,#b9e9ff);box-shadow:0 0 12px rgba(74,140,255,.22)}
+  .mfill.e{background:linear-gradient(90deg,#0d8668,#25c295 58%,#c9ffe9);box-shadow:0 0 12px rgba(79,227,164,.22)}
+  .energy-panel .e-loss{
+    position:absolute;top:0;bottom:0;left:0;width:0;height:auto;z-index:2;
+    background:repeating-linear-gradient(135deg,rgba(255,157,82,.7) 0 4px,rgba(255,120,60,.18) 4px 8px);
+    border:0;border-left:1px solid rgba(255,178,112,.8);
+    border-radius:0 99px 99px 0;
+    box-shadow:0 0 12px rgba(255,120,60,.18);
+    opacity:0;pointer-events:none;will-change:width,left;
+  }
+  .energy-panel .ref-line{
+    position:absolute;left:92.5%;right:auto;top:-4px;bottom:-4px;
+    border-top:0;border-left:1px dashed rgba(222,240,247,.6);
+    z-index:3;opacity:0;pointer-events:none;
+  }
+  .energy-panel .ref-line span{
+    position:absolute;left:3px;right:auto;top:50%;
+    transform:translateY(-50%);padding:0 2px;border-radius:3px;
+    color:#d8edf4;background:rgba(4,14,20,.74);
+    font-family:var(--mono);font-size:8px;font-weight:900;
+    letter-spacing:0;white-space:nowrap;
+  }
+
+  .energy-panel .heat-block{
+    margin-top:7px;padding:6px 8px 7px;border-radius:10px;
+    background:rgba(255,255,255,.025);
+    border:1px solid rgba(143,201,218,.12);
+    box-shadow:none;
+  }
+  .energy-panel .heat-block.on{box-shadow:0 0 18px rgba(255,110,50,.05)}
+  .heat-top{gap:8px}
+  .heat-name{font-size:clamp(11px,.76vw,13px);letter-spacing:.03em}
+  .heat-name span{font-size:.8em;color:var(--muted-2);font-weight:600;margin-left:4px}
+  .heat-value{font-size:clamp(12px,.86vw,14px)}
+  .heat-track{height:5px;margin-top:5px;box-shadow:inset 0 1px 2px rgba(0,0,0,.35)}
+  .energy-panel .hint{
+    margin:6px 1px 0;
+    font-size:clamp(11px,.8vw,13px);
+    line-height:1.4;min-height:0;
+  }
+
+  .control-title{
+    display:flex;align-items:center;gap:7px;
+    font-size:clamp(17px,1.2vw,21px);
+    font-weight:900;letter-spacing:.03em;color:#f2fbff;
+    line-height:1.15;
+  }
+  .control-title::before{
+    content:"";width:4px;height:1.05em;border-radius:2px;
+    background:linear-gradient(180deg,var(--amber),rgba(255,200,87,.18));
+  }
+  .control-note{font-size:clamp(8px,.55vw,9.5px);color:var(--muted-2);white-space:nowrap}
+  .mini-slider{margin-top:5px}
+  .ms-top{
+    display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+    color:#d8edf4;font-size:clamp(15px,1.1vw,18px);font-weight:800;letter-spacing:.01em;
+  }
+  .ms-top em{font-style:normal;color:var(--amber);font-family:var(--mono);font-size:.86em}
+  .ms-val{
+    font-family:var(--mono);font-size:clamp(16px,1.15vw,19px);
+    color:#fff;font-weight:900;white-space:nowrap;font-variant-numeric:tabular-nums;
+  }
+  .ms-val small{font-family:var(--font);font-size:.54em;color:var(--muted);margin-left:2px;font-weight:700}
+  .control-panel input[type=range]{height:18px;margin:1px 0 0}
+  .control-panel input[type=range]::-webkit-slider-runnable-track{height:5px}
+  .control-panel input[type=range]::-webkit-slider-thumb{
+    width:17px;height:17px;margin-top:-6px;border-width:2px;
+    box-shadow:0 0 0 2px rgba(255,200,87,.24),0 2px 7px rgba(0,0,0,.5);
+  }
+  .control-panel input[type=range]::-moz-range-track{height:5px}
+  .control-panel input[type=range]::-moz-range-progress{height:5px}
+  .control-panel input[type=range]::-moz-range-thumb{width:15px;height:15px;border-width:2px}
+  .angle-readout{
+    display:flex;flex-direction:column;align-items:stretch;gap:4px;
+    margin-top:6px;padding:5px 8px;border-radius:8px;
+    background:rgba(255,200,87,.045);
+    border:1px dashed rgba(255,200,87,.24);
+  }
+  .angle-main{display:flex;align-items:center;gap:7px}
+  .angle-label{
+    color:#d8edf4;font-size:clamp(11px,.8vw,13px);
+    font-weight:800;letter-spacing:.02em;white-space:nowrap;
+  }
+  .angle-label em{font-style:normal;color:var(--amber);font-family:var(--mono)}
+  .angle-value{
+    color:var(--amber);font-family:var(--mono);
+    font-size:clamp(16px,1.15vw,19px);font-weight:900;
+    line-height:1;white-space:nowrap;
+  }
+  .angle-value span{font-size:.7em;margin-left:1px}
+  .angle-tip{
+    margin-left:auto;color:var(--muted-2);
+    font-size:clamp(9.5px,.68vw,11.5px);font-weight:700;
+    letter-spacing:.01em;white-space:nowrap;
+  }
+  .angle-options{
+    display:flex;justify-content:space-between;gap:2px;
+    padding:0 1px;border-top:1px solid rgba(255,200,87,.12);padding-top:3px;
+  }
+  .angle-options span{
+    color:var(--muted-2);font-family:var(--mono);
+    font-size:clamp(10px,.72vw,12px);font-weight:800;
+    line-height:1;white-space:nowrap;transition:color .15s;
+  }
+  .angle-options span.active{color:var(--amber);text-shadow:0 0 8px rgba(255,200,87,.35)}
+  .mini-actions{display:flex;align-items:center;gap:6px;margin-top:7px}
+  .control-panel .play-btn{
+    flex:1 1 auto;min-height:38px;padding:0 10px;gap:6px;
+    font-size:clamp(14px,.95vw,16px);border-radius:10px;
+  }
+  .control-panel .play-icon{font-size:.8em}
+  .control-panel .reset-btn{
+    flex:0 0 36px;width:36px;min-height:38px;padding:0;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:16px;border-radius:10px;
+  }
+  .control-panel .drag-switch{
+    margin-left:1px;padding:0;gap:6px;border:0;border-radius:8px;
+    flex:0 0 auto;order:0;
+  }
+  .control-panel .drag-switch:hover{background:none;border:0}
+  .control-panel .switch-copy{text-align:right;gap:0;line-height:1.05}
+  .control-panel .switch-copy b{font-size:clamp(11px,.78vw,13px);letter-spacing:0}
+  .control-panel .switch-copy small{display:none}
+  .control-panel .switch-track{width:38px;height:22px}
+  .control-panel .switch-thumb{width:14px;height:14px;left:3px;top:3px}
+  .control-panel .switch-input:checked + .switch-track .switch-thumb{transform:translateX(16px)}
+  .mini-foot{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:5px}
+  .control-panel .speed-group{padding:0;border:0;gap:2px;margin:0}
+  .control-panel .speed-label{display:none}
+  .control-panel .speed-btn{
+    min-width:30px;height:23px;padding:0 4px;border-radius:6px;
+    font-size:clamp(9px,.62vw,11px);
+  }
+  .mini-note{font-size:clamp(8px,.55vw,9.5px);color:var(--muted-2);white-space:nowrap}
+
+  @media (max-width:1180px){
+    .formula-card{min-width:300px}
+    .formula-label{display:none}
+    .stage .scene-head{right:calc(var(--rail-w) + 44px)}
+    .status-detail{display:inline}
+    .scale-note{display:none}
+  }
+  @media (max-width:980px){
+    body{overflow:auto;overflow-x:hidden}
+    body::before{position:absolute}
+    .app{height:auto;min-height:100dvh;padding:14px 12px 24px;gap:10px}
+    .topbar{flex-direction:column;align-items:stretch;gap:8px;padding-bottom:0}
+    .formula-card{
+      min-width:0;padding:8px 0 0;border-left:0;margin-right:0;
+      border-top:1px solid rgba(255,200,87,.25);
+      flex-direction:row;align-items:baseline;justify-content:space-between;
+      gap:10px;flex-wrap:wrap;
+    }
+    .formula{font-size:24px}
+    .formula-sub{font-size:10px}
+    .fs-btn{top:10px;right:10px;width:40px;height:40px;border-radius:11px}
+    .fs-icon{width:18px;height:18px}
+    .stage{display:flex;flex-direction:column;gap:12px;flex:0 1 auto;min-height:0}
+    .stage .scene-card{
+      position:relative;inset:auto;flex:0 0 auto;
+      height:clamp(430px,58vh,520px);border-radius:20px;order:1;
+    }
+    .stage .canvas-wrap{border-radius:20px}
+    .stage .scene-head{top:12px;left:14px;right:14px}
+    .stage .scene-head .section-title{font-size:19px}
+    .status-detail{display:none}
+    .stage .scene-stats{
+      left:12px;right:12px;bottom:12px;width:auto;max-width:none;
+      padding:8px 10px;
+    }
+    .stage .scene-stats .stat-value{font-size:22px}
+    .stage .scene-stats .stat-label{font-size:8.5px}
+    .panel{position:static;width:auto;right:auto;top:auto;bottom:auto}
+    .energy-panel{
+      position:absolute;top:8px;right:9px;left:auto;bottom:auto;
+      width:clamp(190px,25vw,240px);z-index:6;
+      padding:8px 10px 7px;border-radius:14px;
+      background:linear-gradient(180deg,rgba(8,24,35,.9),rgba(5,16,24,.94));
+      box-shadow:0 14px 40px rgba(0,0,0,.45);
+    }
+    .energy-panel .panel-head{gap:4px}
+    .energy-panel .energy-title{font-size:13px;gap:5px}
+    .energy-panel .energy-title::before{width:3px}
+    .energy-panel .energy-sub{display:none}
+    .energy-panel .e0-box span{display:block;font-size:8px;letter-spacing:.05em}
+    .energy-panel .e0-box .e0-long{display:none}
+    .energy-panel .e0-box b{font-size:11px}
+    .energy-panel .mini-rows{gap:4px;margin-top:5px}
+    .energy-panel .mrow-top{margin-bottom:2px;gap:4px}
+    .energy-panel .mlabel{font-size:11px;gap:3px}
+    .energy-panel .mlabel i.dot{width:5px;height:5px}
+    .energy-panel .mlabel b{font-size:.72em}
+    .energy-panel .mval{font-size:12px}
+    .energy-panel .mtrack{height:6px}
+    .energy-panel .heat-block{margin-top:5px;padding:4px 6px 5px;border-radius:8px}
+    .energy-panel .heat-top{gap:4px}
+    .energy-panel .heat-name{font-size:9.5px}
+    .energy-panel .heat-name span{font-size:.78em;margin-left:2px}
+    .energy-panel .heat-value{font-size:10.5px}
+    .energy-panel .heat-track{height:4px;margin-top:3px}
+    .energy-panel .hint{font-size:9px;line-height:1.35;margin-top:4px}
+    .control-panel{padding:12px 14px 10px;order:3}
+  }
+  @media (max-width:640px){
+    .app{padding:10px 10px 20px}
+    h1{font-size:32px;letter-spacing:.02em}
+    .subtitle{font-size:12px}
+    .eyebrow{font-size:10px;letter-spacing:.14em}
+    .formula{font-size:22px}
+    .formula-sub{font-size:10px;white-space:normal;line-height:1.4}
+    .stage{gap:10px}
+    .stage .scene-card{height:clamp(480px,62vh,560px);border-radius:17px}
+    .stage .canvas-wrap{border-radius:17px}
+    .stage .scene-head{top:10px;left:11px;right:11px}
+    .stage .scene-head .section-title{font-size:18px}
+    .stage .scene-head .pill{font-size:10px;padding:4px 8px}
+    .stage .scene-stats{left:10px;right:10px;bottom:10px;padding:7px 9px;border-radius:11px}
+    .stage .scene-stats .stat{padding-left:7px}
+    .stage .scene-stats .stat-label{font-size:8px;letter-spacing:.08em}
+    .stage .scene-stats .stat-value{font-size:19px}
+    .stage .scene-stats .stat-value small{font-size:.46em}
+    .control-panel{border-radius:15px;padding:8px 11px 7px}
+    .energy-panel{
+      width:clamp(185px,48vw,215px);padding:8px 9px 7px;
+      border-radius:14px;top:8px;right:8px;
+    }
+    .energy-panel .hint{font-size:9.5px}
+    .control-title{font-size:15px}
+    .control-note{display:none}
+    .mini-slider{margin-top:3px}
+    .ms-top{font-size:13px}
+    .ms-val{font-size:14.5px}
+    .control-panel input[type=range]{height:15px;margin-top:0}
+    .control-panel input[type=range]::-webkit-slider-runnable-track{height:4px}
+    .control-panel input[type=range]::-webkit-slider-thumb{
+      width:15px;height:15px;margin-top:-5.5px;
+    }
+    .control-panel input[type=range]::-moz-range-track{height:4px}
+    .control-panel input[type=range]::-moz-range-progress{height:4px}
+    .control-panel input[type=range]::-moz-range-thumb{width:13px;height:13px}
+    .angle-readout{margin-top:4px;padding:3px 6px;gap:2px}
+    .angle-label{font-size:10px}
+    .angle-value{font-size:15px}
+    .angle-tip{font-size:8px}
+    .angle-options{padding-top:2px}
+    .angle-options span{font-size:9px}
+    .mini-actions{margin-top:4px;gap:5px}
+    .control-panel .play-btn{min-height:34px;font-size:13px;padding:0 8px;border-radius:9px}
+    .control-panel .reset-btn{
+      min-height:34px;width:32px;flex-basis:32px;font-size:14px;border-radius:9px;
+    }
+    .control-panel .switch-copy b{font-size:10px}
+    .control-panel .switch-track{width:34px;height:20px}
+    .control-panel .switch-thumb{width:12px;height:12px}
+    .control-panel .switch-input:checked + .switch-track .switch-thumb{transform:translateX(16px)}
+    .mini-foot{margin-top:3px}
+    .control-panel .speed-btn{min-width:28px;height:20px;font-size:10px}
+    .mini-note{font-size:7px}
+  }
+  @media (max-width:380px){
+    .energy-panel{width:170px;top:44px;right:8px;padding:7px 8px 6px}
+    .energy-panel .energy-title{font-size:12px}
+    .energy-panel .mlabel{font-size:10px}
+    .energy-panel .mval{font-size:11px}
+    .energy-panel .hint{font-size:9px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .stage .scene-card,.panel{transition:none !important}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="title-block">
+      <div class="eyebrow">高中物理 · 能量與守恆</div>
+      <h1>力學能<span>守恆</span></h1>
+      <p class="subtitle">自由落體 · 鉛直上拋 · 拋射角</p>
+    </div>
+    <div class="formula-card" aria-label="能量守恆公式">
+      <div class="formula-top">
+        <span class="formula-label">能量守恆</span>
+        <span class="formula">E = <b class="fk">K</b> + <b class="fu">U</b></span>
+      </div>
+      <div class="formula-sub">
+        <span>E₀ = mgh₀ + ½mv₀²</span>
+        <span class="sep">·</span>
+        <span>m = 1 kg</span>
+        <span class="sep">·</span>
+        <span>g = 9.8 m/s²</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="stage">
+    <section class="card scene-card" aria-labelledby="sceneTitle">
+      <div class="canvas-wrap">
+        <canvas id="scene" role="img" aria-label="小球位在左側發射點；用滑鼠或手指拖曳可調整七段拋射角，虛線顯示發射方向"></canvas>
+      </div>
+      <div class="scene-head">
+        <div class="section-title" id="sceneTitle">運動軌跡</div>
+        <div class="scene-status">
+          <span class="pill" id="statusPill">準備</span>
+          <span class="status-detail" id="statusDetail">上拋：K → U → K</span>
+        </div>
+      </div>
+      <div class="scene-stats" aria-live="off">
+        <div class="stat">
+          <span class="stat-label">高度 h</span>
+          <span class="stat-value"><b id="hVal">2.0</b><small>m</small></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">速度 v</span>
+          <span class="stat-value"><b id="vVal">14.0</b><small>m/s</small></span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">時間 t</span>
+          <span class="stat-value"><b id="tVal">0.00</b><small>s</small></span>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel energy-panel" aria-labelledby="energyTitle">
+      <div class="panel-head">
+        <div class="panel-heading">
+          <div class="energy-title" id="energyTitle">能量即時分布</div>
+          <div class="energy-sub">K + U = E<span class="scale-note"> · 柱長以 E₀ 為尺規</span></div>
+        </div>
+        <div class="e0-box">
+          <span><i class="e0-long">初始總能 </i>E₀</span>
+          <b id="e0Val">117.6 J</b>
+        </div>
+      </div>
+
+      <div class="mini-rows">
+        <div class="mrow k">
+          <div class="mrow-top">
+            <div class="mlabel"><i class="dot"></i>動能 <b>K</b></div>
+            <div class="mval"><b id="kVal">98.0</b><small>J</small></div>
+          </div>
+          <div class="mtrack"><div class="mfill k" id="kBar"></div></div>
+        </div>
+        <div class="mrow u">
+          <div class="mrow-top">
+            <div class="mlabel"><i class="dot"></i>重力位能 <b>U</b></div>
+            <div class="mval"><b id="uVal">19.6</b><small>J</small></div>
+          </div>
+          <div class="mtrack"><div class="mfill u" id="uBar"></div></div>
+        </div>
+        <div class="mrow e">
+          <div class="mrow-top">
+            <div class="mlabel"><i class="dot"></i>總力學能 <b>E</b></div>
+            <div class="mval"><b id="eVal">117.6</b><small>J</small></div>
+          </div>
+          <div class="mtrack e-track">
+            <div class="mfill e" id="eBar"></div>
+            <div class="e-loss" id="eLoss"></div>
+            <div class="ref-line" id="refLine"><span>E₀</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="heat-block" id="heatBlock">
+        <div class="heat-top">
+          <div class="heat-name">熱能 <b>Q</b><span id="heatNote">阻力關閉</span></div>
+          <div class="heat-value"><span id="qVal">0.0</span> J</div>
+        </div>
+        <div class="heat-track"><div class="heat-fill" id="qBar"></div></div>
+      </div>
+      <p class="hint" id="hint"><b>K 減少多少，U 就增加多少</b>；E 不變。</p>
+    </aside>
+
+    <aside class="panel control-panel" aria-labelledby="controlTitle">
+      <div class="panel-head">
+        <div class="control-title" id="controlTitle">初始條件</div>
+        <span class="control-note">調整後重設</span>
+      </div>
+
+      <div class="mini-slider">
+        <label class="ms-top" for="h0Range">
+          <span>初位置 <em>h₀</em></span>
+          <span class="ms-val"><b id="h0Val">2.0</b><small>m</small></span>
+        </label>
+        <input id="h0Range" type="range" min="0" max="20" step="0.5" value="2" aria-label="初位置，單位公尺">
+      </div>
+      <div class="mini-slider">
+        <label class="ms-top" for="v0Range">
+          <span>初速度 <em>v₀</em></span>
+          <span class="ms-val"><b id="v0Val">14.0</b><small>m/s</small></span>
+        </label>
+        <input id="v0Range" type="range" min="0" max="20" step="0.5" value="14" aria-label="初速度，向上為正，單位公尺每秒">
+      </div>
+
+      <div class="angle-readout">
+        <div class="angle-main">
+          <div class="angle-label">發射角 <em>θ</em></div>
+          <div class="angle-value"><b id="angleVal">60</b><span>°</span></div>
+          <div class="angle-tip">滑鼠／手指拖曳調角</div>
+        </div>
+        <div class="angle-options" id="angleOptions" aria-label="可選角度：0、30、37、45、53、60、90 度">
+          <span data-angle="0">0°</span>
+          <span data-angle="30">30°</span>
+          <span data-angle="37">37°</span>
+          <span data-angle="45">45°</span>
+          <span data-angle="53">53°</span>
+          <span data-angle="60">60°</span>
+          <span data-angle="90">90°</span>
+        </div>
+      </div>
+
+      <div class="mini-actions">
+        <button id="playBtn" class="play-btn" type="button" aria-label="播放運動">
+          <span class="play-icon" id="playIcon">▶</span><span id="playText">播放</span>
+        </button>
+        <button id="resetBtn" class="reset-btn" type="button" aria-label="重設到初始位置">↺</button>
+        <label class="drag-switch" for="dragToggle">
+          <span class="switch-copy">
+            <b>空氣阻力</b>
+            <small id="dragHint">關閉 · E 守恆</small>
+          </span>
+          <input id="dragToggle" class="switch-input" type="checkbox">
+          <span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span>
+        </label>
+      </div>
+
+      <div class="mini-foot">
+        <div class="speed-group" role="group" aria-label="播放速度">
+          <span class="speed-label">速度</span>
+          <button class="speed-btn" type="button" data-speed="0.5" aria-pressed="false">0.5×</button>
+          <button class="speed-btn active" type="button" data-speed="1" aria-pressed="true">1×</button>
+          <button class="speed-btn" type="button" data-speed="2" aria-pressed="false">2×</button>
+        </div>
+        <span class="mini-note">v₀ 為初速大小</span>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<button id="fsBtn" class="fs-btn" type="button" aria-label="全螢幕" aria-pressed="false" title="全螢幕">
+  <svg class="fs-icon fs-expand" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"></path>
+  </svg>
+  <svg class="fs-icon fs-collapse" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"></path>
+  </svg>
+</button>
+
+<script>
+(function(){
+  'use strict';
+
+  const G = 9.8;
+  const MASS = 1;
+  const DRAG_C = 0.045;
+  const FONT = '"Noto Sans TC","Microsoft JhengHei","PingFang TC","Heiti TC","Segoe UI",system-ui,sans-serif';
+  const $ = (id) => document.getElementById(id);
+
+  const canvas = $('scene');
+  const ctx = canvas.getContext('2d');
+  const fsBtn = $('fsBtn');
+
+  const ui = {
+    statusPill: $('statusPill'),
+    statusDetail: $('statusDetail'),
+    hVal: $('hVal'),
+    vVal: $('vVal'),
+    tVal: $('tVal'),
+    h0Range: $('h0Range'),
+    v0Range: $('v0Range'),
+    h0Val: $('h0Val'),
+    v0Val: $('v0Val'),
+    angleVal: $('angleVal'),
+    angleOptions: Array.from(document.querySelectorAll('.angle-options span')),
+    playBtn: $('playBtn'),
+    playText: $('playText'),
+    playIcon: $('playIcon'),
+    resetBtn: $('resetBtn'),
+    dragToggle: $('dragToggle'),
+    dragHint: $('dragHint'),
+    e0Val: $('e0Val'),
+    kBar: $('kBar'),
+    uBar: $('uBar'),
+    eBar: $('eBar'),
+    eLoss: $('eLoss'),
+    refLine: $('refLine'),
+    kVal: $('kVal'),
+    uVal: $('uVal'),
+    eVal: $('eVal'),
+    qVal: $('qVal'),
+    qBar: $('qBar'),
+    heatBlock: $('heatBlock'),
+    heatNote: $('heatNote'),
+    hint: $('hint'),
+    speedBtns: Array.from(document.querySelectorAll('.speed-btn'))
+  };
+
+  const state = {
+    h0: 2,
+    v0: 14,
+    angle: 60,
+    x: 0,
+    y: 2,
+    vx: 7,
+    vy: 12.124,
+    v: 14,
+    t: 0,
+    running: false,
+    landed: false,
+    drag: false,
+    timeScale: 1,
+    maxY: 2,
+    minY: 2,
+    worldWidth: 25,
+    path: [],
+    lastPathT: 0,
+    aiming: false,
+    landedReal: 0
+  };
+
+  let cssW = 0;
+  let cssH = 0;
+  let dpr = 1;
+  let lastFrame = performance.now();
+  let ready = false;
+  let sceneGeom = null;
+
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const ANGLE_STEPS = [0, 30, 37, 45, 53, 60, 90];
+  function snapAngle(value) {
+    const raw = clamp(Number(value) || 0, 0, 90);
+    let best = ANGLE_STEPS[0];
+    let bestDist = Infinity;
+    for (const a of ANGLE_STEPS) {
+      const dist = Math.abs(raw - a);
+      if (dist <= bestDist) {
+        best = a;
+        bestDist = dist;
+      }
+    }
+    return best;
+  }
+  const num = (v, d = 1) => (Math.abs(v) < 0.0005 ? 0 : v).toFixed(d);
+  const txt = (el, s) => {
+    if (el && el._lastText !== s) {
+      el.textContent = s;
+      el._lastText = s;
+    }
+  };
+
+  function initialEnergy() {
+    return MASS * G * state.h0 + 0.5 * MASS * state.v0 * state.v0;
+  }
+
+  function energies() {
+    const K = 0.5 * MASS * state.v * state.v;
+    const U = MASS * G * Math.max(0, state.y);
+    const E = K + U;
+    const E0 = initialEnergy();
+    return { K, U, E, E0, Q: Math.max(0, E0 - E) };
+  }
+
+  function predictedRange() {
+    if (state.v0 < 1e-9) return 0;
+    const rad = state.angle * Math.PI / 180;
+    const vx0 = state.v0 * Math.cos(rad);
+    const vy0 = state.v0 * Math.sin(rad);
+    const t = (vy0 + Math.sqrt(Math.max(0, vy0 * vy0 + 2 * G * state.h0))) / G;
+    return Math.max(0, vx0 * t);
+  }
+
+  function computeWorldWidth() {
+    return Math.max(12, Math.ceil((predictedRange() * 1.12) / 5) * 5);
+  }
+
+  function resetState() {
+    const rad = state.angle * Math.PI / 180;
+    state.x = 0;
+    state.y = state.h0;
+    state.vx = state.v0 * Math.cos(rad);
+    state.vy = state.v0 * Math.sin(rad);
+    state.v = Math.hypot(state.vx, state.vy);
+    state.t = 0;
+    state.landed = false;
+    state.maxY = state.y;
+    state.minY = state.y;
+    state.worldWidth = computeWorldWidth();
+    state.path = [{ x: 0, y: state.y }];
+    state.lastPathT = 0;
+    state.landedReal = 0;
+  }
+
+  function statusInfo() {
+    if (state.landed) {
+      return {
+        label: '落地',
+        cls: 'land',
+        detail: state.drag ? '部分能量已變成熱能' : '回到地面，E 仍守恆'
+      };
+    }
+    if (state.aiming) {
+      return {
+        label: '設定角度',
+        cls: 'pause',
+        detail: 'θ = ' + Math.round(state.angle) + '°　放開完成'
+      };
+    }
+    if (state.running) {
+      if (Math.abs(state.vy) < 0.18) {
+        if (state.maxY > state.h0 + 0.2) {
+          return {
+            label: '最高點',
+            cls: 'apex',
+            detail: state.drag ? '阻力作用中 · E 下降' : 'vy = 0，U 最大'
+          };
+        }
+        if (state.v0 > 0 && state.angle < 1) {
+          return {
+            label: '水平拋出',
+            cls: 'fall',
+            detail: state.drag ? 'U → K，E 同時轉為熱' : '水平拋出：U → K'
+          };
+        }
+        return {
+          label: state.v0 > 0 ? '上升' : '自由落體',
+          cls: state.v0 > 0 ? 'rise' : 'fall',
+          detail: state.drag ? 'U → K，E 同時轉為熱' : 'U → K，E 保持不變'
+        };
+      }
+      if (state.vy > 0) {
+        return {
+          label: '上升',
+          cls: 'rise',
+          detail: state.drag ? 'K → U，E 同時轉為熱' : 'K → U，E 保持不變'
+        };
+      }
+      return {
+        label: '下降',
+        cls: 'fall',
+        detail: state.drag ? 'U → K，E 同時轉為熱' : 'U → K，E 保持不變'
+      };
+    }
+    if (state.t > 0.0001) {
+      if (Math.abs(state.vy) < 0.18 && state.maxY > state.h0 + 0.5) {
+        return { label: '最高點', cls: 'apex', detail: 'vy = 0，U 最大（已暫停）' };
+      }
+      return { label: '暫停', cls: 'pause', detail: '按「繼續」接續' };
+    }
+    if (state.v0 > 0.01) {
+      return {
+        label: '準備',
+        cls: 'ready',
+        detail: 'θ = ' + Math.round(state.angle) + '°　滑鼠或手指拖曳可調'
+      };
+    }
+    return { label: '準備', cls: 'ready', detail: '自由落體：U → K' };
+  }
+
+  function playLabel() {
+    if (state.running) return '暫停';
+    if (state.landed) return '重播';
+    if (state.t > 0.0001) return '繼續';
+    return '播放';
+  }
+
+  function updateStaticLabels() {
+    txt(ui.h0Val, num(state.h0));
+    txt(ui.v0Val, num(state.v0));
+    txt(ui.angleVal, String(Math.round(state.angle)));
+    for (const el of ui.angleOptions) {
+      el.classList.toggle('active', Number(el.dataset.angle) === state.angle);
+    }
+    txt(ui.e0Val, num(initialEnergy()) + ' J');
+    ui.dragHint.textContent = state.drag ? '開啟 · E 轉為熱能' : '關閉 · E 守恆';
+    ui.heatNote.textContent = state.drag ? '　阻力產生' : '　阻力關閉';
+    ui.heatBlock.classList.toggle('on', state.drag);
+    ui.hint.innerHTML = state.drag
+      ? '阻力做負功：<b>E 下降</b>，差額變成 <b class="q">熱能 Q</b>。'
+      : '<b>K 減少多少，U 就增加多少</b>；E 不變。';
+  }
+
+  function setRangeFill(input) {
+    const min = Number(input.min);
+    const max = Number(input.max);
+    const pct = max > min ? ((Number(input.value) - min) / (max - min)) * 100 : 0;
+    input.style.setProperty('--pct', pct.toFixed(2) + '%');
+  }
+
+  function syncInputs() {
+    ui.h0Range.value = String(state.h0);
+    ui.v0Range.value = String(state.v0);
+    setRangeFill(ui.h0Range);
+    setRangeFill(ui.v0Range);
+  }
+
+  function updateUI() {
+    const en = energies();
+    const scale = Math.max(en.E0 * 1.08, 0.001);
+    const pct = (v) => clamp((v / scale) * 100, 0, 100);
+
+    ui.kBar.style.width = pct(en.K).toFixed(2) + '%';
+    ui.uBar.style.width = pct(en.U).toFixed(2) + '%';
+    ui.eBar.style.width = pct(en.E).toFixed(2) + '%';
+
+    const eEnd = pct(en.E);
+    const loss = Math.max(0, pct(en.E0) - eEnd);
+    ui.eLoss.style.left = eEnd.toFixed(2) + '%';
+    ui.eLoss.style.width = loss.toFixed(2) + '%';
+    ui.eLoss.style.opacity = loss > 0.25 ? '1' : '0';
+
+    ui.refLine.style.left = pct(en.E0).toFixed(2) + '%';
+    ui.refLine.style.opacity = en.E0 > 0.1 ? '1' : '0';
+
+    txt(ui.kVal, num(en.K));
+    txt(ui.uVal, num(en.U));
+    txt(ui.eVal, num(en.E));
+    txt(ui.qVal, num(en.Q));
+    txt(ui.e0Val, num(en.E0) + ' J');
+
+    const qPct = en.E0 > 0.1 ? clamp((en.Q / en.E0) * 100, 0, 100) : 0;
+    ui.qBar.style.width = qPct.toFixed(2) + '%';
+
+    txt(ui.hVal, num(state.y));
+    txt(ui.vVal, num(Math.abs(state.v)));
+    txt(ui.tVal, num(state.t, 2));
+
+    const info = statusInfo();
+    txt(ui.statusPill, info.label);
+    txt(ui.statusDetail, info.detail);
+    const cls = 'pill ' + info.cls;
+    if (ui.statusPill.className !== cls) ui.statusPill.className = cls;
+
+    const pl = playLabel();
+    txt(ui.playText, pl);
+    txt(ui.playIcon, state.running ? '❚❚' : '▶');
+    ui.playBtn.setAttribute('aria-label', state.running ? '暫停運動' : (state.landed ? '重新播放' : '播放運動'));
+
+    const canPlay = initialEnergy() > 0.01 || state.running;
+    ui.playBtn.disabled = !canPlay;
+  }
+
+  function pushPath(force) {
+    if (!force && state.t - state.lastPathT < 0.03) return;
+    const last = state.path[state.path.length - 1];
+    if (last && Math.abs(last.x - state.x) < 1e-5 && Math.abs(last.y - state.y) < 1e-5) return;
+    state.path.push({ x: state.x, y: state.y });
+    state.lastPathT = state.t;
+    if (state.path.length > 900) state.path.shift();
+  }
+
+  function stepPhysics(dt) {
+    if (!state.running || state.landed || dt <= 0) return;
+    if (state.h0 <= 0 && Math.abs(state.v0) < 1e-9) {
+      state.running = false;
+      return;
+    }
+
+    let remain = dt;
+    let guard = 0;
+    while (remain > 1e-9 && !state.landed && guard < 2400) {
+      guard += 1;
+      const h = Math.min(0.004, remain);
+      const x0 = state.x;
+      const y0 = state.y;
+      const vx0 = state.vx;
+      const vy0 = state.vy;
+      let nextX;
+      let nextY;
+      let nextVx;
+      let nextVy;
+
+      if (state.drag) {
+        const acc = (vx, vy) => {
+          const speed = Math.hypot(vx, vy);
+          const cd = (DRAG_C / MASS) * speed;
+          return { ax: -cd * vx, ay: -G - cd * vy };
+        };
+
+        const a1 = acc(vx0, vy0);
+        const k1x = vx0;
+        const k1y = vy0;
+        const k1vx = a1.ax;
+        const k1vy = a1.ay;
+
+        const vx2 = vx0 + 0.5 * h * k1vx;
+        const vy2 = vy0 + 0.5 * h * k1vy;
+        const a2 = acc(vx2, vy2);
+        const k2x = vx2;
+        const k2y = vy2;
+        const k2vx = a2.ax;
+        const k2vy = a2.ay;
+
+        const vx3 = vx0 + 0.5 * h * k2vx;
+        const vy3 = vy0 + 0.5 * h * k2vy;
+        const a3 = acc(vx3, vy3);
+        const k3x = vx3;
+        const k3y = vy3;
+        const k3vx = a3.ax;
+        const k3vy = a3.ay;
+
+        const vx4 = vx0 + h * k3vx;
+        const vy4 = vy0 + h * k3vy;
+        const a4 = acc(vx4, vy4);
+        const k4x = vx4;
+        const k4y = vy4;
+        const k4vx = a4.ax;
+        const k4vy = a4.ay;
+
+        nextX = x0 + (h / 6) * (k1x + 2 * k2x + 2 * k3x + k4x);
+        nextY = y0 + (h / 6) * (k1y + 2 * k2y + 2 * k3y + k4y);
+        nextVx = vx0 + (h / 6) * (k1vx + 2 * k2vx + 2 * k3vx + k4vx);
+        nextVy = vy0 + (h / 6) * (k1vy + 2 * k2vy + 2 * k3vy + k4vy);
+      } else {
+        nextX = x0 + vx0 * h;
+        nextY = y0 + vy0 * h - 0.5 * G * h * h;
+        nextVx = vx0;
+        nextVy = vy0 - G * h;
+      }
+
+      if (nextY <= 0 && nextVy < 0) {
+        let fraction;
+        if (!state.drag && y0 > 0) {
+          const tHit = (vy0 + Math.sqrt(Math.max(0, vy0 * vy0 + 2 * G * y0))) / G;
+          fraction = clamp(tHit / h, 0, 1);
+        } else {
+          fraction = y0 > 0 ? clamp(y0 / (y0 - nextY), 0, 1) : 1;
+        }
+        state.t += h * fraction;
+        state.x = x0 + (nextX - x0) * fraction;
+        state.y = 0;
+        state.vx = vx0 + (nextVx - vx0) * fraction;
+        state.vy = vy0 + (nextVy - vy0) * fraction;
+        state.v = Math.hypot(state.vx, state.vy);
+        state.minY = 0;
+        state.landed = true;
+        state.running = false;
+        state.landedReal = performance.now();
+        pushPath(true);
+        break;
+      }
+
+      state.x = nextX;
+      state.y = nextY;
+      state.vx = nextVx;
+      state.vy = nextVy;
+      state.v = Math.hypot(state.vx, state.vy);
+      state.t += h;
+      if (state.y > state.maxY) state.maxY = state.y;
+      if (state.y < state.minY) state.minY = state.y;
+      pushPath(false);
+      remain -= h;
+    }
+  }
+
+  function resetSim() {
+    state.running = false;
+    state.aiming = false;
+    resetState();
+    updateUI();
+    drawScene(performance.now());
+  }
+
+  function play() {
+    if (state.running) return;
+    state.aiming = false;
+    if (state.landed || state.t < 1e-6) {
+      resetState();
+    }
+    if (initialEnergy() < 0.01) {
+      state.running = false;
+      updateUI();
+      return;
+    }
+    state.running = true;
+    lastFrame = performance.now();
+    updateUI();
+  }
+
+  function pause() {
+    state.running = false;
+    updateUI();
+  }
+
+  function togglePlay() {
+    if (state.running) pause();
+    else play();
+  }
+
+  function setAngle(nextAngle) {
+    const value = Number(nextAngle);
+    if (!Number.isFinite(value)) return getState();
+    state.angle = snapAngle(value);
+    state.running = false;
+    resetState();
+    updateStaticLabels();
+    updateUI();
+    drawScene(performance.now());
+    return getState();
+  }
+
+  function setInitial(next) {
+    const opts = next || {};
+    if (opts.h0 != null && Number.isFinite(Number(opts.h0))) {
+      state.h0 = clamp(Number(opts.h0), 0, 20);
+    }
+    if (opts.v0 != null && Number.isFinite(Number(opts.v0))) {
+      state.v0 = clamp(Number(opts.v0), 0, 20);
+    }
+    if (opts.angle != null && Number.isFinite(Number(opts.angle))) {
+      state.angle = snapAngle(Number(opts.angle));
+    }
+    state.running = false;
+    state.aiming = false;
+    resetState();
+    syncInputs();
+    updateStaticLabels();
+    updateUI();
+    drawScene(performance.now());
+    return getState();
+  }
+
+  function setDrag(on) {
+    state.drag = Boolean(on);
+    ui.dragToggle.checked = state.drag;
+    updateStaticLabels();
+    updateUI();
+    drawScene(performance.now());
+    return getState();
+  }
+
+  function setTimeScale(scale) {
+    const val = Number(scale);
+    if (val === 0.5 || val === 1 || val === 2) {
+      state.timeScale = val;
+      updateSpeedButtons();
+      updateUI();
+    }
+    return getState();
+  }
+
+  function updateSpeedButtons() {
+    for (const btn of ui.speedBtns) {
+      const active = Number(btn.dataset.speed) === state.timeScale;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+  }
+
+  function getState() {
+    const en = energies();
+    const info = statusInfo();
+    return {
+      h0: state.h0,
+      v0: state.v0,
+      angle: state.angle,
+      x: state.x,
+      y: state.y,
+      vx: state.vx,
+      vy: state.vy,
+      v: state.v,
+      t: state.t,
+      K: en.K,
+      U: en.U,
+      E: en.E,
+      E0: en.E0,
+      Q: en.Q,
+      drag: state.drag,
+      running: state.running,
+      landed: state.landed,
+      maxY: state.maxY,
+      minY: state.minY,
+      worldWidth: state.worldWidth,
+      pathPoints: state.path.length,
+      aiming: state.aiming,
+      timeScale: state.timeScale,
+      status: info.label,
+      playLabel: playLabel()
+    };
+  }
+
+  function advanceBy(seconds) {
+    const wasRunning = state.running;
+    state.aiming = false;
+    state.running = true;
+    let remain = Math.max(0, Number(seconds) || 0);
+    let guard = 0;
+    while (remain > 1e-9 && !state.landed && guard < 200000) {
+      guard += 1;
+      const dt = Math.min(0.004, remain);
+      stepPhysics(dt);
+      remain -= dt;
+    }
+    state.running = wasRunning && !state.landed;
+    updateUI();
+    drawScene(performance.now());
+    return getState();
+  }
+
+  function simulate(seconds) {
+    state.running = false;
+    state.aiming = false;
+    resetState();
+    state.running = true;
+    let remain = Math.max(0, Number(seconds) || 0);
+    let guard = 0;
+    while (remain > 1e-9 && !state.landed && guard < 200000) {
+      guard += 1;
+      const dt = Math.min(0.004, remain);
+      stepPhysics(dt);
+      remain -= dt;
+    }
+    state.running = false;
+    updateUI();
+    drawScene(performance.now());
+    return getState();
+  }
+
+  /* ---------------- canvas ---------------- */
+  function fitCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    const nextDpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    if (rect.width !== cssW || rect.height !== cssH || nextDpr !== dpr) {
+      cssW = rect.width;
+      cssH = rect.height;
+      dpr = nextDpr;
+      canvas.width = Math.max(1, Math.round(cssW * dpr));
+      canvas.height = Math.max(1, Math.round(cssH * dpr));
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function rr(x, y, w, h, r) {
+    const radius = Math.min(r, w * 0.5, h * 0.5);
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + w - radius, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+    ctx.lineTo(x + w, y + h - radius);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+    ctx.lineTo(x + radius, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+  }
+
+  function drawPill(text, x, y, opts) {
+    const o = opts || {};
+    const align = o.align || 'left';
+    const color = o.color || '#e9f8fd';
+    const border = o.border || 'rgba(120,200,220,.24)';
+    const bg = o.bg || 'rgba(3,12,18,.74)';
+    const font = o.font || 13;
+    const padX = o.padX == null ? 7 : o.padX;
+    const padY = o.padY == null ? 4 : o.padY;
+    ctx.save();
+    ctx.font = '800 ' + font + 'px ' + FONT;
+    const tw = ctx.measureText(text).width;
+    const w = tw + padX * 2;
+    const h = font * 1.42 + padY * 2;
+    let px = x;
+    if (align === 'right') px = x - w;
+    else if (align === 'center') px = x - w / 2;
+    px = clamp(px, 4, Math.max(4, cssW - w - 4));
+    const py = clamp(y - h / 2, 3, Math.max(3, cssH - h - 3));
+    rr(px, py, w, h, Math.min(7, h / 2));
+    ctx.fillStyle = bg;
+    ctx.fill();
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = color;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, px + padX, py + h / 2 + 0.6);
+    ctx.restore();
+    return { x: px, y: py, w: w, h: h };
+  }
+
+  function drawArrow(x1, y1, x2, y2, color, width, head, dashed) {
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = width;
+    ctx.lineCap = 'round';
+    if (dashed) ctx.setLineDash([6, 5]);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const ang = Math.atan2(y2 - y1, x2 - x1);
+    const h = head || 9;
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - h * Math.cos(ang - 0.42), y2 - h * Math.sin(ang - 0.42));
+    ctx.lineTo(x2 - h * Math.cos(ang + 0.42), y2 - h * Math.sin(ang + 0.42));
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawScene(now) {
+    fitCanvas();
+    if (cssW < 20 || cssH < 20) return;
+
+    const w = cssW;
+    const h = cssH;
+    const compact = w < 520;
+    const stacked = window.matchMedia('(max-width: 980px)').matches;
+    const railW = stacked ? 0 : clamp(window.innerWidth * 0.235, 310, 400);
+    const padL = compact ? 52 : clamp(w * 0.068, 62, 88);
+    const padR = compact ? 22 : 34;
+    const padT = compact ? 54 : 66;
+    const padB = compact ? 96 : 112;
+    const xAxis = padL;
+    const groundY = h - padB;
+    const topY = padT;
+    const plotRight = Math.max(xAxis + 150, stacked ? w - padR : w - railW - 54);
+
+    const angleRad = state.angle * Math.PI / 180;
+    const initialVy = state.v0 * Math.sin(angleRad);
+    const predictedApex = state.h0 + (initialVy > 0 ? (initialVy * initialVy) / (2 * G) : 0);
+    const ballR = clamp(w * 0.02, 14, 26);
+    const launchX = xAxis + Math.max(ballR + 18, (plotRight - xAxis) * 0.055);
+    const pxPerMeterX = (plotRight - launchX - 8) / Math.max(1, state.worldWidth);
+    const verticalFit = (groundY - topY) / Math.max(0.001, pxPerMeterX);
+    const worldTop = Math.max(8, Math.ceil(Math.max(verticalFit, predictedApex + 1.5)));
+
+    const yPx = (value) => groundY - (clamp(value, 0, worldTop) / worldTop) * (groundY - topY);
+    const xPx = (value) => launchX + (value / Math.max(1, state.worldWidth)) * (plotRight - launchX - 8);
+    const launchPy = yPx(state.h0);
+    const ballX = xPx(state.x);
+    const ballY = yPx(state.y);
+    sceneGeom = {
+      launchPx: launchX,
+      launchPy: launchPy,
+      plotRight: plotRight,
+      topY: topY,
+      groundY: groundY,
+      ballR: ballR,
+      worldTop: worldTop
+    };
+
+    ctx.clearRect(0, 0, w, h);
+
+    // air / backdrop
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#0b2637');
+    bg.addColorStop(0.58, '#081b27');
+    bg.addColorStop(1, '#061219');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+
+    const glow = ctx.createRadialGradient(w * 0.76, h * 0.08, 0, w * 0.76, h * 0.08, w * 0.55);
+    glow.addColorStop(0, 'rgba(90,205,230,.13)');
+    glow.addColorStop(0.55, 'rgba(60,150,180,.035)');
+    glow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+
+    // faint grid
+    const tickTarget = 6;
+    const raw = worldTop / tickTarget;
+    const steps = [1, 2, 4, 5, 10, 20];
+    let tickStep = 20;
+    for (const s of steps) {
+      if (s >= raw) {
+        tickStep = s;
+        break;
+      }
+    }
+
+    const tickFont = clamp(w / 56, 12.5, 20);
+    ctx.save();
+    ctx.font = '700 ' + tickFont.toFixed(1) + 'px ' + FONT;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    for (let value = 0; value <= worldTop + 0.001; value += tickStep) {
+      const py = yPx(value);
+      if (value > 0) {
+        ctx.strokeStyle = 'rgba(143,201,218,.075)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(xAxis + 4, py);
+        ctx.lineTo(plotRight, py);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(181,216,227,.62)';
+      ctx.fillText(String(Math.round(value)), xAxis - 12, py + 0.5);
+      ctx.strokeStyle = 'rgba(143,201,218,.33)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(xAxis - 5, py);
+      ctx.lineTo(xAxis + 3, py);
+      ctx.stroke();
+    }
+    if (worldTop % tickStep > 1e-6) {
+      const py = yPx(worldTop);
+      ctx.fillStyle = 'rgba(181,216,227,.62)';
+      ctx.fillText(String(Math.round(worldTop)), xAxis - 12, py + 0.5);
+      ctx.strokeStyle = 'rgba(143,201,218,.33)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(xAxis - 5, py);
+      ctx.lineTo(xAxis + 3, py);
+      ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(143,201,218,.52)';
+    ctx.font = '800 ' + (tickFont + 1).toFixed(1) + 'px ' + FONT;
+    ctx.textAlign = 'left';
+    ctx.fillText('m', 4, topY + 2);
+
+    // height axis
+    ctx.strokeStyle = 'rgba(143,201,218,.38)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(xAxis, topY - 5);
+    ctx.lineTo(xAxis, groundY + 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // horizontal distance grid
+    const rawX = state.worldWidth / 6;
+    const xSteps = [1, 2, 5, 10, 20, 25, 50];
+    let xStep = 50;
+    for (const s of xSteps) {
+      if (s >= rawX) {
+        xStep = s;
+        break;
+      }
+    }
+    ctx.save();
+    ctx.strokeStyle = 'rgba(143,201,218,.05)';
+    ctx.lineWidth = 1;
+    for (let value = 0; value <= state.worldWidth + 0.001; value += xStep) {
+      const px = xPx(value);
+      ctx.beginPath();
+      ctx.moveTo(px, topY);
+      ctx.lineTo(px, groundY);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // ground
+    const groundGrad = ctx.createLinearGradient(0, groundY, 0, h);
+    groundGrad.addColorStop(0, 'rgba(20,45,57,.88)');
+    groundGrad.addColorStop(1, 'rgba(5,14,20,.98)');
+    ctx.fillStyle = groundGrad;
+    ctx.fillRect(0, groundY, w, h - groundY);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, groundY, w, h - groundY);
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(143,201,218,.13)';
+    ctx.lineWidth = 1;
+    for (let x = -h; x < w + h; x += 13) {
+      ctx.beginPath();
+      ctx.moveTo(x, h);
+      ctx.lineTo(x + (h - groundY) * 0.55, groundY);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.strokeStyle = 'rgba(190,226,237,.58)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(0, groundY);
+    ctx.lineTo(w, groundY);
+    ctx.stroke();
+
+    // bottom fade keeps the stats strip readable over the ground texture
+    const fade = ctx.createLinearGradient(0, h - 150, 0, h);
+    fade.addColorStop(0, 'rgba(4,14,21,0)');
+    fade.addColorStop(0.55, 'rgba(4,14,21,.28)');
+    fade.addColorStop(1, 'rgba(4,14,21,.76)');
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, h - 150, w, 150);
+
+    // horizontal distance labels (above the ground line)
+    ctx.save();
+    ctx.font = '700 ' + Math.max(9.5, tickFont * 0.72).toFixed(1) + 'px ' + FONT;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillStyle = 'rgba(169,206,219,.42)';
+    for (let value = 0; value <= state.worldWidth + 0.001; value += xStep) {
+      ctx.fillText(String(Math.round(value)), xPx(value), groundY - 7);
+    }
+    ctx.restore();
+
+    // start and apex reference lines
+    const noteFont = clamp(w / 66, 12.5, 17);
+    if (state.h0 > 0.08) {
+      const startY = yPx(state.h0);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,200,87,.2)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 7]);
+      ctx.beginPath();
+      ctx.moveTo(xAxis + 4, startY);
+      ctx.lineTo(plotRight, startY);
+      ctx.stroke();
+      ctx.restore();
+      ctx.save();
+      ctx.font = '800 ' + (noteFont + 0.5).toFixed(1) + 'px ' + FONT;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = 'rgba(255,213,126,.76)';
+      ctx.shadowColor = 'rgba(0,0,0,.7)';
+      ctx.shadowBlur = 4;
+      ctx.fillText('h₀', xAxis + 8, startY - noteFont * 0.85);
+      ctx.restore();
+    }
+
+    if (state.maxY > state.h0 + 0.35 || (state.v0 > 0 && state.maxY >= state.h0)) {
+      const apexY = yPx(state.maxY);
+      if (Math.abs(apexY - yPx(state.h0)) > 5) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(99,220,255,.23)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 7]);
+        ctx.beginPath();
+        ctx.moveTo(xAxis + 4, apexY);
+        ctx.lineTo(plotRight, apexY);
+        ctx.stroke();
+        ctx.restore();
+        ctx.save();
+        ctx.font = '800 ' + (noteFont + 0.5).toFixed(1) + 'px ' + FONT;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(159,232,255,.84)';
+        ctx.shadowColor = 'rgba(0,0,0,.72)';
+        ctx.shadowBlur = 4;
+        ctx.fillText('最高 ' + num(state.maxY) + ' m', plotRight - 2, apexY - noteFont * 0.85);
+        ctx.restore();
+      }
+    }
+
+    // launch-angle guide: a straight dashed ray from the left launch point
+    const showAim = state.aiming || (state.t < 1e-6 && !state.landed);
+    const displayY = state.landed ? groundY - ballR * 0.7 : ballY;
+    if (showAim) {
+      const dirX = Math.cos(angleRad);
+      const dirY = -Math.sin(angleRad);
+      let aimLen = compact ? 260 : 340;
+      if (dirX > 0.001) aimLen = Math.min(aimLen, (plotRight - 8 - launchX) / dirX);
+      if (dirY < -0.001) aimLen = Math.min(aimLen, (launchPy - topY - 8) / (-dirY));
+      aimLen = Math.max(32, aimLen);
+      const endX = launchX + dirX * aimLen;
+      const endY = launchPy + dirY * aimLen;
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(190,226,238,.2)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 6]);
+      ctx.beginPath();
+      ctx.moveTo(launchX, launchPy);
+      ctx.lineTo(Math.min(plotRight, launchX + 78), launchPy);
+      ctx.stroke();
+      ctx.restore();
+
+      drawArrow(
+        launchX, launchPy, endX, endY,
+        state.aiming ? 'rgba(210,244,255,.92)' : 'rgba(190,235,250,.55)',
+        state.aiming ? 2.8 : 2.2,
+        9,
+        true
+      );
+
+      const arcR = Math.max(34, ballR + 18);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,200,87,.14)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(launchX, launchPy, arcR, 0, -Math.PI / 2, true);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,200,87,.72)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(launchX, launchPy, arcR, 0, -angleRad, true);
+      ctx.stroke();
+
+      for (const a of ANGLE_STEPS) {
+        const rad = a * Math.PI / 180;
+        const active = a === state.angle;
+        const inner = arcR - 5;
+        const outer = arcR + (active ? 8 : 5);
+        ctx.strokeStyle = active ? 'rgba(255,222,145,.98)' : 'rgba(255,200,87,.46)';
+        ctx.lineWidth = active ? 2.2 : 1.2;
+        ctx.beginPath();
+        ctx.moveTo(launchX + Math.cos(rad) * inner, launchPy - Math.sin(rad) * inner);
+        ctx.lineTo(launchX + Math.cos(rad) * outer, launchPy - Math.sin(rad) * outer);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      const mid = angleRad / 2;
+      const labelX = launchX + Math.cos(mid) * (arcR + 18);
+      const labelY = launchPy - Math.sin(mid) * (arcR + 18) - (state.angle < 8 ? 22 : 0);
+      drawPill('θ ' + Math.round(state.angle) + '°', labelX, labelY, {
+        align: 'center',
+        font: clamp(w / 78, 12, 14.5),
+        color: '#fff1c6',
+        border: 'rgba(255,200,87,.38)',
+        bg: 'rgba(24,16,4,.78)'
+      });
+    }
+
+    // actual travelled path
+    if (state.path.length > 1) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,174,76,.42)';
+      ctx.lineWidth = clamp(w * 0.005, 2.6, 5);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.setLineDash([2, 8]);
+      ctx.shadowColor = 'rgba(255,160,60,.38)';
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      for (let i = 0; i < state.path.length; i += 1) {
+        const p = state.path[i];
+        const px = xPx(p.x);
+        const py = yPx(p.y);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // current height guide
+    ctx.save();
+    ctx.strokeStyle = 'rgba(190,226,238,.22)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 6]);
+    ctx.beginPath();
+    ctx.moveTo(xAxis + 3, displayY);
+    ctx.lineTo(ballX - ballR - 7, displayY);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(210,238,247,.66)';
+    ctx.beginPath();
+    ctx.arc(xAxis, displayY, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // launch-point marker
+    if (state.h0 > 0.03) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,200,87,.46)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 4]);
+      ctx.beginPath();
+      ctx.arc(launchX, launchPy, ballR * 0.88, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // ground shadow
+    const altitude = clamp(state.y / worldTop, 0, 1);
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.34)';
+    ctx.beginPath();
+    ctx.ellipse(ballX, groundY + 3, ballR * (0.95 - altitude * 0.42), ballR * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // ball
+    ctx.save();
+    ctx.shadowColor = 'rgba(255,162,48,.72)';
+    ctx.shadowBlur = clamp(w * 0.018, 12, 28);
+    const ballGrad = ctx.createRadialGradient(
+      ballX - ballR * 0.34, displayY - ballR * 0.42, ballR * 0.12,
+      ballX, displayY, ballR
+    );
+    ballGrad.addColorStop(0, '#fff8da');
+    ballGrad.addColorStop(0.32, '#ffd875');
+    ballGrad.addColorStop(0.72, '#ffab32');
+    ballGrad.addColorStop(1, '#e77a0c');
+    ctx.fillStyle = ballGrad;
+    ctx.beginPath();
+    ctx.arc(ballX, displayY, ballR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(255,244,211,.7)';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.76)';
+    ctx.beginPath();
+    ctx.arc(ballX - ballR * 0.3, displayY - ballR * 0.38, ballR * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // velocity arrow and label
+    const speed = state.v;
+    if (state.t < 1e-6 && !state.landed) {
+      // the dashed launch-angle ray already shows the initial direction
+    } else if (state.landed) {
+      drawPill('落地 ' + num(speed) + ' m/s', ballX + ballR + 12, displayY - ballR - 18, {
+        font: clamp(w / 78, 11.5, 14),
+        color: '#ffd8d2',
+        border: 'rgba(255,123,107,.42)',
+        bg: 'rgba(30,8,6,.78)'
+      });
+    } else if (speed < 0.05) {
+      drawPill('v = 0', ballX + ballR + 12, displayY, {
+        font: clamp(w / 78, 11.5, 14),
+        color: 'rgba(207,241,250,.92)',
+        border: 'rgba(143,201,218,.28)'
+      });
+    } else {
+      const ux = state.vx / speed;
+      const uy = state.vy / speed;
+      const dirX = ux;
+      const dirY = -uy;
+      const startX = ballX + dirX * (ballR + 3);
+      const startY = displayY + dirY * (ballR + 3);
+      const len = clamp(28 + speed * 3.05, 38, compact ? 88 : 112);
+      const endX = startX + dirX * len;
+      const endY = startY + dirY * len;
+      drawArrow(startX, startY, endX, endY, 'rgba(99,220,255,.92)', clamp(w * 0.0038, 2.5, 4), 9, false);
+      const align = endX > plotRight - 92 ? 'right' : 'left';
+      drawPill(num(speed) + ' m/s', align === 'right' ? plotRight - 4 : endX + 8, clamp(endY, topY + 12, groundY - 12), {
+        align: align,
+        font: clamp(w / 78, 11.5, 14),
+        color: '#bdefff',
+        border: 'rgba(99,220,255,.32)'
+      });
+    }
+
+    // drag arrow and heat wisps
+    if (!state.landed && state.drag && speed > 0.35 && state.t > 0) {
+      const dirX = -state.vx / speed;
+      const dirY = state.vy / speed;
+      const startX = ballX + dirX * (ballR + 4);
+      const startY = displayY + dirY * (ballR + 4);
+      const len = clamp(24 + DRAG_C * speed * speed * 7, 26, compact ? 70 : 96);
+      const endX = startX + dirX * len;
+      const endY = startY + dirY * len;
+      drawArrow(startX, startY, endX, endY, 'rgba(255,137,88,.8)', 2, 8, true);
+      if (len > 34) {
+        const align = dirX < 0 ? 'right' : 'left';
+        drawPill('阻力', align === 'right' ? endX - 7 : endX + 7, endY, {
+          align: align,
+          font: clamp(w / 84, 10.5, 13),
+          color: 'rgba(255,180,140,.9)',
+          border: 'rgba(255,137,88,.3)',
+          bg: 'rgba(30,10,4,.7)'
+        });
+      }
+    }
+
+    if (!state.landed && state.drag && speed > 1.2 && state.t > 0) {
+      const phase = (now || 0) * 0.0028;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,151,90,.2)';
+      ctx.lineWidth = 1.4;
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 2; i += 1) {
+        const baseX = ballX + (i - 0.5) * ballR * 0.64;
+        const baseY = displayY - ballR - 7 - ((phase + i * 0.38) % 1) * 16;
+        ctx.beginPath();
+        for (let k = 0; k <= 6; k += 1) {
+          const yy = baseY - k * 2.1;
+          const xx = baseX + Math.sin(k * 0.8 + phase + i) * 1.7;
+          if (k === 0) ctx.moveTo(xx, yy);
+          else ctx.lineTo(xx, yy);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // landing ripple
+    if (state.landed && state.landedReal) {
+      const age = ((now || performance.now()) - state.landedReal) / 1000;
+      if (age >= 0 && age < 1.05) {
+        const p = age / 1.05;
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255,190,120,' + (0.48 * (1 - p)).toFixed(3) + ')';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(ballX, groundY, ballR + p * 72, (ballR + p * 72) * 0.22, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+  }
+
+  /* ---------------- loop ---------------- */
+  function loop(now) {
+    const dt = Math.min((now - lastFrame) / 1000, 0.05);
+    lastFrame = now;
+    if (state.running) {
+      stepPhysics(dt * state.timeScale);
+      updateUI();
+    }
+    drawScene(now);
+    if (!ready) {
+      ready = true;
+      window.__APP_READY__ = true;
+    }
+    requestAnimationFrame(loop);
+  }
+
+  /* ---------------- events ---------------- */
+  ui.h0Range.addEventListener('input', () => {
+    state.h0 = clamp(Number(ui.h0Range.value), 0, 20);
+    state.running = false;
+    state.aiming = false;
+    resetState();
+    setRangeFill(ui.h0Range);
+    updateStaticLabels();
+    updateUI();
+    drawScene(performance.now());
+  });
+
+  ui.v0Range.addEventListener('input', () => {
+    state.v0 = clamp(Number(ui.v0Range.value), 0, 20);
+    state.running = false;
+    state.aiming = false;
+    resetState();
+    setRangeFill(ui.v0Range);
+    updateStaticLabels();
+    updateUI();
+    drawScene(performance.now());
+  });
+
+  ui.playBtn.addEventListener('click', togglePlay);
+  ui.resetBtn.addEventListener('click', resetSim);
+
+  ui.dragToggle.addEventListener('change', () => {
+    state.drag = ui.dragToggle.checked;
+    updateStaticLabels();
+    updateUI();
+    drawScene(performance.now());
+  });
+
+  for (const btn of ui.speedBtns) {
+    btn.addEventListener('click', () => {
+      setTimeScale(Number(btn.dataset.speed));
+    });
+  }
+
+  /* ---------------- fullscreen ---------------- */
+  function fullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  function updateFsButton() {
+    const active = Boolean(fullscreenElement());
+    fsBtn.classList.toggle('is-fullscreen', active);
+    fsBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    const label = active ? '結束全螢幕' : '全螢幕';
+    fsBtn.setAttribute('aria-label', label);
+    fsBtn.title = label;
+  }
+
+  async function toggleFullscreen() {
+    const root = document.documentElement;
+    try {
+      if (!fullscreenElement()) {
+        if (root.requestFullscreen) await root.requestFullscreen();
+        else if (root.webkitRequestFullscreen) root.webkitRequestFullscreen();
+      } else if (document.exitFullscreen) {
+        await document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+    } catch (err) {
+      /* unsupported or blocked by the browser */
+    }
+    updateFsButton();
+  }
+
+  fsBtn.addEventListener('click', toggleFullscreen);
+  document.addEventListener('fullscreenchange', updateFsButton);
+  document.addEventListener('webkitfullscreenchange', updateFsButton);
+  updateFsButton();
+
+  /* ---------------- angle aiming ---------------- */
+  let aimPointerId = null;
+
+  function angleFromPointer(e) {
+    if (!sceneGeom) return state.angle;
+    const rect = canvas.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    const dx = px - sceneGeom.launchPx;
+    const dy = sceneGeom.launchPy - py;
+    let deg;
+    if (dx <= 1) {
+      deg = dy >= 0 ? 90 : 0;
+    } else {
+      deg = Math.atan2(dy, dx) * 180 / Math.PI;
+    }
+    return snapAngle(clamp(deg, 0, 90));
+  }
+
+  function beginAim(e) {
+    if (!sceneGeom || state.aiming) return;
+    const mouse = e.pointerType === 'mouse' || e.pointerType === '';
+    const allowed = !mouse || e.button === 0 || e.button === 2;
+    if (!allowed) return;
+    e.preventDefault();
+    state.aiming = true;
+    aimPointerId = e.pointerId;
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch (err) {
+      /* synthetic pointer events may not own a capture */
+    }
+    setAngle(angleFromPointer(e));
+  }
+
+  function moveAim(e) {
+    if (!state.aiming) return;
+    if (aimPointerId != null && e.pointerId !== aimPointerId) return;
+    e.preventDefault();
+    setAngle(angleFromPointer(e));
+  }
+
+  function endAim(e) {
+    if (!state.aiming) return;
+    if (aimPointerId != null && e.pointerId !== aimPointerId) return;
+    const finalAngle = Number.isFinite(e.clientX) && Number.isFinite(e.clientY)
+      ? angleFromPointer(e)
+      : state.angle;
+    state.aiming = false;
+    aimPointerId = null;
+    try {
+      canvas.releasePointerCapture(e.pointerId);
+    } catch (err) {
+      /* ignore */
+    }
+    if (finalAngle !== state.angle) {
+      setAngle(finalAngle);
+    } else {
+      updateUI();
+      drawScene(performance.now());
+    }
+  }
+
+  canvas.addEventListener('pointerdown', beginAim);
+  canvas.addEventListener('pointermove', moveAim);
+  canvas.addEventListener('pointerup', endAim);
+  canvas.addEventListener('pointercancel', endAim);
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  document.addEventListener('keydown', (e) => {
+    const tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (tag === 'INPUT' || tag === 'BUTTON' || tag === 'TEXTAREA') return;
+    if (e.code === 'Space') {
+      e.preventDefault();
+      togglePlay();
+    } else if (e.key === 'r' || e.key === 'R') {
+      resetSim();
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    lastFrame = performance.now();
+  });
+
+  window.addEventListener('resize', () => {
+    drawScene(performance.now());
+  });
+
+  window.__ENERGY__ = {
+    getState,
+    setInitial,
+    setAngle,
+    setDrag,
+    setTimeScale,
+    play,
+    pause,
+    reset: resetSim,
+    advanceBy,
+    simulate
+  };
+
+  /* ---------------- init ---------------- */
+  resetState();
+  syncInputs();
+  updateStaticLabels();
+  updateSpeedButtons();
+  updateUI();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

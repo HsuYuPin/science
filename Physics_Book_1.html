@@ -2615,7 +2615,7 @@ function buildHoloBase() {
   const ray = new THREE.Mesh(
     new THREE.CylinderGeometry(0.005, 0.014, beamH, 10, 1, true),
     new THREE.MeshBasicMaterial({
-      color: 0xd8feff, transparent: true, opacity: 0.22,
+      color: 0xd8feff, transparent: true, opacity: 0.20,
       blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false
     })
   );
@@ -4441,19 +4441,29 @@ function buildMagicSeal() {
 }
 buildMagicSeal();
 
+function setProjectionLightVisible(v) {
+  // the beam / ray / terminal rings are separate from the seal group
+  for (const key of ['outerGlow', 'innerGlow', 'ray', 'originGlow', 'baseRing', 'topRing']) {
+    if (holo[key]) holo[key].visible = v;
+  }
+  if (holo.particles) holo.particles.visible = v;
+}
+
 function hideMagic() {
   if (magic.group) magic.group.visible = false;
+  setProjectionLightVisible(false);
 }
 
 function showMagic() {
   if (magic.group) magic.group.visible = true;
+  setProjectionLightVisible(true);
 }
 
 function animateMagic(dt) {
   if (!magic.spinner) return;
   magic.time += dt;
-  magic.spinner.rotation.z += dt * 0.048;
-  if (magic.outerRing) magic.outerRing.rotation.z -= dt * 0.024;
+  magic.spinner.rotation.z += dt * 0.144;
+  if (magic.outerRing) magic.outerRing.rotation.z -= dt * 0.072;
 }
 
 /* ============================================================

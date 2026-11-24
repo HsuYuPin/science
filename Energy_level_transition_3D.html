@@ -4,579 +4,179 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<title>原子能階與躍遷｜波耳氫原子模型</title>
+<title>原子光譜｜波耳氫原子模型 v4</title>
 <style>
 :root{
-  --bg:#03060d;
-  --panel-a:rgba(10,20,40,.92);
-  --panel-b:rgba(5,10,22,.90);
-  --line:rgba(122,177,255,.16);
-  --line-strong:rgba(122,205,255,.38);
-  --text:#edf7ff;
-  --muted:#8da7c4;
-  --dim:#6f87a6;
+  --bg:#02050b;
+  --panel-a:rgba(8,17,33,.88);
+  --panel-b:rgba(3,8,18,.90);
+  --line:rgba(122,190,255,.22);
+  --text:#edf8ff;
+  --muted:#8ba9c6;
   --cyan:#5ce4ff;
-  --cyan-deep:#25b9ee;
   --amber:#ffc46b;
-  --coral:#ff7c73;
-  --green:#79f2b2;
-  --violet:#b49cff;
-  --pink:#ff9bd0;
-  --ui:clamp(13px,.92vw,18px);
-  --small:clamp(12.5px,.70vw,14px);
-  --tiny:clamp(12.5px,.62vw,13.5px);
-  --radius:18px;
-  --shadow:0 22px 60px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.045);
   --font:"Noto Sans TC","Microsoft JhengHei","PingFang TC","Heiti TC",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --hud-w:clamp(228px,22vw,332px);
+  --small:clamp(12.5px,.76vw,14px);
+  --tiny:clamp(12.5px,.66vw,13.5px);
 }
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
-  margin:0;
-  color:var(--text);
-  background:
-    radial-gradient(1100px 780px at 22% 10%,rgba(19,78,122,.34),transparent 62%),
-    radial-gradient(900px 720px at 88% 0%,rgba(89,42,112,.24),transparent 60%),
-    radial-gradient(1200px 820px at 50% 112%,rgba(16,52,84,.30),transparent 64%),
-    linear-gradient(180deg,#050a15,#02050b 70%);
-  font-family:var(--font);
-  overflow:hidden;
-  -webkit-tap-highlight-color:transparent;
+  margin:0;background:var(--bg);color:var(--text);font-family:var(--font);
+  overflow:hidden;-webkit-tap-highlight-color:transparent;
 }
-button,input{font-family:inherit}
-button{color:inherit}
-button:focus-visible,input:focus-visible{outline:2px solid rgba(92,228,255,.85);outline-offset:3px}
+button{font-family:inherit;color:inherit}
+button:focus-visible{outline:2px solid rgba(92,228,255,.9);outline-offset:3px}
 #app{
-  height:100%;
-  display:grid;
-  grid-template-rows:auto minmax(0,1fr) auto;
-  gap:12px;
-  padding:12px 16px 14px;
+  position:fixed;inset:0;overflow:hidden;
+  background:
+    radial-gradient(70% 62% at 52% 42%,rgba(15,62,98,.30),transparent 68%),
+    radial-gradient(52% 48% at 18% 10%,rgba(23,93,133,.18),transparent 68%),
+    radial-gradient(60% 70% at 88% 92%,rgba(67,33,98,.14),transparent 70%),
+    linear-gradient(180deg,#040914,#02050b 72%);
 }
+#app::after{
+  content:"";position:absolute;inset:0;z-index:8;pointer-events:none;
+  background:
+    radial-gradient(72% 76% at 50% 46%,transparent 55%,rgba(1,4,10,.55) 100%),
+    linear-gradient(180deg,rgba(1,4,10,.25),transparent 16%,transparent 82%,rgba(1,4,10,.42));
+}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#gl:active{cursor:grabbing}
 
-/* ── top bar ───────────────────────────────────────────── */
-.topbar{
-  min-height:66px;
-  display:flex;
-  align-items:center;
-  gap:clamp(14px,2vw,34px);
-  padding:0 112px 0 2px;
+/* ── 左上角小型控制框 ─────────────────────────────────── */
+.hud{
+  position:fixed;left:16px;top:16px;z-index:24;
+  width:var(--hud-w);
+  display:flex;flex-direction:column;gap:8px;
+  pointer-events:none;
 }
-.brand{display:flex;align-items:center;gap:13px;min-width:0;flex-shrink:0}
-.brand-mark{
-  width:clamp(40px,3.2vw,54px);height:clamp(40px,3.2vw,54px);
-  border-radius:50%;
-  display:grid;place-items:center;
-  background:radial-gradient(circle at 35% 30%,rgba(92,228,255,.22),rgba(9,22,43,.82) 62%);
-  border:1px solid rgba(92,228,255,.26);
-  box-shadow:0 0 34px rgba(44,174,231,.16), inset 0 0 22px rgba(92,228,255,.08);
+.control-card,.spectrum-card{
+  pointer-events:auto;
+  border:1px solid var(--line);
+  background:linear-gradient(158deg,var(--panel-a),var(--panel-b));
+  box-shadow:0 18px 46px rgba(0,0,0,.40),inset 0 1px 0 rgba(255,255,255,.05);
+  backdrop-filter:blur(12px);
 }
-.brand-mark svg{width:70%;height:70%}
-.brand-text{min-width:0}
-.eyebrow{
-  font-size:var(--tiny);
-  letter-spacing:.24em;
-  color:#6fdcff;
-  font-weight:800;
-  margin-bottom:3px;
-  white-space:nowrap;
+.control-card{border-radius:15px;padding:9px}
+.element-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.element-btn{
+  position:relative;height:50px;border-radius:11px;
+  border:1px solid rgba(122,190,255,.17);
+  background:linear-gradient(160deg,rgba(20,42,74,.60),rgba(6,14,29,.66));
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  cursor:pointer;transition:transform .15s ease,border-color .15s ease,background .15s ease;
 }
-h1{
-  margin:0;
-  font-size:clamp(26px,2.05vw,42px);
-  line-height:1.02;
-  font-weight:900;
-  letter-spacing:.015em;
-  white-space:nowrap;
-  background:linear-gradient(100deg,#ffffff 8%,#b9f2ff 47%,#ffd798 96%);
-  -webkit-background-clip:text;background-clip:text;color:transparent;
-  text-shadow:0 0 38px rgba(92,228,255,.12);
+.element-btn:hover{transform:translateY(-1px);border-color:rgba(92,228,255,.45)}
+.element-btn b{font-size:clamp(22px,1.6vw,30px);line-height:1;font-weight:900;letter-spacing:-.02em;color:#f2fbff}
+.element-btn span{font-size:clamp(13px,.9vw,17px);font-weight:800;color:#c9e2f4}
+.element-btn.active{
+  border-color:rgba(92,228,255,.65);
+  background:linear-gradient(155deg,rgba(43,147,182,.52),rgba(10,55,85,.66));
+  box-shadow:0 0 22px rgba(38,181,231,.18),inset 0 0 18px rgba(92,228,255,.07);
 }
-.statbar{
-  margin-left:auto;
-  display:flex;
-  align-items:stretch;
-  gap:clamp(10px,1.7vw,30px);
-  min-width:0;
+.element-btn.active b,.element-btn.active span{color:#fff}
+.element-btn.active::after{
+  content:"";position:absolute;left:9px;right:9px;bottom:4px;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
 }
-.stat{
-  min-width:clamp(82px,7vw,132px);
-  padding-left:clamp(10px,1vw,18px);
-  border-left:1px solid rgba(122,177,255,.14);
+.mode-row{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:7px}
+.mode-btn{
+  height:35px;border-radius:9px;border:1px solid rgba(122,190,255,.15);
+  background:rgba(3,10,21,.62);color:#88a4c2;
+  font-size:clamp(13px,.85vw,15.5px);font-weight:800;letter-spacing:.03em;cursor:pointer;
+  transition:background .15s ease,border-color .15s ease,box-shadow .15s ease;white-space:nowrap;
 }
-.stat>span{
-  display:block;
-  color:var(--dim);
-  font-size:var(--tiny);
-  letter-spacing:.1em;
-  font-weight:700;
-  margin-bottom:3px;
-  white-space:nowrap;
+.mode-btn:hover{color:#e3f9ff;border-color:rgba(92,228,255,.36)}
+.mode-btn.active{
+  color:#03121c;border-color:rgba(92,228,255,.65);
+  background:linear-gradient(150deg,#8ceeff,#35c5ed 55%,#1d94c9);
+  box-shadow:0 0 20px rgba(37,185,238,.20);
 }
-.stat strong{
-  display:block;
-  font-size:clamp(19px,1.48vw,29px);
-  line-height:1.08;
-  font-weight:900;
-  color:#f6fbff;
-  white-space:nowrap;
-  font-variant-numeric:tabular-nums;
+.spectrum-card{border-radius:13px;padding:6px;background:rgba(2,6,13,.86)}
+#spectrum{display:block;width:100%;height:61px;border-radius:8px}
+.levels-card{
+  border-radius:13px;padding:7px;background:rgba(2,6,13,.86);
+  border:1px solid var(--line);
+  box-shadow:0 18px 46px rgba(0,0,0,.40),inset 0 1px 0 rgba(255,255,255,.05);
+  backdrop-filter:blur(12px);pointer-events:none;
 }
-.stat strong i{font-style:normal;font-size:.55em;color:var(--muted);font-weight:700;letter-spacing:.02em}
-.stat em{
-  display:block;margin-top:2px;font-style:normal;
-  font-size:var(--tiny);color:#8fd9ee;white-space:nowrap;
+#levels{display:block;width:100%;height:254px;border-radius:8px}
+.hint{
+  position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
+  z-index:12;pointer-events:none;
+  color:rgba(216,241,255,.78);
+  font-size:clamp(13px,1.05vw,18px);font-weight:700;letter-spacing:.12em;
+  text-shadow:0 2px 8px #000,0 0 18px rgba(0,0,0,.9);white-space:nowrap;
 }
-
-/* ── fixed icon tools ──────────────────────────────────── */
 .corner-tools{
-  position:fixed;top:14px;right:14px;
-  display:flex;gap:8px;z-index:90;
+  position:fixed;top:14px;right:14px;z-index:40;
+  display:flex;gap:8px;
 }
 .icon-btn{
-  width:44px;height:44px;
-  display:grid;place-items:center;
-  border-radius:13px;
-  border:1px solid rgba(127,198,255,.22);
-  background:linear-gradient(160deg,rgba(15,33,58,.92),rgba(6,13,27,.90));
-  box-shadow:0 10px 28px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.06);
-  cursor:pointer;
-  transition:transform .16s ease,border-color .16s ease,background .16s ease;
+  width:44px;height:44px;border-radius:13px;display:grid;place-items:center;
+  border:1px solid rgba(127,198,255,.24);
+  background:linear-gradient(160deg,rgba(15,33,58,.94),rgba(5,12,24,.94));
+  box-shadow:0 10px 28px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.06);
+  cursor:pointer;transition:transform .15s ease,border-color .15s ease;
 }
-.icon-btn:hover{transform:translateY(-1px);border-color:rgba(92,228,255,.55);background:rgba(16,43,71,.96)}
+.icon-btn:hover{transform:translateY(-1px);border-color:rgba(92,228,255,.60)}
 .icon-btn svg{width:20px;height:20px;fill:none;stroke:#bdefff;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-
-/* ── layout ────────────────────────────────────────────── */
-.main{
-  min-height:0;
-  display:grid;
-  grid-template-columns:clamp(342px,24.5vw,470px) minmax(0,1fr);
-  gap:12px;
-}
-.card{
-  position:relative;
-  border-radius:var(--radius);
-  border:1px solid var(--line);
-  background:
-    linear-gradient(155deg,rgba(12,24,46,.92),rgba(5,10,22,.90) 58%,rgba(4,8,18,.94));
-  box-shadow:var(--shadow);
-  overflow:hidden;
-}
-.card::after{
-  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
-  background:linear-gradient(120deg,rgba(255,255,255,.035),transparent 22%,transparent 78%,rgba(92,228,255,.03));
-}
-.card-head{
-  position:relative;z-index:2;
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:12px 16px 8px;flex-shrink:0;
-}
-.card-head h2{
-  margin:0;font-size:clamp(15px,1.02vw,20px);line-height:1.15;font-weight:900;
-  letter-spacing:.08em;color:#eaf8ff;
-}
-.chip{
-  display:inline-flex;align-items:center;gap:5px;
-  min-height:24px;padding:3px 9px;border-radius:999px;
-  border:1px solid rgba(92,228,255,.20);
-  background:rgba(21,69,101,.24);
-  color:#a9e8ff;font-size:var(--tiny);font-weight:800;letter-spacing:.04em;white-space:nowrap;
-}
-
-/* ── 3D stage ──────────────────────────────────────────── */
-.stage{
-  grid-column:2;grid-row:1;
-  min-height:0;
-  background:
-    radial-gradient(70% 72% at 50% 42%,rgba(14,53,91,.36),transparent 68%),
-    radial-gradient(45% 52% at 50% 52%,rgba(19,67,104,.18),transparent 70%),
-    linear-gradient(180deg,#040a14,#02050b);
-}
-#gl{
-  position:absolute;inset:0;width:100%;height:100%;display:block;
-  touch-action:none;cursor:grab;
-}
-#gl:active{cursor:grabbing}
-.stage-head{
-  position:absolute;left:16px;top:14px;z-index:4;
-  display:flex;align-items:center;gap:8px;
-  font-size:var(--small);font-weight:900;letter-spacing:.08em;color:#dff7ff;
-  pointer-events:none;text-shadow:0 1px 12px rgba(0,0,0,.7);
-}
-.live-dot{
-  width:8px;height:8px;border-radius:50%;background:var(--cyan);
-  box-shadow:0 0 0 4px rgba(92,228,255,.10),0 0 16px rgba(92,228,255,.85);
-}
-.stage-sub{
-  margin-left:3px;padding-left:10px;border-left:1px solid rgba(122,177,255,.18);
-  color:#7f98b8;font-size:var(--tiny);font-weight:600;letter-spacing:.02em;
-}
-.transition-chip{
-  position:absolute;right:18px;top:14px;z-index:5;
-  display:flex;align-items:center;gap:8px;
-  max-width:min(60%,460px);
-  padding:8px 12px 9px;border-radius:13px;
-  border:1px solid rgba(122,177,255,.18);
-  background:rgba(4,11,24,.76);
-  backdrop-filter:blur(8px);
-  box-shadow:0 12px 34px rgba(0,0,0,.28);
-  font-size:var(--small);color:#e9f7ff;
-  opacity:0;transform:translateY(-6px);
-  transition:opacity .22s ease,transform .22s ease,border-color .22s ease;
-  pointer-events:none;white-space:nowrap;
-}
-.transition-chip.show{opacity:1;transform:translateY(0);border-color:color-mix(in srgb,var(--photon,#5ce4ff) 45%,transparent)}
-.transition-chip .tc-label{
-  font-size:var(--tiny);font-weight:900;letter-spacing:.08em;
-  color:var(--photon,#72e9ff);
-}
-.transition-chip b{font-size:1.08em;font-weight:900;letter-spacing:.02em}
-.transition-chip strong{
-  font-weight:900;color:var(--photon,#72e9ff);
-  font-variant-numeric:tabular-nums;
-}
-.stage-badges{
-  position:absolute;left:16px;bottom:15px;z-index:4;
-  display:flex;gap:7px;flex-wrap:wrap;pointer-events:none;
-}
-.badge{
-  display:inline-flex;align-items:center;gap:6px;
-  padding:6px 10px;border-radius:999px;
-  background:rgba(4,11,24,.72);border:1px solid rgba(122,177,255,.16);
-  color:#cfeaff;font-size:var(--tiny);font-weight:800;letter-spacing:.03em;
-  backdrop-filter:blur(6px);
-}
-.badge.ghost{color:#88a1bf;background:rgba(4,11,24,.48)}
-.stage-foot{
-  position:absolute;right:16px;bottom:15px;z-index:4;
-  display:flex;align-items:center;gap:10px;
-  color:#7891af;font-size:var(--tiny);pointer-events:none;
-}
-.foot-key{color:#a8c8e7;font-weight:800}
-.foot-hint{padding-left:10px;border-left:1px solid rgba(122,177,255,.16)}
-.stage-vignette{
-  position:absolute;inset:0;z-index:3;pointer-events:none;
-  background:
-    radial-gradient(70% 72% at 50% 46%,transparent 56%,rgba(2,5,11,.52) 100%),
-    linear-gradient(180deg,rgba(2,5,11,.12),transparent 15%,transparent 80%,rgba(2,5,11,.36));
-}
 .hover-tip{
-  position:absolute;z-index:8;left:0;top:0;
-  min-width:152px;padding:8px 11px 9px;border-radius:12px;
+  position:fixed;z-index:30;left:0;top:0;pointer-events:none;opacity:0;
+  transform:translate(-50%,-120%);transition:opacity .12s ease;
+  padding:7px 10px 8px;border-radius:10px;
   border:1px solid rgba(92,228,255,.30);
-  background:rgba(3,10,22,.90);
-  box-shadow:0 14px 36px rgba(0,0,0,.42),0 0 24px rgba(44,174,231,.10);
-  pointer-events:none;opacity:0;transform:translate(-50%,-120%);
-  transition:opacity .12s ease;
-  font-size:var(--small);
+  background:rgba(2,8,18,.92);
+  box-shadow:0 14px 34px rgba(0,0,0,.44);
+  color:#e9f8ff;font-size:var(--small);font-weight:800;white-space:nowrap;
 }
 .hover-tip.show{opacity:1}
-.hover-tip b{display:block;color:#fff;font-size:1.16em;font-weight:900;letter-spacing:.02em}
-.hover-tip span{display:block;color:#9be7ff;font-size:.86em;margin-top:2px;font-variant-numeric:tabular-nums}
-.hover-tip em{display:block;color:#778fae;font-size:.76em;font-style:normal;margin-top:3px;letter-spacing:.04em}
+.hover-tip i{font-style:normal;color:#8ceeff;font-weight:700;margin-left:4px}
 .loading{
-  position:absolute;inset:0;z-index:20;display:grid;place-items:center;
-  background:radial-gradient(circle at 50% 48%,rgba(7,20,38,.58),rgba(2,5,11,.96));
-  color:#a9d9ee;font-size:var(--small);font-weight:700;letter-spacing:.08em;
-  transition:opacity .35s ease,visibility .35s ease;pointer-events:none;
+  position:absolute;inset:0;z-index:60;display:grid;place-items:center;
+  background:radial-gradient(circle at 50% 46%,rgba(7,21,39,.55),rgba(2,5,11,.97));
+  color:#a9d9ee;font-size:var(--small);font-weight:700;letter-spacing:.1em;
+  pointer-events:none;transition:opacity .35s ease,visibility .35s ease;
 }
 .loading.hide{opacity:0;visibility:hidden}
-.loading.error{color:#ffb0a8;line-height:1.7;text-align:center;padding:30px}
 .loading .spinner{
-  width:34px;height:34px;border-radius:50%;margin:0 auto 14px;
+  width:32px;height:32px;margin:0 auto 13px;border-radius:50%;
   border:2px solid rgba(92,228,255,.16);border-top-color:var(--cyan);
   animation:spin 1s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
-
-/* ── right side ────────────────────────────────────────── */
-.side{grid-column:1;grid-row:1;min-height:0;display:flex;flex-direction:column;gap:12px}
-.levels-card{flex:1 1 auto;min-height:224px;display:flex;flex-direction:column}
-.canvas-wrap{position:relative;flex:1 1 auto;min-height:0}
-.canvas-wrap canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-.level-readout{
-  flex-shrink:0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;
-  margin:6px 12px 12px;border-radius:12px;overflow:hidden;
-  border:1px solid rgba(122,177,255,.12);background:rgba(122,177,255,.08);
-}
-.level-readout>div{padding:8px 10px 9px;background:rgba(4,10,22,.82)}
-.level-readout span{display:block;color:var(--dim);font-size:var(--tiny);font-weight:700;letter-spacing:.08em}
-.level-readout strong{
-  display:block;margin-top:2px;color:#eaf8ff;font-size:clamp(15px,1.15vw,21px);
-  font-weight:900;white-space:nowrap;font-variant-numeric:tabular-nums;
-}
-.control-card{flex:0 0 auto;display:flex;flex-direction:column}
-.ctrl-body{position:relative;z-index:2;display:flex;flex-direction:column;gap:9px;padding:0 14px 13px}
-
-.element-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
-.element-btn{
-  position:relative;display:flex;align-items:center;gap:8px;
-  min-height:52px;padding:7px 9px;
-  border-radius:13px;border:1px solid rgba(122,177,255,.14);
-  background:linear-gradient(160deg,rgba(19,39,69,.42),rgba(7,15,30,.52));
-  cursor:pointer;text-align:left;transition:border-color .16s ease,background .16s ease,transform .16s ease;
-}
-.element-btn:hover{border-color:rgba(92,228,255,.38);transform:translateY(-1px)}
-.element-btn b{
-  font-size:clamp(19px,1.42vw,27px);line-height:1;font-weight:900;color:#eaf8ff;
-  min-width:1.7em;letter-spacing:-.02em;
-}
-.element-btn span{display:block;font-size:var(--small);font-weight:900;color:#dceeff;line-height:1.1}
-.element-btn small{display:block;margin-top:1px;font-size:var(--tiny);color:#7f98b8;white-space:nowrap}
-.element-btn.active{
-  border-color:rgba(92,228,255,.55);
-  background:linear-gradient(155deg,rgba(38,133,168,.36),rgba(9,42,67,.48));
-  box-shadow:0 0 22px rgba(36,174,228,.13),inset 0 0 18px rgba(92,228,255,.06);
-}
-.element-btn.active b{color:#fff}
-.element-btn.active::after{
-  content:"";position:absolute;left:11px;right:11px;bottom:5px;height:2px;border-radius:2px;
-  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
-}
-.ctrl-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:8px;align-items:end}
-.field{min-width:0}
-.field-label{
-  display:block;margin-bottom:4px;color:#89a3c2;font-size:var(--tiny);
-  font-weight:800;letter-spacing:.08em;white-space:nowrap;
-}
-.mode-seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:3px;border-radius:11px;background:rgba(2,8,18,.58);border:1px solid rgba(122,177,255,.12)}
-.mode-seg button{
-  min-height:34px;padding:4px 5px;border:0;border-radius:8px;background:transparent;
-  color:#8fa8c6;font-size:var(--tiny);font-weight:800;cursor:pointer;transition:.15s ease;
-}
-.mode-seg button:hover{color:#dff7ff}
-.mode-seg button.active{background:linear-gradient(160deg,rgba(41,152,184,.66),rgba(19,92,124,.72));color:#fff;box-shadow:0 0 16px rgba(40,189,235,.18)}
-.energy-field{min-width:112px}
-.energy-input{
-  display:flex;align-items:baseline;gap:5px;
-  height:42px;padding:0 10px;border-radius:11px;
-  border:1px solid rgba(122,177,255,.16);background:rgba(2,8,18,.58);
-  transition:border-color .18s ease,box-shadow .18s ease;
-}
-.energy-input:focus-within{border-color:rgba(92,228,255,.52);box-shadow:0 0 0 3px rgba(92,228,255,.07)}
-.energy-input.exact{border-color:rgba(121,242,178,.55);box-shadow:0 0 0 3px rgba(121,242,178,.07)}
-.energy-input input{
-  width:100%;min-width:0;border:0;background:transparent;color:#fff;outline:0;
-  font-size:clamp(22px,1.62vw,31px);line-height:1;font-weight:900;
-  font-variant-numeric:tabular-nums;
-  appearance:textfield;-moz-appearance:textfield;
-}
-.energy-input input::-webkit-outer-spin-button,.energy-input input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.energy-input span{color:#86a0be;font-size:var(--small);font-weight:800;white-space:nowrap}
-input[type="range"]{
-  --p:32%;
-  -webkit-appearance:none;appearance:none;
-  width:100%;height:7px;margin:1px 0 0;border-radius:999px;outline:0;cursor:pointer;
-  background:linear-gradient(90deg,var(--cyan) 0 var(--p),rgba(86,125,167,.20) var(--p) 100%);
-  box-shadow:inset 0 0 0 1px rgba(122,177,255,.10);
-}
-input[type="range"]::-webkit-slider-thumb{
-  -webkit-appearance:none;width:19px;height:19px;border-radius:50%;
-  background:radial-gradient(circle at 35% 30%,#fff,#7eeaff 42%,#1fa5d2 100%);
-  border:2px solid #06121e;box-shadow:0 0 0 3px rgba(92,228,255,.16),0 0 18px rgba(92,228,255,.55);
-}
-input[type="range"]::-moz-range-thumb{
-  width:17px;height:17px;border:2px solid #06121e;border-radius:50%;
-  background:#7eeaff;box-shadow:0 0 0 3px rgba(92,228,255,.16),0 0 18px rgba(92,228,255,.55);
-}
-.range-labels{display:flex;justify-content:space-between;gap:6px;margin-top:-3px;color:#6f87a6;font-size:var(--tiny);font-weight:700}
-.range-labels span:nth-child(2){color:#9edcf2;text-align:center;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.action-row{display:grid;grid-template-columns:1.55fr 1.05fr .62fr;gap:7px}
-.action-row button{
-  min-height:42px;border-radius:11px;border:1px solid rgba(122,177,255,.16);
-  background:rgba(9,22,41,.72);color:#c9e5f6;font-size:var(--small);font-weight:900;
-  letter-spacing:.03em;cursor:pointer;transition:.16s ease;white-space:nowrap;
-}
-.action-row button:hover{transform:translateY(-1px);border-color:rgba(92,228,255,.38);color:#fff}
-.action-row .primary{
-  border-color:rgba(92,228,255,.58);
-  background:linear-gradient(150deg,#7deaff,#2cb8e6 55%,#1585bf);
-  color:#02131c;box-shadow:0 0 24px rgba(37,185,238,.22),inset 0 1px 0 rgba(255,255,255,.36);
-}
-.action-row .primary:hover{color:#000;box-shadow:0 0 30px rgba(37,185,238,.36)}
-.action-row .secondary.active{border-color:rgba(255,196,107,.58);background:rgba(102,63,16,.36);color:#ffe3ad;box-shadow:0 0 20px rgba(255,196,107,.11)}
-.orbit-row{display:flex;align-items:center;gap:8px;min-height:34px}
-.orbit-row>.field-label{margin:0;flex:0 0 auto}
-.orbit-buttons{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.orbit-buttons button{
-  width:33px;height:33px;border-radius:50%;border:1px solid rgba(122,177,255,.18);
-  background:rgba(9,22,41,.72);color:#93b0cd;font-size:var(--small);font-weight:900;
-  cursor:pointer;transition:.15s ease;font-variant-numeric:tabular-nums;
-}
-.orbit-buttons button:hover{border-color:rgba(92,228,255,.52);color:#eafcff;transform:translateY(-1px)}
-.orbit-buttons button.active{
-  border-color:rgba(255,196,107,.68);color:#1b1103;
-  background:linear-gradient(150deg,#ffe2a4,#ffc46b);
-  box-shadow:0 0 18px rgba(255,196,107,.28);
-}
-.status{
-  display:flex;align-items:flex-start;gap:8px;
-  min-height:35px;padding:7px 9px;border-radius:10px;
-  border:1px solid rgba(122,177,255,.11);background:rgba(2,8,18,.42);
-  color:#a8c2dc;font-size:var(--tiny);line-height:1.35;font-weight:600;
-}
-.status-dot{
-  flex:0 0 auto;width:7px;height:7px;border-radius:50%;margin-top:5px;
-  background:var(--cyan);box-shadow:0 0 10px rgba(92,228,255,.75);
-}
-.status.success .status-dot{background:var(--green);box-shadow:0 0 11px rgba(121,242,178,.85)}
-.status.error .status-dot{background:var(--coral);box-shadow:0 0 11px rgba(255,124,115,.9)}
-.status.info .status-dot{background:var(--cyan)}
-.status.success{color:#c9f7e3;border-color:rgba(121,242,178,.18)}
-.status.error{color:#ffc4bf;border-color:rgba(255,124,115,.21);background:rgba(48,10,14,.26)}
-#statusText{min-width:0}
-.formula{
-  margin-top:-3px;color:#6e86a4;font-size:var(--tiny);font-weight:600;
-  letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-
-/* ── spectrum ──────────────────────────────────────────── */
-.spectrum-card{
-  height:clamp(120px,14.6vh,168px);min-height:0;display:flex;flex-direction:column;
-}
-.spectrum-head{padding:10px 16px 4px}
-.spectrum-meta{display:flex;align-items:center;gap:clamp(8px,1.1vw,18px);min-width:0}
-#spectrumHint{color:#7f98b8;font-size:var(--tiny);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.series-legend{display:flex;align-items:center;gap:10px;color:#8ea8c5;font-size:var(--tiny);font-weight:700;white-space:nowrap}
-.series-legend i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:1px}
-.mini-seg{display:flex;gap:3px;padding:3px;border-radius:9px;background:rgba(2,8,18,.58);border:1px solid rgba(122,177,255,.12)}
-.mini-seg button{
-  min-height:28px;padding:3px 9px;border:0;border-radius:7px;background:transparent;
-  color:#8ba4c3;font-size:var(--tiny);font-weight:800;cursor:pointer;transition:.15s ease;white-space:nowrap;
-}
-.mini-seg button:hover{color:#e0f8ff}
-.mini-seg button.active{background:rgba(38,141,174,.48);color:#fff;box-shadow:0 0 14px rgba(40,189,235,.14)}
-.spectrum-wrap{flex:1 1 auto;min-height:0;margin:0 10px 8px}
-
-/* ── responsive ────────────────────────────────────────── */
-@media (min-width:1800px) and (min-height:1040px){
-  .stat strong{font-size:31px}
-  .level-readout strong{font-size:25px}
-  .energy-input input{font-size:34px}
-  .card-head h2{font-size:21px}
-  .element-btn b{font-size:28px}
-  .element-btn span{font-size:16px}
-  .element-btn small{font-size:13px}
-  .field-label{font-size:14px}
-  .mode-seg button{font-size:14px}
-  .action-row button{font-size:15px}
-  .orbit-buttons button{font-size:15px;width:36px;height:36px}
-  .status{font-size:14px}
-  .formula{font-size:13.5px}
-  .mini-seg button{font-size:14px}
-  .chip{font-size:13.5px}
-  .stage-head{font-size:16px}
-  .stage-sub{font-size:13.5px}
-  .transition-chip{font-size:16px}
-  .badge{font-size:14px}
-  .level-readout span{font-size:13.5px}
-}
-@media (max-width:1500px){
-  .element-btn small{display:none}
-}
-@media (max-width:1280px){
-  .stage-sub{display:none}
-  .statbar{gap:14px}
-  .stat{min-width:86px;padding-left:10px}
-}
-@media (max-width:1120px){
-  .statbar .stat:nth-child(1){display:none}
-  .main{grid-template-columns:clamp(322px,30vw,390px) minmax(0,1fr)}
-  .series-legend{display:none}
-}
-@media (max-width:900px){
-  .statbar{display:none}
-  .main{grid-template-columns:330px minmax(0,1fr)}
-  .spectrum-card{height:122px}
-}
-@media (max-height:880px) and (min-width:721px){
-  #app{padding:9px 12px 10px;gap:9px}
-  .topbar{min-height:54px;padding-right:104px}
-  .eyebrow{display:none}
-  h1{font-size:clamp(23px,1.9vw,32px)}
-  .main{gap:9px}
-  .side{gap:9px}
-  .card-head{padding:8px 13px 5px}
-  .levels-card{min-height:182px}
-  .level-readout{margin:2px 9px 8px}
-  .level-readout>div{padding:5px 8px 6px}
-  .level-readout strong{font-size:clamp(14px,1.05vw,18px)}
-  .ctrl-body{gap:6px;padding:0 11px 9px}
-  .element-btn{min-height:44px;padding:5px 7px}
-  .element-btn small{display:none}
-  .field-label{margin-bottom:2px}
-  .mode-seg button{min-height:30px}
-  .energy-input{height:36px}
-  .energy-input input{font-size:clamp(19px,1.35vw,25px)}
-  .action-row button{min-height:36px}
-  .orbit-buttons button{width:29px;height:29px}
-  .status{min-height:30px;padding:5px 8px}
-  .formula{display:none}
-  .spectrum-card{height:clamp(106px,13.4vh,132px)}
-  .spectrum-head{padding:7px 13px 2px}
-}
 @media (max-width:720px){
-  body{overflow:auto;overflow-x:hidden}
-  #app{height:auto;min-height:100vh;grid-template-rows:auto auto auto auto;gap:8px;padding:8px 8px calc(12px + env(safe-area-inset-bottom))}
-  .topbar{min-height:56px;padding:0 92px 0 2px;gap:8px}
-  .brand-mark{width:38px;height:38px}
-  h1{font-size:clamp(23px,6.3vw,30px);white-space:normal;line-height:1.08}
-  .eyebrow{font-size:12.5px;letter-spacing:.15em}
-  .statbar{display:none}
+  .hud{left:8px;top:8px;width:218px;gap:6px}
+  .control-card{padding:7px;border-radius:13px}
+  .element-row{gap:5px}
+  .element-btn{height:40px;border-radius:9px;gap:4px}
+  .element-btn b{font-size:18px}
+  .element-btn span{font-size:12.5px}
+  .mode-row{gap:4px;margin-top:5px}
+  .mode-btn{height:31px;font-size:12.5px;border-radius:8px}
+  .spectrum-card{padding:5px;border-radius:11px}
+  #spectrum{height:48px}
+  /* 手機：能階圖佔下半部（位置由程式配置），3D 原子移到上半部 */
+  .hud{width:auto;right:8px;align-items:stretch}
+  .control-card,.spectrum-card{width:218px}
+  .levels-card{
+    position:fixed;left:8px;right:8px;bottom:8px;z-index:24;
+    padding:6px;border-radius:12px;
+  }
+  #levels{height:250px}
   .corner-tools{top:8px;right:8px;gap:6px}
   .icon-btn{width:38px;height:38px;border-radius:11px}
-  .main{display:contents}
-  .stage{order:1;height:46vh;min-height:330px;grid-column:auto;grid-row:auto}
-  .side{order:3;display:flex;flex-direction:column;gap:8px;grid-column:auto;grid-row:auto}
-  .spectrum-card{order:2;height:128px}
-  .levels-card{min-height:292px;flex:none}
-  .control-card{flex:none}
-  .stage-head{left:10px;top:9px;font-size:12.5px}
-  .stage-sub{display:none}
-  .transition-chip{right:9px;top:44px;max-width:64%;padding:6px 8px 7px;font-size:12.5px;gap:5px}
-  .transition-chip b{font-size:1.02em}
-  .stage-badges{left:10px;bottom:10px;gap:4px}
-  .badge{padding:4px 7px;font-size:12.5px}
-  .stage-foot{display:none}
+  .icon-btn svg{width:18px;height:18px}
+  .hint{bottom:calc(8px + 262px);font-size:12.5px}
   .hover-tip{display:none!important}
-  .card-head{padding:9px 92px 6px 11px}
-  .card-head h2{font-size:16px}
-  .level-readout{margin:3px 8px 9px}
-  .level-readout>div{padding:5px 7px 6px}
-  .level-readout span{font-size:12.5px}
-  .level-readout strong{font-size:15px}
-  .ctrl-body{gap:7px;padding:0 10px 11px}
-  .element-seg{gap:5px}
-  .element-btn{min-height:48px;padding:5px 7px;gap:5px}
-  .element-btn b{font-size:20px}
-  .element-btn span{font-size:13px}
-  .element-btn small{font-size:12.5px}
-  .ctrl-grid{grid-template-columns:1.1fr .9fr;gap:6px}
-  .mode-seg button{font-size:12.5px}
-  .energy-input{height:40px;padding:0 8px}
-  .energy-input input{font-size:24px}
-  .action-row{gap:5px;grid-template-columns:1.35fr 1fr .66fr}
-  .action-row button{font-size:12.5px;min-height:40px;padding:4px 5px}
-  .orbit-buttons button{width:32px;height:32px}
-  .status{font-size:12.5px;min-height:34px}
-  .formula{font-size:12.5px;white-space:normal;line-height:1.35}
-  .spectrum-head{padding:8px 92px 2px 10px}
-  .spectrum-meta{gap:6px}
-  #spectrumHint{display:none}
-  .mini-seg button{min-height:28px;padding:3px 7px}
-  .spectrum-wrap{margin:0 6px 6px}
 }
-@media (max-width:390px){
-  .brand-mark{display:none}
-  h1{font-size:22px}
-  .eyebrow{font-size:12.5px}
-  .action-row{grid-template-columns:1.4fr .95fr .65fr}
-  .element-btn small{display:none}
-}
-@media (max-height:640px){
-  body{overflow:auto}
-  #app{height:auto;min-height:100vh}
-  .main{min-height:520px}
+@media (max-height:680px){
+  .element-btn{height:40px}
+  .mode-btn{height:29px}
+  #spectrum{height:44px}
+  .hint{bottom:8px}
 }
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;transition-duration:.001ms!important}
@@ -585,29 +185,25 @@ input[type="range"]::-moz-range-thumb{
 </head>
 <body>
 <div id="app">
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark" aria-hidden="true">
-        <svg viewBox="0 0 64 64" fill="none">
-          <ellipse cx="32" cy="32" rx="27" ry="10.5" transform="rotate(-28 32 32)" stroke="#63e8ff" stroke-width="2"/>
-          <ellipse cx="32" cy="32" rx="27" ry="10.5" transform="rotate(28 32 32)" stroke="#ffc46b" stroke-width="2" opacity=".75"/>
-          <circle cx="32" cy="32" r="5.2" fill="#ff7c73"/>
-          <circle cx="52.6" cy="21.5" r="3.1" fill="#8ef3ff"/>
-          <circle cx="11.3" cy="43" r="2.7" fill="#ffd28c"/>
-        </svg>
+  <canvas id="gl" aria-label="3D 波耳原子模型，可拖曳旋轉、滾輪縮放、點擊軌道躍遷"></canvas>
+
+  <div class="hud" id="hud">
+    <div class="control-card">
+      <div class="element-row" id="elementSeg" role="group" aria-label="原子種類">
+        <button type="button" class="element-btn active" data-element="hydrogen"><b>H</b><span>氫</span></button>
+        <button type="button" class="element-btn" data-element="helium"><b>He</b><span>氦</span></button>
+        <button type="button" class="element-btn" data-element="mercury"><b>Hg</b><span>汞</span></button>
       </div>
-      <div class="brand-text">
-        <div class="eyebrow">高中物理 · 原子光譜</div>
-        <h1>原子能階與躍遷</h1>
+      <div class="mode-row" id="spectrumSeg" role="group" aria-label="光譜模式">
+        <button type="button" class="mode-btn active" data-spectrum="emission">發射光譜</button>
+        <button type="button" class="mode-btn" data-spectrum="absorption">吸收光譜</button>
       </div>
     </div>
-    <div class="statbar" aria-label="目前狀態">
-      <div class="stat"><span>元素</span><strong id="statElement">氫 <i>H</i></strong></div>
-      <div class="stat"><span>目前能階</span><strong id="statN">n = 1</strong></div>
-      <div class="stat"><span>能階能量</span><strong id="statE">−13.60 <i>eV</i></strong></div>
-      <div class="stat"><span>最近光子</span><strong id="statLambda">—</strong><em id="statBand"></em></div>
+    <div class="spectrum-card"><canvas id="spectrum" aria-label="元素光譜：發射光譜為黑底亮線，吸收光譜為連續彩色光譜與暗線"></canvas></div>
+    <div class="levels-card" id="levelsCard">
+      <canvas id="levels" aria-label="能階圖：各能階能量與目前躍遷的 ΔE、波長、光譜帶"></canvas>
     </div>
-  </header>
+  </div>
 
   <div class="corner-tools" aria-label="視角工具">
     <button id="resetViewBtn" class="icon-btn" type="button" aria-label="回到初始視角" title="回到初始視角">
@@ -618,90 +214,9 @@ input[type="range"]::-moz-range-thumb{
     </button>
   </div>
 
-  <main class="main">
-    <section class="stage card" id="stage" aria-label="3D 原子模型區">
-      <canvas id="gl" aria-label="3D 原子模型，可拖曳旋轉、滾輪縮放、點擊軌道躍遷"></canvas>
-      <div class="stage-head"><span class="live-dot"></span><span>3D 原子模型</span><span class="stage-sub">拖曳旋轉 · 滾輪縮放 · 點擊軌道躍遷</span></div>
-      <div id="transitionChip" class="transition-chip" aria-live="polite"></div>
-      <div class="stage-badges">
-        <span class="badge" id="atomBadge">氫原子 · 1 p</span>
-        <span class="badge ghost" id="scaleBadge">軌道半徑 ∝ n²（示意）</span>
-      </div>
-      <div class="stage-foot"><span class="foot-key">藍＝電子</span><span class="foot-key">紅／藍＝核子</span><span class="foot-hint">點擊任一軌道，讓電子躍遷</span></div>
-      <div id="hoverTip" class="hover-tip" aria-hidden="true"></div>
-      <div class="stage-vignette"></div>
-      <div id="loading" class="loading"><div><div class="spinner"></div>正在載入 3D 原子模型…</div></div>
-    </section>
-
-    <aside class="side">
-      <section class="card levels-card" aria-label="能階圖">
-        <div class="card-head"><h2>能階圖</h2><span class="chip" id="seriesChip">氫原子</span></div>
-        <div class="canvas-wrap"><canvas id="levels" aria-label="能階圖，顯示 n=1 到 n=5 的能量與躍遷箭頭"></canvas></div>
-        <div class="level-readout">
-          <div><span>ΔE</span><strong id="readDE">—</strong></div>
-          <div><span>波長 λ</span><strong id="readLambda">—</strong></div>
-          <div><span>光譜帶</span><strong id="readBand">—</strong></div>
-        </div>
-      </section>
-
-      <section class="card control-card" aria-label="控制面板">
-        <div class="card-head"><h2>控制</h2><span class="chip" id="modeChip">吸收光子</span></div>
-        <div class="ctrl-body">
-          <div class="element-seg" id="elementSeg" role="group" aria-label="原子種類">
-            <button type="button" class="element-btn active" data-element="hydrogen"><b>H</b><span>氫<small>1 p</small></span></button>
-            <button type="button" class="element-btn" data-element="helium"><b>He</b><span>氦<small>2 p · 2 n</small></span></button>
-            <button type="button" class="element-btn" data-element="mercury"><b>Hg</b><span>汞<small>多條可見譜線</small></span></button>
-          </div>
-
-          <div class="ctrl-grid">
-            <div class="field">
-              <div class="field-label">激發方式</div>
-              <div class="mode-seg" id="exciteSeg" role="group" aria-label="激發方式">
-                <button type="button" data-excite="photon" class="active">吸收光子</button>
-                <button type="button" data-excite="collision">碰撞</button>
-              </div>
-            </div>
-            <div class="field energy-field">
-              <label class="field-label" for="energyInput" id="energyLabel">光子能量</label>
-              <div class="energy-input" id="energyBox"><input id="energyInput" type="number" inputmode="decimal" min="0.5" max="30" step="0.01" value="10.20" aria-label="光子能量，單位電子伏特"><span>eV</span></div>
-            </div>
-          </div>
-
-          <input id="energySlider" type="range" min="0.5" max="30" step="0.01" value="10.20" aria-label="能量滑桿">
-          <div class="range-labels"><span>0.5</span><span id="rangeMid">n=1→2 ΔE 10.20 eV</span><span>30 eV</span></div>
-
-          <div class="action-row">
-            <button type="button" id="fireBtn" class="primary">發射光子</button>
-            <button type="button" id="autoBtn" class="secondary">自動躍遷</button>
-            <button type="button" id="resetSimBtn" class="ghost" title="重設模擬">重設</button>
-          </div>
-
-          <div class="orbit-row">
-            <span class="field-label">直接躍遷</span>
-            <div class="orbit-buttons" id="orbitButtons"></div>
-          </div>
-
-          <div id="statusLine" class="status info" role="status"><span class="status-dot"></span><span id="statusText">氫原子：電子位於 n=1，E₁ = −13.60 eV</span></div>
-          <div id="formulaLine" class="formula">Eₙ = −13.6 / n² eV　·　ΔE = hf = 1240 / λ</div>
-        </div>
-      </section>
-    </aside>
-  </main>
-
-  <section class="card spectrum-card" aria-label="光譜輸出">
-    <div class="card-head spectrum-head">
-      <h2>光譜輸出</h2>
-      <div class="spectrum-meta">
-        <span id="spectrumHint">發射光譜：亮線</span>
-        <div class="series-legend" id="seriesLegend"></div>
-        <div class="mini-seg" id="spectrumSeg" role="group" aria-label="光譜模式">
-          <button type="button" data-spectrum="emission" class="active">發射光譜</button>
-          <button type="button" data-spectrum="absorption">吸收光譜</button>
-        </div>
-      </div>
-    </div>
-    <div class="canvas-wrap spectrum-wrap"><canvas id="spectrum" aria-label="光譜圖，顯示 90 到 2200 奈米的可見、紫外與紅外譜線"></canvas></div>
-  </section>
+  <div class="hint">點擊球殼躍遷</div>
+  <div id="hoverTip" class="hover-tip" aria-hidden="true"></div>
+  <div id="loading" class="loading"><div><div class="spinner"></div>正在載入 3D 原子模型…</div></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" onerror="window.__THREE_CDN_FAILED__=true"></script>
@@ -2139,43 +1654,28 @@ window.__BOHR_GEOMETRY__ = {"meta":{"source":"bohr_atom_assets_v2.blend","units"
 /* PHYS_BEGIN */
 const PHYS = (() => {
   'use strict';
-
-  const HC = 1239.841984; // eV·nm
+  const HC = 1239.841984;
   const TAU = Math.PI * 2;
 
   const ELEMENTS = {
     hydrogen: {
       key: 'hydrogen', name: '氫', symbol: 'H', z: 1,
       levels: [-13.6, -3.4, -1.511, -0.85, -0.544],
-      defaultPhoton: 10.20, defaultCollision: 10.50,
-      nucleus: { p: 1, n: 0, displayP: 1, displayN: 0, nucleonScale: 24, packRadius: 0, glowScale: 192, label: '1 p' },
-      note: 'Eₙ = −13.6 / n² eV',
-      formula: 'Eₙ = −13.6 / n² eV　·　ΔE = hf = 1240 / λ'
+      nucleus: { p: 1, n: 0, displayP: 1, displayN: 0, nucleonScale: 24, packRadius: 0, glowScale: 192 },
+      note: 'Eₙ = −13.6 / n² eV'
     },
     helium: {
       key: 'helium', name: '氦', symbol: 'He', z: 2,
       levels: [-24.59, -20.96, -18.85, -18.49, -18.33],
-      defaultPhoton: 3.63, defaultCollision: 3.90,
-      nucleus: { p: 2, n: 2, displayP: 2, displayN: 2, nucleonScale: 14, packRadius: 16, glowScale: 172, label: '2 p · 2 n' },
-      note: '氦：示意能階（非氫型）',
-      formula: '能階差 ΔE = hf　·　λ = 1240 / ΔE（nm·eV）'
+      nucleus: { p: 2, n: 2, displayP: 2, displayN: 2, nucleonScale: 14, packRadius: 16, glowScale: 172 },
+      note: '氦：示意能階'
     },
     mercury: {
       key: 'mercury', name: '汞', symbol: 'Hg', z: 80,
       levels: [-10.44, -5.55, -3.40, -3.28, -2.71, -2.49],
-      defaultPhoton: 4.89, defaultCollision: 5.20,
-      nucleus: { p: 80, n: 120, displayP: 12, displayN: 12, nucleonScale: 4.6, packRadius: 22, glowScale: 202, label: '80 p · 120 n（示意）' },
-      note: '汞：多能階示意，可見譜線 405 / 437 / 546 / 577 nm',
-      formula: 'ΔE = hf　·　汞的可見譜線有多條'
+      nucleus: { p: 80, n: 120, displayP: 12, displayN: 12, nucleonScale: 4.6, packRadius: 22, glowScale: 202 },
+      note: '汞：多能階示意'
     }
-  };
-
-  const SERIES_COLORS = {
-    '來曼系': '#b49cff',
-    '巴耳末系': '#5ce4ff',
-    '帕申系': '#ff9e73',
-    '布拉克特系': '#ff9bd0',
-    '其他': '#8ea8c5'
   };
 
   function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
@@ -2248,22 +1748,6 @@ const PHYS = (() => {
     return { r, g, b, hex, visible: true };
   }
 
-  function rgba(rgb, alpha) {
-    return `rgba(${rgb.r},${rgb.g},${rgb.b},${clamp(alpha, 0, 1)})`;
-  }
-
-  function seriesNameFor(key, toN) {
-    if (key === 'hydrogen') {
-      if (toN === 1) return '來曼系';
-      if (toN === 2) return '巴耳末系';
-      if (toN === 3) return '帕申系';
-      if (toN === 4) return '布拉克特系';
-      return '其他';
-    }
-    const el = ELEMENTS[key];
-    return el ? `${el.name}譜線` : '譜線';
-  }
-
   function transitions(key) {
     const el = ELEMENTS[key];
     if (!el) return [];
@@ -2274,84 +1758,27 @@ const PHYS = (() => {
         const toN = lo + 1;
         const dE = el.levels[hi] - el.levels[lo];
         const wavelength = wavelengthNm(dE);
-        const band = bandOf(wavelength);
-        const series = seriesNameFor(key, toN);
         const rgb = wavelengthRGB(wavelength);
         out.push({
-          fromN, toN, dE, wavelength, band,
-          series, color: rgb.hex, visible: wavelength >= 380 && wavelength <= 750,
-          optical: true
+          fromN, toN, dE, wavelength,
+          band: bandOf(wavelength),
+          color: rgb.hex,
+          visible: wavelength >= 380 && wavelength <= 750
         });
       }
     }
     return out.sort((a, b) => a.wavelength - b.wavelength);
   }
 
-  function matchPhoton(key, currentN, eV, tol = 0.02) {
-    const el = ELEMENTS[key];
-    if (!el) return null;
-    const n = clamp(Math.round(currentN), 1, el.levels.length);
-    let best = null;
-    for (let to = n + 1; to <= el.levels.length; to += 1) {
-      const dE = el.levels[to - 1] - el.levels[n - 1];
-      const diff = Math.abs(dE - eV);
-      if (diff <= tol + 1e-9 && (!best || diff < best.diff - 1e-12)) {
-        const wavelength = wavelengthNm(dE);
-        best = { to, dE, diff, wavelength, band: bandOf(wavelength), color: wavelengthRGB(wavelength).hex };
-      }
-    }
-    return best;
-  }
-
-  function nearestPhoton(key, currentN, eV) {
-    const el = ELEMENTS[key];
-    if (!el) return null;
-    const n = clamp(Math.round(currentN), 1, el.levels.length);
-    let best = null;
-    for (let to = n + 1; to <= el.levels.length; to += 1) {
-      const dE = el.levels[to - 1] - el.levels[n - 1];
-      const diff = Math.abs(dE - eV);
-      if (!best || diff < best.diff) {
-        const wavelength = wavelengthNm(dE);
-        best = { to, dE, diff, wavelength, band: bandOf(wavelength) };
-      }
-    }
-    return best;
-  }
-
-  function matchCollision(key, currentN, kinetic) {
-    const el = ELEMENTS[key];
-    if (!el) return null;
-    const n = clamp(Math.round(currentN), 1, el.levels.length);
-    let best = null;
-    for (let to = n + 1; to <= el.levels.length; to += 1) {
-      const dE = el.levels[to - 1] - el.levels[n - 1];
-      if (dE <= kinetic + 1e-9) {
-        best = {
-          to, dE, residual: Math.max(0, kinetic - dE), kinetic,
-          wavelength: wavelengthNm(dE), band: bandOf(wavelengthNm(dE))
-        };
-      }
-    }
-    return best;
-  }
-
-  function formatEv(e, digits = 2) {
+  function formatEv(e) {
     if (!Number.isFinite(e)) return '—';
-    return (e < 0 ? '−' : '') + Math.abs(e).toFixed(digits);
-  }
-
-  function formatNm(nm) {
-    if (!Number.isFinite(nm)) return '—';
-    if (nm < 1000) return nm.toFixed(1);
-    return Math.round(nm).toString();
+    return (e < 0 ? '−' : '') + Math.abs(e).toFixed(2);
   }
 
   return {
-    HC, TAU, ELEMENTS, SERIES_COLORS,
+    HC, TAU, ELEMENTS,
     levelsOf, levelCount, levelEnergy, transitionEnergy, wavelengthNm,
-    bandOf, wavelengthRGB, rgba, seriesNameFor, transitions,
-    matchPhoton, nearestPhoton, matchCollision, formatEv, formatNm
+    bandOf, wavelengthRGB, transitions, formatEv
   };
 })();
 /* PHYS_END */
@@ -2368,105 +1795,57 @@ window.__BOHR_PHYS__ = PHYS;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const FONT_STACK = '"Noto Sans TC","Microsoft JhengHei","PingFang TC","Heiti TC",system-ui,-apple-system,"Segoe UI",sans-serif';
 
-  const stage = $('#stage');
   const glCanvas = $('#gl');
-  const levelsCanvas = $('#levels');
   const spectrumCanvas = $('#spectrum');
+  const hud = $('#hud');
   const loading = $('#loading');
   const hoverTip = $('#hoverTip');
-  const transitionChip = $('#transitionChip');
-  const levelReadout = {
-    de: $('#readDE'), lambda: $('#readLambda'), band: $('#readBand')
-  };
-  const stat = {
-    element: $('#statElement'), n: $('#statN'), e: $('#statE'),
-    lambda: $('#statLambda'), band: $('#statBand')
-  };
-  const UI = {
-    seriesChip: $('#seriesChip'),
-    atomBadge: $('#atomBadge'),
-    scaleBadge: $('#scaleBadge'),
-    modeChip: $('#modeChip'),
-    energyLabel: $('#energyLabel'),
-    energyInput: $('#energyInput'),
-    energyBox: $('#energyBox'),
-    energySlider: $('#energySlider'),
-    rangeMid: $('#rangeMid'),
-    fireBtn: $('#fireBtn'),
-    autoBtn: $('#autoBtn'),
-    resetSimBtn: $('#resetSimBtn'),
-    orbitButtons: $('#orbitButtons'),
-    statusLine: $('#statusLine'),
-    statusText: $('#statusText'),
-    formulaLine: $('#formulaLine'),
-    spectrumSeg: $('#spectrumSeg'),
-    spectrumHint: $('#spectrumHint'),
-    seriesLegend: $('#seriesLegend'),
-    elementSeg: $('#elementSeg'),
-    exciteSeg: $('#exciteSeg'),
-    resetViewBtn: $('#resetViewBtn'),
-    fsBtn: $('#fsBtn')
-  };
+  const elementSeg = $('#elementSeg');
+  const spectrumSeg = $('#spectrumSeg');
+  const resetViewBtn = $('#resetViewBtn');
+  const fsBtn = $('#fsBtn');
 
   const state = {
     element: 'hydrogen',
-    excite: 'photon',
     spectrumMode: 'emission',
     currentN: 1,
     angle: 0.55,
-    photonEnergy: 10.20,
-    collisionEnergy: 10.50,
     history: [],
     recent: null,
-    lastPhoton: null,
     anim: null,
-    auto: false,
-    autoToken: 0,
     hoverN: null,
     photons: [],
     flashes: [],
     viewDirty: false,
     ready: false,
     canvasDirtyUntil: 0,
-    dragging: false
+    levelsDirtyUntil: 0
   };
-
   window.__BOHR_STATE__ = state;
-
-  function setStatus(text, type = 'info') {
-    UI.statusText.textContent = text;
-    UI.statusLine.className = 'status ' + type;
-  }
 
   function fatal(message) {
     loading.classList.remove('hide');
-    loading.classList.add('error');
-    loading.innerHTML = `<div><div style="font-size:18px;color:#ffb0a8;font-weight:900;margin-bottom:10px">3D 模型無法啟動</div><div>${message}</div><div style="margin-top:12px;color:#89a3c2;font-size:12.5px">請確認瀏覽器支援 WebGL，或重新整理頁面。</div></div>`;
+    loading.innerHTML = `<div style="max-width:440px;text-align:center;line-height:1.7;color:#ffc0b8"><div style="font-size:18px;font-weight:900;margin-bottom:8px">3D 模型無法啟動</div><div>${message}</div></div>`;
     window.__APP_ERROR__ = message;
-    console.error('[Bohr]', message);
+    console.error('[Bohr v2]', message);
   }
 
   if (!window.THREE) {
     fatal(window.__THREE_CDN_FAILED__ ? 'Three.js CDN 載入失敗，且離線備援未啟動。' : '找不到 Three.js。');
     return;
   }
-
   const THREE = window.THREE;
 
   // ── renderer / scene / camera ─────────────────────────────────────────────
   let renderer;
   try {
     renderer = new THREE.WebGLRenderer({
-      canvas: glCanvas,
-      antialias: true,
-      alpha: true,
-      powerPreference: 'high-performance'
+      canvas: glCanvas, antialias: true, alpha: true, powerPreference: 'high-performance'
     });
   } catch (err) {
     fatal('WebGL 初始化失敗：' + (err && err.message ? err.message : String(err)));
     return;
   }
-
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setClearColor(0x02050b, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -2476,10 +1855,9 @@ window.__BOHR_PHYS__ = PHYS;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x040914, 0.00038);
-
+  scene.fog = new THREE.FogExp2(0x040914, 0.00035);
   const camera = new THREE.PerspectiveCamera(38, 1, 1, 6500);
-  camera.position.set(620, 460, 900);
+  camera.position.set(600, 440, 860);
 
   const HOME = {
     theta: 0.72,
@@ -2490,34 +1868,21 @@ window.__BOHR_PHYS__ = PHYS;
   let controls = null;
 
   function makeFallbackControls(cam, target) {
-    const ctl = {
-      target,
-      enabled: true,
-      update() {},
-      dispose() {}
-    };
+    const ctl = { target, enabled: true, update() {}, dispose() {} };
     const sph = new THREE.Spherical().setFromVector3(cam.position.clone().sub(target));
-    let dragging = false;
-    let lx = 0, ly = 0;
-
+    let dragging = false, lx = 0, ly = 0;
     const apply = () => {
       cam.position.copy(target).add(new THREE.Vector3().setFromSpherical(sph));
       cam.lookAt(target);
     };
-
     glCanvas.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
-      dragging = true;
-      lx = e.clientX;
-      ly = e.clientY;
-      state.viewDirty = true;
+      dragging = true; lx = e.clientX; ly = e.clientY; state.viewDirty = true;
     });
     window.addEventListener('pointermove', (e) => {
       if (!dragging) return;
-      const dx = e.clientX - lx;
-      const dy = e.clientY - ly;
-      lx = e.clientX;
-      ly = e.clientY;
+      const dx = e.clientX - lx, dy = e.clientY - ly;
+      lx = e.clientX; ly = e.clientY;
       sph.theta -= dx * 0.005;
       sph.phi = clamp(sph.phi - dy * 0.005, 0.32, 1.52);
       apply();
@@ -2529,7 +1894,6 @@ window.__BOHR_PHYS__ = PHYS;
       state.viewDirty = true;
       apply();
     }, { passive: false });
-
     return ctl;
   }
 
@@ -2554,7 +1918,7 @@ window.__BOHR_PHYS__ = PHYS;
     controls.target.copy(HOME.target);
   }
 
-  // ── palette / materials ───────────────────────────────────────────────────
+  // ── materials / palette ───────────────────────────────────────────────────
   const MAT = {
     proton: new THREE.MeshStandardMaterial({
       color: 0xff7168, roughness: 0.30, metalness: 0.16,
@@ -2568,17 +1932,11 @@ window.__BOHR_PHYS__ = PHYS;
       color: 0x64e6ff, roughness: 0.09, metalness: 0.18,
       clearcoat: 1, clearcoatRoughness: 0.14,
       emissive: 0x0a6f95, emissiveIntensity: 1.0
-    }),
-    platform: new THREE.MeshStandardMaterial({
-      color: 0x071426, roughness: 0.46, metalness: 0.72,
-      emissive: 0x03101e, emissiveIntensity: 0.62
     })
   };
-
-  const LEVEL_COLORS = [0xff8a7a, 0x66e0ff, 0x7ef0b2, 0xffd166, 0xb59cff, 0xff9bd0];
   const RING_COLORS = [0x35d9ff, 0x1aa4ff, 0x2f7bff, 0x7a5cff, 0xb45cff, 0xff6eb0];
 
-  // ── procedural textures ───────────────────────────────────────────────────
+  // ── textures ──────────────────────────────────────────────────────────────
   function makeGlowTexture() {
     const c = document.createElement('canvas');
     c.width = c.height = 256;
@@ -2593,64 +1951,10 @@ window.__BOHR_PHYS__ = PHYS;
     ctx.fillRect(0, 0, 256, 256);
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.needsUpdate = true;
     return tex;
   }
-
   const glowTexture = makeGlowTexture();
   const labelTextures = new Map();
-
-  function makePlatformTexture() {
-    const c = document.createElement('canvas');
-    c.width = c.height = 512;
-    const ctx = c.getContext('2d');
-    const g = ctx.createRadialGradient(256, 256, 0, 256, 256, 256);
-    g.addColorStop(0, 'rgba(26,64,94,.62)');
-    g.addColorStop(0.45, 'rgba(16,44,70,.48)');
-    g.addColorStop(0.72, 'rgba(9,26,44,.26)');
-    g.addColorStop(1, 'rgba(2,7,14,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, 512, 512);
-    ctx.strokeStyle = 'rgba(101,205,240,.10)';
-    ctx.lineWidth = 1.4;
-    for (const r of [170, 236]) {
-      ctx.beginPath();
-      ctx.arc(256, 256, r, 0, TAU);
-      ctx.stroke();
-    }
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.needsUpdate = true;
-    return tex;
-  }
-
-  const platformTexture = makePlatformTexture();
-
-  function makeLabelTexture(n) {
-    if (labelTextures.has(n)) return labelTextures.get(n);
-    const c = document.createElement('canvas');
-    c.width = 256;
-    c.height = 128;
-    const ctx = c.getContext('2d');
-    roundRect(ctx, 10, 20, 236, 88, 44);
-    ctx.fillStyle = 'rgba(3,10,22,.84)';
-    ctx.fill();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(203,247,255,.68)';
-    ctx.stroke();
-    ctx.font = '800 70px "Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = 'rgba(92,228,255,.75)';
-    ctx.shadowBlur = 10;
-    ctx.fillText(`n=${n}`, 128, 65);
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.needsUpdate = true;
-    labelTextures.set(n, tex);
-    return tex;
-  }
 
   function roundRect(ctx, x, y, w, h, r) {
     const rr = Math.min(r, w / 2, h / 2);
@@ -2663,10 +1967,33 @@ window.__BOHR_PHYS__ = PHYS;
     ctx.closePath();
   }
 
+  function makeLabelTexture(n) {
+    if (labelTextures.has(n)) return labelTextures.get(n);
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 128;
+    const ctx = c.getContext('2d');
+    roundRect(ctx, 10, 20, 236, 88, 44);
+    ctx.fillStyle = 'rgba(3,10,22,.84)';
+    ctx.fill();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(203,247,255,.68)';
+    ctx.stroke();
+    ctx.font = '800 76px "Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = 'rgba(92,228,255,.75)';
+    ctx.shadowBlur = 10;
+    ctx.fillText(`n=${n}`, 128, 65);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    labelTextures.set(n, tex);
+    return tex;
+  }
+
   // ── lights ────────────────────────────────────────────────────────────────
   scene.add(new THREE.HemisphereLight(0x5e94ff, 0x04070d, 0.63));
   scene.add(new THREE.AmbientLight(0x2b4e78, 0.48));
-
   const keyLight = new THREE.DirectionalLight(0xffe0c2, 3.15);
   keyLight.position.set(-560, 760, 540);
   keyLight.castShadow = true;
@@ -2683,60 +2010,22 @@ window.__BOHR_PHYS__ = PHYS;
   keyLight.target.position.set(0, -80, 0);
   scene.add(keyLight);
   scene.add(keyLight.target);
-
   const fillLight = new THREE.DirectionalLight(0x5aa8ff, 1.7);
   fillLight.position.set(620, 420, -520);
   scene.add(fillLight);
-
   const rimLight = new THREE.DirectionalLight(0xff806d, 1.25);
   rimLight.position.set(0, 220, -780);
   scene.add(rimLight);
-
   const nucleusLight = new THREE.PointLight(0x7ee8ff, 180, 760, 2);
-  nucleusLight.position.set(0, 0, 0);
   scene.add(nucleusLight);
-
   const electronLight = new THREE.PointLight(0x6fe8ff, 62, 190, 2);
   scene.add(electronLight);
-
-  // ── platform / ground ─────────────────────────────────────────────────────
-  const platform = new THREE.Mesh(
-    new THREE.CircleGeometry(526, 128),
-    new THREE.MeshBasicMaterial({
-      map: platformTexture, transparent: true, opacity: 0.55,
-      depthWrite: false, side: THREE.DoubleSide
-    })
-  );
-  platform.rotation.x = -Math.PI / 2;
-  platform.position.y = -150;
-  platform.renderOrder = 1;
-  scene.add(platform);
-
-  const shadowCatcher = new THREE.Mesh(
-    new THREE.PlaneGeometry(1050, 1050),
-    new THREE.ShadowMaterial({ color: 0x02050a, opacity: 0.16, depthWrite: false })
-  );
-  shadowCatcher.rotation.x = -Math.PI / 2;
-  shadowCatcher.position.y = -149.1;
-  shadowCatcher.receiveShadow = true;
-  shadowCatcher.renderOrder = 2;
-  scene.add(shadowCatcher);
-
-  const stageGlow = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: glowTexture, color: 0x2c9cd0, transparent: true, opacity: 0.12,
-    blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, toneMapped: false
-  }));
-  stageGlow.position.set(0, -145, 0);
-  stageGlow.scale.set(470, 470, 1);
-  stageGlow.renderOrder = 1;
-  scene.add(stageGlow);
 
   // ── stars ─────────────────────────────────────────────────────────────────
   function mulberry32(seed) {
     let a = seed >>> 0;
     return function () {
-      a |= 0;
-      a = (a + 0x6D2B79F5) | 0;
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
       let t = Math.imul(a ^ (a >>> 15), 1 | a);
       t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
@@ -2756,17 +2045,15 @@ window.__BOHR_PHYS__ = PHYS;
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    const m = new THREE.PointsMaterial({
-      color: 0x9ccfff, size: 2.2, sizeAttenuation: true,
-      transparent: true, opacity: 0.72, depthWrite: false,
-      blending: THREE.AdditiveBlending
-    });
-    const stars = new THREE.Points(g, m);
+    const stars = new THREE.Points(g, new THREE.PointsMaterial({
+      color: 0x9ccfff, size: 2.2, sizeAttenuation: true, transparent: true,
+      opacity: 0.72, depthWrite: false, blending: THREE.AdditiveBlending
+    }));
     starGroup.add(stars);
     scene.add(starGroup);
   }
 
-  // ── Blender-authored geometry (with a procedural safety fallback) ─────────
+  // ── Blender geometry ──────────────────────────────────────────────────────
   const RAW = window.__BOHR_GEOMETRY__ && window.__BOHR_GEOMETRY__.meshes;
 
   function rawGeometry(key, radius) {
@@ -2792,7 +2079,6 @@ window.__BOHR_PHYS__ = PHYS;
     electron: rawGeometry('electron', 1),
     photon: rawGeometry('photon', 1)
   };
-
   let PHOTON_LENGTH = 12.2;
   if (RAW && RAW.photon && RAW.photon.bounds) {
     const b = RAW.photon.bounds;
@@ -2846,8 +2132,7 @@ window.__BOHR_PHYS__ = PHYS;
   function addGlowSprite(parent, color, scale, opacity) {
     const mat = new THREE.SpriteMaterial({
       map: glowTexture, color, transparent: true, opacity,
-      blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false,
-      toneMapped: false
+      blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, toneMapped: false
     });
     const sprite = new THREE.Sprite(mat);
     sprite.scale.set(scale, scale, 1);
@@ -2862,8 +2147,7 @@ window.__BOHR_PHYS__ = PHYS;
     while (nucleusParts.children.length) nucleusParts.remove(nucleusParts.children[0]);
     const total = cfg.displayP + cfg.displayN;
     const pts = clusterPositions(total, cfg.packRadius);
-    let pIndex = 0;
-    let nIndex = 0;
+    let pIndex = 0, nIndex = 0;
     pts.forEach((p, i) => {
       const isProton = i % 2 === 0 ? pIndex < cfg.displayP : nIndex >= cfg.displayN;
       const mesh = new THREE.Mesh(isProton ? GEO.proton : GEO.neutron, isProton ? MAT.proton : MAT.neutron);
@@ -2883,7 +2167,7 @@ window.__BOHR_PHYS__ = PHYS;
     nucleusLight.color.set(state.element === 'mercury' ? 0x9cbcff : 0x7ee8ff);
   }
 
-  // ── orbit rings / labels ─────────────────────────────────────────────────
+  // ── spherical energy shells ───────────────────────────────────────────────
   const orbitGroup = new THREE.Group();
   scene.add(orbitGroup);
   let ringObjs = [];
@@ -2893,6 +2177,81 @@ window.__BOHR_PHYS__ = PHYS;
     return 50 + (n * n - 1) * 12.2;
   }
 
+  function makeShellGrid(radius, color) {
+    const positions = [];
+    const segments = 48;
+    // 緯線（不畫 0° 赤道，避免看起來像軌道）
+    for (const deg of [-60, -30, 30, 60]) {
+      const phi = deg * Math.PI / 180;
+      const rr = radius * Math.cos(phi);
+      const y = radius * Math.sin(phi);
+      for (let i = 0; i < segments; i += 1) {
+        const a = (i / segments) * TAU;
+        const b = ((i + 1) / segments) * TAU;
+        positions.push(
+          Math.cos(a) * rr, y, Math.sin(a) * rr,
+          Math.cos(b) * rr, y, Math.sin(b) * rr
+        );
+      }
+    }
+    // 經線
+    const meridians = 12;
+    for (let m = 0; m < meridians; m += 1) {
+      const th = (m / meridians) * TAU;
+      for (let i = 0; i < segments; i += 1) {
+        const a = -Math.PI / 2 + (i / segments) * Math.PI;
+        const b = -Math.PI / 2 + ((i + 1) / segments) * Math.PI;
+        const ca = Math.cos(a), sa = Math.sin(a);
+        const cb = Math.cos(b), sb = Math.sin(b);
+        positions.push(
+          Math.cos(th) * ca * radius, sa * radius, Math.sin(th) * ca * radius,
+          Math.cos(th) * cb * radius, sb * radius, Math.sin(th) * cb * radius
+        );
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    return new THREE.LineSegments(g, new THREE.LineBasicMaterial({
+      color, transparent: true, opacity: 0.075,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    }));
+  }
+
+  function makeShellRimMaterial(color) {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uColor: { value: new THREE.Color(color) },
+        uOpacity: { value: 0.18 }
+      },
+      vertexShader: `
+        varying vec3 vN;
+        varying vec3 vV;
+        void main() {
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          vN = normalize(normalMatrix * normal);
+          vV = normalize(-mv.xyz);
+          gl_Position = projectionMatrix * mv;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uColor;
+        uniform float uOpacity;
+        varying vec3 vN;
+        varying vec3 vV;
+        void main() {
+          float rim = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.6);
+          gl_FragColor = vec4(uColor, rim * uOpacity);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }
+      `,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+  }
+
   function rebuildOrbits() {
     while (orbitGroup.children.length) orbitGroup.remove(orbitGroup.children[0]);
     ringObjs = [];
@@ -2900,36 +2259,33 @@ window.__BOHR_PHYS__ = PHYS;
     const N = PHYS.levelCount(state.element);
     for (let n = 1; n <= N; n += 1) {
       const radius = orbitRadius(n);
+      const color = RING_COLORS[(n - 1) % RING_COLORS.length];
       const group = new THREE.Group();
-      group.rotation.x = (n - (N + 1) / 2) * 0.045;
-      group.rotation.z = (n - 2) * 0.030;
+      group.rotation.x = (n - (N + 1) / 2) * 0.05;
+      group.rotation.z = (n - 2) * 0.035;
 
-      const baseMat = new THREE.MeshBasicMaterial({
-        color: RING_COLORS[(n - 1) % RING_COLORS.length],
-        transparent: true, opacity: 0.52, depthWrite: false
+      const sphereGeo = new THREE.SphereGeometry(radius, 48, 32);
+      const shellMat = new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity: 0.012,
+        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide
       });
-      const baseGeo = new THREE.TorusGeometry(radius, 2.05, 6, 220);
-      const base = new THREE.Mesh(baseGeo, baseMat);
-      base.rotation.x = Math.PI / 2;
-      base.renderOrder = 2;
-      group.add(base);
+      const shell = new THREE.Mesh(sphereGeo, shellMat);
+      shell.renderOrder = 1;
+      group.add(shell);
 
-      const haloMat = new THREE.MeshBasicMaterial({
-        color: RING_COLORS[(n - 1) % RING_COLORS.length],
-        transparent: true, opacity: 0.075, depthWrite: false,
-        blending: THREE.AdditiveBlending
-      });
-      const haloGeo = new THREE.TorusGeometry(radius, 5.0, 6, 160);
-      const halo = new THREE.Mesh(haloGeo, haloMat);
-      halo.rotation.x = Math.PI / 2;
-      halo.renderOrder = 1;
-      group.add(halo);
+      const grid = makeShellGrid(radius, color);
+      grid.renderOrder = 2;
+      group.add(grid);
+
+      const rimMat = makeShellRimMaterial(color);
+      const rim = new THREE.Mesh(sphereGeo, rimMat);
+      rim.renderOrder = 3;
+      group.add(rim);
 
       const hitGeo = new THREE.TorusGeometry(radius, 16, 5, 96);
-      const hitMat = new THREE.MeshBasicMaterial({
+      const hit = new THREE.Mesh(hitGeo, new THREE.MeshBasicMaterial({
         transparent: true, opacity: 0.001, depthWrite: false
-      });
-      const hit = new THREE.Mesh(hitGeo, hitMat);
+      }));
       hit.rotation.x = Math.PI / 2;
       hit.userData.n = n;
       group.add(hit);
@@ -2940,23 +2296,21 @@ window.__BOHR_PHYS__ = PHYS;
         color: 0xc8f2ff, toneMapped: false
       });
       const label = new THREE.Sprite(labelMat);
-      const labelSpread = N >= 6 ? 0.58 : 0.55;
-      const labelAngle = n === 1 ? 2.55 : -labelSpread + ((n - 2) / Math.max(1, N - 2)) * 2 * labelSpread;
-      label.position.set(Math.cos(labelAngle) * (radius + 17), 58, Math.sin(labelAngle) * (radius + 17));
-      label.scale.set(50, 25, 1);
+      label.scale.set(96, 48, 1);
       label.renderOrder = 22;
       label.userData.n = n;
-      group.add(label);
+      orbitGroup.add(label);
       orbitPickables.push(label);
 
       group.updateMatrixWorld(true);
       orbitGroup.add(group);
       ringObjs.push({
-        n, radius, group, base, halo, hit, label,
-        baseMat, haloMat, labelMat, color: RING_COLORS[(n - 1) % RING_COLORS.length]
+        n, radius, group, shell, rim, grid, hit, label,
+        shellMat, rimMat, gridMat: grid.material, labelMat, color
       });
     }
     updateRingStyles();
+    updateShellLabels();
   }
 
   function pointOnRing(n, angle) {
@@ -2970,27 +2324,48 @@ window.__BOHR_PHYS__ = PHYS;
     for (const r of ringObjs) {
       const active = r.n === state.currentN;
       const hover = r.n === state.hoverN;
-      r.baseMat.opacity = active ? 1.0 : hover ? 0.86 : 0.50;
-      r.baseMat.color.setHex(active ? 0xffffff : hover ? 0xffd166 : r.color);
-      r.haloMat.opacity = active ? 0.22 : hover ? 0.15 : 0.065;
-      r.haloMat.color.setHex(active ? 0xffffff : hover ? 0xffd166 : r.color);
+      const tint = active ? 0xffffff : hover ? 0xffd166 : r.color;
+      r.rimMat.uniforms.uOpacity.value = active ? 0.58 : hover ? 0.36 : 0.24;
+      r.rimMat.uniforms.uColor.value.setHex(tint);
+      r.gridMat.opacity = active ? 0.30 : hover ? 0.15 : 0.09;
+      r.gridMat.color.setHex(tint);
+      r.shellMat.opacity = active ? 0.022 : hover ? 0.012 : 0.008;
+      r.shellMat.color.setHex(tint);
       r.labelMat.color.setHex(active ? 0xffd98c : hover ? 0xffe7b0 : 0xc8f2ff);
       r.labelMat.opacity = active ? 1 : hover ? 0.98 : 0.84;
-      const s = active ? 1.15 : hover ? 1.07 : 1;
-      r.label.scale.set(50 * s, 25 * s, 1);
+      const s = active ? 1.08 : hover ? 1.04 : 1;
+      r.label.scale.set(96 * s, 48 * s, 1);
+    }
+  }
+
+  function updateShellLabels() {
+    const th = Math.atan2(
+      camera.position.x - controls.target.x,
+      camera.position.z - controls.target.z
+    );
+    const tight = layout.tight;
+    const a = -th - 0.115;
+    const labelScale = tight ? 0.68 : 1;
+    for (const r of ringObjs) {
+      const rr = tight ? Math.max(r.radius + 12, 64 * r.n) : r.radius + 12;
+      const yOff = tight ? (r.n % 2 === 1 ? 30 : -30) : (r.n % 2 === 1 ? 55 : -38);
+      r.label.position.set(
+        Math.cos(a) * rr,
+        r.radius * 0.085 + yOff,
+        Math.sin(a) * rr
+      );
+      r.label.scale.set(96 * labelScale, 48 * labelScale, 1);
     }
   }
 
   // ── electron ──────────────────────────────────────────────────────────────
   const electronGroup = new THREE.Group();
   scene.add(electronGroup);
-
   const electronMesh = new THREE.Mesh(GEO.electron, MAT.electron);
   electronMesh.scale.setScalar(10.8);
   electronMesh.castShadow = true;
   electronMesh.receiveShadow = true;
   electronGroup.add(electronMesh);
-
   const electronRing = new THREE.Mesh(
     new THREE.TorusGeometry(16.8, 0.38, 6, 96),
     new THREE.MeshBasicMaterial({
@@ -3000,7 +2375,6 @@ window.__BOHR_PHYS__ = PHYS;
   );
   electronRing.rotation.set(Math.PI / 2.6, 0.3, 0.7);
   electronGroup.add(electronRing);
-
   addGlowSprite(electronGroup, 0x77edff, 56, 0.46);
 
   const TRAIL_MAX = 28;
@@ -3040,15 +2414,14 @@ window.__BOHR_PHYS__ = PHYS;
 
   // ── photons / flashes ─────────────────────────────────────────────────────
   function spawnPhoton(type, start, end, colorHex, opts = {}) {
+    const waveColor = new THREE.Color(colorHex).lerp(new THREE.Color(0xffffff), 0.7);
     const mat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(colorHex),
-      transparent: true, opacity: 0.95,
-      blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
+      color: waveColor, transparent: true, opacity: 0.95,
+      blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, toneMapped: false
     });
     const mesh = new THREE.Mesh(GEO.photon, mat);
-    const scale = opts.scale || 4.2;
-    mesh.scale.setScalar(scale);
-    mesh.renderOrder = 7;
+    mesh.scale.setScalar(opts.scale || 4.2);
+    mesh.renderOrder = 100;
     mesh.position.copy(start);
     const dir = end.clone().sub(start);
     if (dir.lengthSq() < 1e-6) dir.set(1, 0, 0);
@@ -3057,29 +2430,27 @@ window.__BOHR_PHYS__ = PHYS;
     scene.add(mesh);
 
     const glowMat = new THREE.SpriteMaterial({
-      map: glowTexture, color: new THREE.Color(colorHex),
-      transparent: true, opacity: 0.68,
+      map: glowTexture, color: new THREE.Color(colorHex), transparent: true, opacity: 0.68,
       blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, toneMapped: false
     });
     const glow = new THREE.Sprite(glowMat);
-    glow.scale.setScalar(opts.glow || 62);
+    glow.scale.setScalar(opts.glow || 80);
     glow.position.copy(start);
-    glow.renderOrder = 8;
+    glow.renderOrder = 101;
     scene.add(glow);
 
-    state.photons.push({
-      mesh, glow, mat, glowMat, start: start.clone(), end: end.clone(), dir,
-      t0: nowMs(), dur: opts.dur || 930, type, color: colorHex,
-      flashed: false, spin: 3.8 + Math.random() * 2.2
-    });
-
+    const p = {
+      mesh, glow, mat, glowMat, start: start.clone(), end: end.clone(),
+      t0: nowMs(), dur: opts.dur || 950, type, color: colorHex, flashed: false
+    };
+    state.photons.push(p);
     if (type === 'emission') flashAt(start, colorHex, 52);
+    return p;
   }
 
   function flashAt(position, colorHex, size = 54) {
     const mat = new THREE.SpriteMaterial({
-      map: glowTexture, color: new THREE.Color(colorHex),
-      transparent: true, opacity: 0.9,
+      map: glowTexture, color: new THREE.Color(colorHex), transparent: true, opacity: 0.9,
       blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, toneMapped: false
     });
     const sprite = new THREE.Sprite(mat);
@@ -3092,58 +2463,242 @@ window.__BOHR_PHYS__ = PHYS;
 
   function clearTransientEffects() {
     for (const p of state.photons) {
-      scene.remove(p.mesh);
-      scene.remove(p.glow);
-      p.mat.dispose();
-      p.glowMat.dispose();
+      scene.remove(p.mesh); scene.remove(p.glow);
+      p.mat.dispose(); p.glowMat.dispose();
     }
     state.photons.length = 0;
     for (const f of state.flashes) {
-      scene.remove(f.sprite);
-      f.mat.dispose();
+      scene.remove(f.sprite); f.mat.dispose();
     }
     state.flashes.length = 0;
   }
 
-  function spawnReject() {
-    const p = electronGroup.position.clone();
-    const outward = p.clone().normalize();
-    outward.y += 0.16;
-    outward.normalize();
-    const start = p.clone().addScaledVector(outward, 540);
-    const end = p.clone().addScaledVector(outward, 68);
-    spawnPhoton('reject', start, end, '#ffb2a8', { scale: 3.4, glow: 62, dur: 760 });
+  // ── camera fit / view ─────────────────────────────────────────────────────
+  function viewSize() {
+    return {
+      w: Math.max(1, window.innerWidth),
+      h: Math.max(1, window.innerHeight)
+    };
   }
 
-  // ── camera fit ────────────────────────────────────────────────────────────
-  function computeHomeRadius() {
+  // ── 畫面配置：手機把 3D 原子放到上半部，下半部留給能階圖 ───────────────
+  const layout = { bottomReserve: 0, tight: false };
+
+  function isMobileLayout() {
+    return window.innerWidth <= 720;
+  }
+
+  function stackBottomReserve() {
     const N = PHYS.levelCount(state.element);
-    const orbitMax = orbitRadius(N);
-    const hNeed = orbitMax + 76;
-    const vNeed = orbitMax * Math.abs(Math.cos(HOME.phi)) + 72;
-    const w = Math.max(1, stage.clientWidth);
-    const h = Math.max(1, stage.clientHeight);
-    const aspect = Math.max(0.35, w / h);
+    const mobile = isMobileLayout();
+    const cssH = mobile ? 250 : 254;
+    const pad = mobile ? 6 : 7;
+    const cardH = cssH + pad * 2 + 2;
+    // 3D 原子中心放在「HUD 下緣」與「能階圖上緣」之間的中點（含少量留白）
+    const hudBottom = (mobile ? 8 : 16) + (mobile ? 160 : 195) + 12;
+    const levelsTop = window.innerHeight - 8 - cardH;
+    const hintSpace = 26;
+    const animTop = hudBottom;
+    const animBottom = Math.max(animTop + 120, levelsTop - hintSpace);
+    const cy = Math.round((animTop + animBottom) / 2);
+    const reserve = Math.max(200, Math.round((window.innerHeight - cy) * 2 + 6));
+    return { reserve, cardH, mobile, N, animTop, animBottom, cy };
+  }
+
+  function readBottomReserve() {
+    if (isMobileLayout()) {
+      const hint = document.querySelector('.hint');
+      if (hint) hint.style.display = 'none';
+      return stackBottomReserve().reserve;
+    }
+    const hint = document.querySelector('.hint');
+    if (hint) hint.style.display = '';
+    return 0;
+  }
+
+  function applyLayoutMetrics() {
+    layout.bottomReserve = readBottomReserve();
+    layout.tight = layout.bottomReserve > 0;
+    layout.metrics = stackBottomReserve();
+  }
+
+  const _v3 = new THREE.Vector3();
+  const _box = new THREE.Box3();
+  const _pt = new THREE.Vector3();
+  const SAFE_PX = 14;
+  const ROOM_RATIO = 0.82;
+  const FILL = 0.90;
+
+  // 依實際投影結果求距離：球殼球面取樣點全部落在安全區內，
+  // 依實際投影結果求距離：球殼球面取樣點全部落在安全區內，
+  // 並盡量放大到佔動畫區約 82%。
+  function fitDistance(radius, cx, cy) {
     const vfov = camera.fov * Math.PI / 180;
     const halfV = Math.tan(vfov / 2);
-    const halfH = halfV * aspect;
-    const distV = vNeed / Math.max(0.05, halfV);
-    const distH = hNeed / Math.max(0.05, halfH);
-    return clamp(Math.max(distV, distH, 520) * 1.03, 600, 3400);
+    const at = (d) => {
+      camera.position.copy(HOME.target)
+        .add(new THREE.Vector3().setFromSpherical(new THREE.Spherical(d, HOME.phi, HOME.theta)));
+      camera.lookAt(HOME.target);
+      camera.updateMatrixWorld();
+      camera.updateProjectionMatrix();
+      _box.makeEmpty();
+      for (const lat of [-80, -50, -20, 0, 20, 50, 80]) {
+        const phi = lat * Math.PI / 180;
+        const rr = radius * Math.cos(phi);
+        const yy = radius * Math.sin(phi);
+        for (let m = 0; m < 12; m += 1) {
+          const th = (m / 12) * TAU;
+          _pt.set(Math.cos(th) * rr, yy, Math.sin(th) * rr);
+          _box.expandByPoint(_v3.copy(_pt).project(camera));
+        }
+      }
+      return {
+        spanYpx: (_box.max.y - _box.min.y) / 2 * window.innerHeight,
+        spanXpx: (_box.max.x - _box.min.x) / 2 * window.innerWidth
+      };
+    };
+    const limitY = Math.max(40, Math.min(cy - SAFE_PX, window.innerHeight - layout.bottomReserve - cy) - SAFE_PX) * FILL;
+    const limitX = Math.max(40, cx - SAFE_PX);
+    let lo = 240;
+    let hi = 4000;
+    // 距離越遠、投影越小：二分搜尋能塞進上限的最小距離。
+    for (let i = 0; i < 22; i += 1) {
+      const mid = (lo + hi) / 2;
+      const { spanYpx, spanXpx } = at(mid);
+      if (!Number.isFinite(spanYpx) || spanYpx <= 0.5) { hi = mid; continue; }
+      if (spanYpx <= limitY && spanXpx <= limitX) hi = mid;
+      else lo = mid;
+    }
+    return Math.round(hi);
+  }
+
+  function mobilePlan() {
+    const N = PHYS.levelCount(state.element);
+    const R = orbitRadius(N);
+    const H = window.innerHeight;
+    const W = window.innerWidth;
+    const panelTop = H - 8 - (250 + 14);
+    const top = layout.metrics.animTop;
+    const bottom = Math.max(top + 120, panelTop - 8);
+    const centerY = (top + bottom) / 2;
+    const maxR = Math.max(90, Math.min((bottom - top) / 2 - 4, W / 2 - 18));
+    const tanV = Math.tan(camera.fov * Math.PI / 360);
+    const dist = R / Math.max(0.02, (maxR / (H / 2)) * tanV);
+    const sph = new THREE.Spherical(dist, HOME.phi, HOME.theta);
+    let targetY = 0;
+    for (let i = 0; i < 4; i += 1) {
+      camera.position.set(0, targetY, 0).add(new THREE.Vector3().setFromSpherical(sph));
+      camera.lookAt(0, targetY, 0);
+      camera.updateMatrixWorld();
+      camera.updateProjectionMatrix();
+      const c = new THREE.Vector3(0, 0, 0).project(camera);
+      const sy = (-c.y * 0.5 + 0.5) * H;
+      const up = new THREE.Vector3(0, R, 0).project(camera);
+      const rp = Math.abs((up.y - c.y) * 0.5 * H);
+      if (!Number.isFinite(rp) || rp < 2) break;
+      targetY -= (sy - centerY) * (R / rp);
+    }
+    return { dist, targetY, cy: centerY, radius: R };
+  }
+
+  function fitPlan() {
+    if (layout.tight) return mobilePlan();
+    const N = PHYS.levelCount(state.element);
+    const radius = orbitRadius(N);
+    const { w, h } = viewSize();
+    const cy = Math.round((h - layout.bottomReserve) / 2);
+    const dist = fitDistance(radius, w / 2, cy);
+    const ndc = (py, pz) => {
+      camera.position.copy(HOME.target)
+        .add(new THREE.Vector3().setFromSpherical(new THREE.Spherical(dist, HOME.phi, HOME.theta)));
+      camera.lookAt(HOME.target);
+      camera.updateMatrixWorld();
+      camera.updateProjectionMatrix();
+      const v = new THREE.Vector3(0, py, pz).project(camera);
+      return {
+        x: Math.round((v.x * 0.5 + 0.5) * w),
+        y: Math.round((-v.y * 0.5 + 0.5) * h)
+      };
+    };
+    const center = ndc(0, 0);
+    const up = ndc(radius, 0);
+    const pxPerUnit = radius / Math.max(1, Math.hypot(up.x - center.x, up.y - center.y));
+    return { dist, center, cy, pxPerUnit, radius };
+  }
+
+  function computeHomeRadius() {
+    return fitPlan().dist;
+  }
+
+  // 以「目前相機」量測球心在畫面上的位置，據此平移目標直到球心對齊。
+  function refineHomeTarget(cy) {
+    for (let i = 0; i < 3; i += 1) {
+      camera.updateMatrixWorld();
+      camera.updateProjectionMatrix();
+      const v = new THREE.Vector3(0, 0, 0).project(camera);
+      const screenY = (-v.y * 0.5 + 0.5) * window.innerHeight;
+      const err = screenY - cy;
+      if (Math.abs(err) < 1.5) break;
+      const top = new THREE.Vector3(0, 0, 0).project(camera);
+      const upper = new THREE.Vector3(0, 40, 0).project(camera);
+      const pxPer40 = Math.abs((upper.y - top.y) * 0.5 * window.innerHeight);
+      const perUnit = pxPer40 / 40;
+      if (!Number.isFinite(perUnit) || perUnit < 0.01) break;
+      const delta = err / perUnit;
+      if (Math.abs(delta) > 900) break;
+      HOME.target.y = Math.round(HOME.target.y + delta);
+      camera.position.set(
+        camera.position.x,
+        camera.position.y + err / perUnit,
+        camera.position.z
+      );
+      camera.lookAt(HOME.target);
+      controls.target.copy(HOME.target);
+    }
   }
 
   function resetView() {
-    const radius = computeHomeRadius();
-    const sph = new THREE.Spherical(radius, HOME.phi, HOME.theta);
+    if (layout.tight) {
+      const plan = mobilePlan();
+      const sph = new THREE.Spherical(plan.dist, HOME.phi, HOME.theta);
+      HOME.target.set(0, plan.targetY, 0);
+      controls.target.copy(HOME.target);
+      camera.position.copy(HOME.target).add(new THREE.Vector3().setFromSpherical(sph));
+      camera.lookAt(HOME.target);
+      if (controls.enabled === false) controls.enabled = true;
+      if (controls.update) controls.update();
+      updateShellLabels();
+      state.viewDirty = false;
+      return;
+    }
+    const plan = fitPlan();
+    const sph = new THREE.Spherical(plan.dist, HOME.phi, HOME.theta);
+    HOME.target.set(0, 0, 0);
+    controls.target.copy(HOME.target);
     camera.position.copy(HOME.target).add(new THREE.Vector3().setFromSpherical(sph));
     camera.lookAt(HOME.target);
-    controls.target.copy(HOME.target);
+    camera.updateMatrixWorld();
+    // 把球心平移到動畫區中央（FPS 風格平移：目標與相機同量位移）
+    const v = new THREE.Vector3(0, 0, 0).project(camera);
+    const screenY = (-v.y * 0.5 + 0.5) * window.innerHeight;
+    const upper = new THREE.Vector3(0, 40, 0).project(camera);
+    const perUnit = Math.abs((upper.y - v.y) * 0.5 * window.innerHeight) / 40;
+    if (Number.isFinite(perUnit) && perUnit > 0.01) {
+      const bottomRoom = Math.max(0, window.innerHeight - layout.bottomReserve);
+      const wanted = Math.min(plan.cy, bottomRoom - (bottomRoom - plan.cy));
+      const shiftY = Math.max(-600, Math.min(600, (wanted - screenY) / perUnit));
+      HOME.target.y = shiftY;
+      controls.target.copy(HOME.target);
+      camera.position.y += shiftY;
+      camera.lookAt(HOME.target);
+    }
     if (controls.enabled === false) controls.enabled = true;
     if (controls.update) controls.update();
+    updateShellLabels();
     state.viewDirty = false;
   }
 
-  // ── right-button drag: vertical camera tilt ──────────────────────────────
+  // ── right-button drag ─────────────────────────────────────────────────────
   let rightDrag = null;
   glCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
   glCanvas.addEventListener('pointerdown', (e) => {
@@ -3163,42 +2718,58 @@ window.__BOHR_PHYS__ = PHYS;
     camera.position.copy(controls.target).add(new THREE.Vector3().setFromSpherical(sph));
     camera.lookAt(controls.target);
   }, { passive: true });
-  window.addEventListener('pointerup', (e) => {
+  window.addEventListener('pointerup', () => {
     if (!rightDrag) return;
     rightDrag = null;
     if (controls.update) controls.update();
   });
-  window.addEventListener('blur', () => {
-    rightDrag = null;
-  });
+  window.addEventListener('blur', () => { rightDrag = null; });
 
-  // ── raycasting / orbit picking ────────────────────────────────────────────
+  // ── picking / hover / tap ─────────────────────────────────────────────────
   const raycaster = new THREE.Raycaster();
   const pointerNdc = new THREE.Vector2();
   const pointers = new Map();
   let tapMeta = null;
 
-  function rectNdc(clientX, clientY) {
+  function pickAt(clientX, clientY) {
     const rect = glCanvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
-    return {
-      x: ((clientX - rect.left) / rect.width) * 2 - 1,
-      y: -((clientY - rect.top) / rect.height) * 2 + 1,
-      rect
-    };
-  }
-
-  function pickAt(clientX, clientY) {
-    const ndc = rectNdc(clientX, clientY);
-    if (!ndc) return null;
-    pointerNdc.set(ndc.x, ndc.y);
+    pointerNdc.set(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1
+    );
     raycaster.setFromCamera(pointerNdc, camera);
     const hits = raycaster.intersectObjects(orbitPickables, false);
     for (const hit of hits) {
       const n = hit.object.userData.n;
       if (n) return n;
     }
-    return null;
+    return pickShellByRadius(clientX, clientY);
+  }
+
+  function pickShellByRadius(clientX, clientY) {
+    const dist = camera.position.length();
+    if (!Number.isFinite(dist) || dist <= 0) return null;
+    camera.updateMatrixWorld();
+    const center = new THREE.Vector3(0, 0, 0).project(camera);
+    const cx = (center.x * 0.5 + 0.5) * window.innerWidth;
+    const cy = (-center.y * 0.5 + 0.5) * window.innerHeight;
+    const d = Math.hypot(clientX - cx, clientY - cy);
+    const tanV = Math.tan(camera.fov * Math.PI / 360);
+    const halfH = window.innerHeight / 2;
+    let best = null;
+    let bestDiff = Infinity;
+    for (const r of ringObjs) {
+      const ratio = clamp(r.radius / dist, 0, 0.999);
+      const px = Math.tan(Math.asin(ratio)) / tanV * halfH;
+      if (d > px + 36) continue;
+      const diff = Math.abs(d - px);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        best = r.n;
+      }
+    }
+    return best;
   }
 
   function showHover(n, clientX, clientY) {
@@ -3210,10 +2781,9 @@ window.__BOHR_PHYS__ = PHYS;
     }
     const e = PHYS.levelEnergy(state.element, n);
     const isCurrent = n === state.currentN;
-    hoverTip.innerHTML = `<b>n = ${n}</b><span>E${n} = ${PHYS.formatEv(e)} eV</span><em>${isCurrent ? '電子目前在此軌道' : '點擊讓電子躍遷'}</em>`;
-    const rect = stage.getBoundingClientRect();
-    const x = clamp(clientX - rect.left, 84, rect.width - 84);
-    const y = clamp(clientY - rect.top - 10, 54, rect.height - 20);
+    hoverTip.innerHTML = `n = ${n}<i>E${n} = ${PHYS.formatEv(e)} eV</i>${isCurrent ? '<i>目前軌道</i>' : '<i>點擊躍遷</i>'}`;
+    const x = clamp(clientX, 90, window.innerWidth - 90);
+    const y = clamp(clientY - 12, 58, window.innerHeight - 20);
     hoverTip.style.left = x + 'px';
     hoverTip.style.top = y + 'px';
     hoverTip.classList.add('show');
@@ -3232,8 +2802,9 @@ window.__BOHR_PHYS__ = PHYS;
 
   glCanvas.addEventListener('pointermove', (e) => {
     if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (tapMeta && tapMeta.id === e.pointerId) {
-      if (Math.hypot(e.clientX - tapMeta.x, e.clientY - tapMeta.y) > 7) tapMeta.moved = true;
+    if (tapMeta && tapMeta.id === e.pointerId &&
+        Math.hypot(e.clientX - tapMeta.x, e.clientY - tapMeta.y) > 7) {
+      tapMeta.moved = true;
     }
     if (e.pointerType === 'mouse' && e.buttons === 0) {
       const n = pickAt(e.clientX, e.clientY);
@@ -3250,7 +2821,7 @@ window.__BOHR_PHYS__ = PHYS;
     pointers.delete(e.pointerId);
     if (meta && meta.id === e.pointerId && !meta.moved && e.button === 0 && pointers.size === 0) {
       const n = pickAt(e.clientX, e.clientY);
-      if (n) handleOrbitPick(n);
+      if (n) jumpTo(n);
     }
     if (pointers.size === 0) tapMeta = null;
   });
@@ -3269,467 +2840,80 @@ window.__BOHR_PHYS__ = PHYS;
     glCanvas.style.cursor = 'grab';
   });
 
-  // ── UI helpers ────────────────────────────────────────────────────────────
-  function setButtonGroup(container, attr, value) {
-    if (!container) return;
-    for (const b of container.querySelectorAll('button')) {
-      b.classList.toggle('active', b.dataset[attr] === value);
-      b.setAttribute('aria-pressed', b.dataset[attr] === value ? 'true' : 'false');
-    }
-  }
-
-  function updateElementButtons() {
-    setButtonGroup(UI.elementSeg, 'element', state.element);
-  }
-
-  function updateExciteButtons() {
-    setButtonGroup(UI.exciteSeg, 'excite', state.excite);
-    UI.modeChip.textContent = state.excite === 'photon' ? '吸收光子' : '碰撞激發';
-  }
-
-  function updateSpectrumButtons() {
-    setButtonGroup(UI.spectrumSeg, 'spectrum', state.spectrumMode);
-    UI.spectrumHint.textContent = state.spectrumMode === 'emission'
-      ? '發射光譜：亮線'
-      : '吸收光譜：暗線';
-  }
-
-  function updateAutoButton() {
-    UI.autoBtn.textContent = state.auto ? '停止演示' : '自動躍遷';
-    UI.autoBtn.classList.toggle('active', state.auto);
-    UI.autoBtn.setAttribute('aria-pressed', state.auto ? 'true' : 'false');
-  }
-
-  function buildOrbitButtons() {
-    UI.orbitButtons.innerHTML = '';
-    const N = PHYS.levelCount(state.element);
-    for (let n = 1; n <= N; n += 1) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = String(n);
-      b.dataset.n = String(n);
-      b.title = `躍遷到 n=${n}`;
-      b.setAttribute('aria-label', `躍遷到 n=${n}`);
-      b.addEventListener('click', () => handleOrbitPick(n));
-      UI.orbitButtons.appendChild(b);
-    }
-    updateOrbitButtons();
-  }
-
-  function updateOrbitButtons() {
-    for (const b of UI.orbitButtons.querySelectorAll('button')) {
-      const n = Number(b.dataset.n);
-      b.classList.toggle('active', n === state.currentN);
-      b.setAttribute('aria-pressed', n === state.currentN ? 'true' : 'false');
-    }
-  }
-
-  function updateHeader() {
-    const el = PHYS.ELEMENTS[state.element];
-    const e = PHYS.levelEnergy(state.element, state.currentN);
-    stat.element.innerHTML = `${el.name} <i>${el.symbol}</i>`;
-    stat.n.textContent = `n = ${state.currentN}`;
-    stat.e.innerHTML = `${PHYS.formatEv(e)} <i>eV</i>`;
-    if (state.lastPhoton) {
-      stat.lambda.textContent = `${PHYS.formatNm(state.lastPhoton.wavelength)} nm`;
-      stat.band.textContent = PHYS.bandOf(state.lastPhoton.wavelength);
-    } else {
-      stat.lambda.textContent = '—';
-      stat.band.textContent = '尚未躍遷';
-    }
-    UI.atomBadge.textContent = `${el.name}原子 · ${el.nucleus.label}`;
-    UI.scaleBadge.textContent = state.element === 'hydrogen' ? '軌道半徑 ∝ n²（示意）' : '能階示意';
-    UI.formulaLine.textContent = el.formula;
-  }
-
-  function updateReadouts() {
-    const rec = state.recent;
-    if (!rec) {
-      levelReadout.de.textContent = '—';
-      levelReadout.lambda.textContent = '—';
-      levelReadout.band.textContent = '—';
-      UI.seriesChip.textContent = `${PHYS.ELEMENTS[state.element].name}原子`;
-      return;
-    }
-    levelReadout.de.textContent = `${rec.dE.toFixed(2)} eV`;
-    levelReadout.lambda.textContent = rec.optical ? `${PHYS.formatNm(rec.wavelength)} nm` : '—';
-    levelReadout.band.textContent = rec.optical ? PHYS.bandOf(rec.wavelength) : (rec.reason === 'collision' ? '動能→位能' : '激發');
-    UI.seriesChip.textContent = rec.optical
-      ? `${PHYS.ELEMENTS[state.element].name} · ${PHYS.seriesNameFor(state.element, rec.toN)}`
-      : (rec.reason === 'collision' ? '碰撞激發' : '激發');
-  }
-
-  function updateTransitionChip(rec) {
-    if (!rec) {
-      transitionChip.classList.remove('show');
-      return;
-    }
-    let label = '自發躍遷';
-    if (rec.reason === 'collision') label = '碰撞激發';
-    else if (rec.reason === 'photon') label = '吸收光子';
-    else if (rec.reason === 'auto-excite') label = '演示激發';
-    else if (rec.type === 'absorption') label = '吸收光子';
-    else label = '發射光子';
-
-    const detail = rec.optical
-      ? `${PHYS.formatNm(rec.wavelength)} nm`
-      : (rec.reason === 'collision' && Number.isFinite(rec.residual) ? `剩 ${rec.residual.toFixed(2)} eV` : `ΔE ${rec.dE.toFixed(2)} eV`);
-
-    transitionChip.style.setProperty('--photon', rec.color);
-    transitionChip.innerHTML = `<span class="tc-label">${label}</span><b>n=${rec.fromN} → n=${rec.toN}</b><strong>${detail}</strong>`;
-    transitionChip.classList.add('show');
-  }
-
-  function updateSeriesLegend() {
-    const el = PHYS.ELEMENTS[state.element];
-    if (state.element === 'hydrogen') {
-      UI.seriesLegend.innerHTML = [
-        ['來曼系', '#b49cff'], ['巴耳末系', '#5ce4ff'], ['帕申系', '#ff9e73']
-      ].map(([name, color]) => `<span><i style="background:${color}"></i>${name}</span>`).join('');
-    } else {
-      UI.seriesLegend.innerHTML = `<span><i style="background:${state.element === 'mercury' ? '#ffc46b' : '#8ad6ff'}"></i>${el.name}譜線</span>`;
-    }
-  }
-
-  function updateSliderFill() {
-    const v = state.excite === 'photon' ? state.photonEnergy : state.collisionEnergy;
-    const min = Number(UI.energySlider.min);
-    const max = Number(UI.energySlider.max);
-    const p = clamp((v - min) / (max - min), 0, 1) * 100;
-    UI.energySlider.style.setProperty('--p', p.toFixed(2) + '%');
-  }
-
-  function updateEnergyHint() {
-    const key = state.element;
-    const n = state.currentN;
-    const N = PHYS.levelCount(key);
-    if (n >= N) {
-      UI.rangeMid.textContent = '電子已在最高能階';
-      UI.energyBox.classList.remove('exact');
-      return;
-    }
-    if (state.excite === 'photon') {
-      const hit = PHYS.matchPhoton(key, n, state.photonEnergy);
-      const near = PHYS.nearestPhoton(key, n, state.photonEnergy);
-      if (hit) {
-        UI.rangeMid.textContent = `命中 n=${n}→${hit.to}　ΔE ${hit.dE.toFixed(2)} eV`;
-        UI.energyBox.classList.add('exact');
-      } else {
-        UI.rangeMid.textContent = near
-          ? `最接近 n=${n}→${near.to}　ΔE ${near.dE.toFixed(2)} eV`
-          : '沒有更高的能階';
-        UI.energyBox.classList.remove('exact');
-      }
-    } else {
-      const hit = PHYS.matchCollision(key, n, state.collisionEnergy);
-      if (hit) {
-        UI.rangeMid.textContent = `可激發至 n=${hit.to}　剩 ${hit.residual.toFixed(2)} eV`;
-        UI.energyBox.classList.add('exact');
-      } else {
-        const near = PHYS.nearestPhoton(key, n, state.collisionEnergy);
-        UI.rangeMid.textContent = near
-          ? `需 ${near.dE.toFixed(2)} eV 才能激發`
-          : '沒有更高的能階';
-        UI.energyBox.classList.remove('exact');
-      }
-    }
-  }
-
-  function updateInputs() {
-    const v = state.excite === 'photon' ? state.photonEnergy : state.collisionEnergy;
-    UI.energyLabel.textContent = state.excite === 'photon' ? '光子能量' : '電子動能';
-    UI.fireBtn.textContent = state.excite === 'photon' ? '發射光子' : '碰撞激發';
-    UI.energyInput.value = v.toFixed(2);
-    UI.energySlider.value = String(v);
-    updateSliderFill();
-    updateEnergyHint();
-  }
-
-  function refreshAllUI() {
-    updateElementButtons();
-    updateExciteButtons();
-    updateSpectrumButtons();
-    updateAutoButton();
-    updateHeader();
-    updateReadouts();
-    updateOrbitButtons();
-    updateRingStyles();
-    updateSeriesLegend();
-    updateInputs();
-    updateTransitionChip(state.recent);
-  }
-
-  // ── physics / transitions ─────────────────────────────────────────────────
-  function cancelAuto() {
-    state.autoToken += 1;
-    if (state.auto) {
-      state.auto = false;
-      updateAutoButton();
-    }
-  }
-
-  function makeRecord(fromN, toN, reason, opts = {}) {
+  // ── transitions ───────────────────────────────────────────────────────────
+  function makeRecord(fromN, toN) {
     const dE = PHYS.transitionEnergy(state.element, Math.max(fromN, toN), Math.min(fromN, toN));
     const wavelength = PHYS.wavelengthNm(dE);
-    const optical = opts.optical !== undefined
-      ? opts.optical
-      : !(reason === 'collision' || reason === 'auto-excite');
-    const type = toN < fromN ? 'emission' : 'absorption';
-    const color = optical
-      ? PHYS.wavelengthRGB(wavelength).hex
-      : (reason === 'collision' ? '#ffc46b' : '#8fb9ff');
     return {
-      fromN, toN, dE, wavelength, type, reason, optical, color,
-      band: optical ? PHYS.bandOf(wavelength) : '—',
-      t: nowMs(),
-      kinetic: opts.kinetic,
-      residual: opts.residual
+      fromN, toN, dE, wavelength,
+      type: toN < fromN ? 'emission' : 'absorption',
+      color: PHYS.wavelengthRGB(wavelength).hex,
+      t: nowMs()
     };
   }
 
-  function jumpTo(targetN, opts = {}) {
-    if (!state.ready) return Promise.resolve(null);
+  function recordPhotonEvent(a) {
+    if (!a || a.recorded) return;
+    a.recorded = true;
+    a.rec.t = nowMs();
+    state.history.push(a.rec);
+    if (state.history.length > 6) state.history.shift();
+    state.recent = a.rec;
+    state.canvasDirtyUntil = nowMs() + 1700;
+    state.levelsDirtyUntil = nowMs() + 2200;
+    drawSpectrum();
+    drawEnergyLevels();
+  }
+
+  function jumpTo(targetN) {
+    if (!state.ready || state.anim) return Promise.resolve(null);
     const N = PHYS.levelCount(state.element);
     const toN = clamp(Math.round(targetN), 1, N);
-    if (toN === state.currentN) {
-      if (!opts.quiet) setStatus(`電子已在 n=${toN}。`, 'info');
-      return Promise.resolve(null);
-    }
-    if (state.anim) return Promise.resolve(null);
-    if (state.auto && !opts.fromAuto) cancelAuto();
-
+    if (toN === state.currentN) return Promise.resolve(null);
     const fromN = state.currentN;
-    const rec = makeRecord(fromN, toN, opts.reason || 'click', opts);
-    rec.t = nowMs();
-    state.history.push(rec);
-    if (state.history.length > 10) state.history.shift();
-    state.recent = rec;
-    if (rec.optical) state.lastPhoton = rec;
-
-    const duration = opts.duration || (660 + Math.min(280, Math.abs(toN - fromN) * 55));
+    const rec = makeRecord(fromN, toN);
     const angle0 = state.angle;
     const angle1 = state.angle + 0.44 + Math.abs(toN - fromN) * 0.055;
-    state.anim = {
-      fromN, toN, rec, start: nowMs(), duration,
-      angle0, angle1, fired: false, resolve: null
+    const type = toN < fromN ? 'emission' : 'absorption';
+    const a = {
+      fromN, toN, rec, type, angle0, angle1,
+      start: nowMs(), jumpStart: 0, jumpDur: 430,
+      impactAt: 0, recorded: false, resolve: null
     };
-    const promise = new Promise((resolve) => { state.anim.resolve = resolve; });
-
-    state.canvasDirtyUntil = nowMs() + 2500;
-    updateHeader();
-    updateOrbitButtons();
-    updateRingStyles();
-    updateReadouts();
-    updateEnergyHint();
-    updateTransitionChip(rec);
-    drawLevels();
-    drawSpectrum();
-
-    if (!opts.quiet) {
-      setStatus(opts.statusText || defaultStatusFor(rec), rec.type === 'emission' ? 'success' : 'info');
+    if (type === 'absorption') {
+      // 光子先從外部飛向電子；電子在撞擊前保持靜止。
+      const target = pointOnRing(fromN, angle0);
+      const dir = target.clone().normalize();
+      dir.y += 0.10;
+      dir.normalize();
+      const photon = spawnPhoton(
+        'absorption',
+        target.clone().addScaledVector(dir, 260),
+        target,
+        rec.color,
+        { scale: 5.2, glow: 96, dur: 475 }
+      );
+      a.impactAt = photon.t0 + photon.dur;
     }
-    return promise;
+    state.anim = a;
+    return new Promise((resolve) => { a.resolve = resolve; });
   }
 
-  function defaultStatusFor(rec) {
-    const nm = PHYS.formatNm(rec.wavelength);
-    if (rec.reason === 'collision') {
-      return `碰撞激發：K=${Number(rec.kinetic).toFixed(2)} eV → n=${rec.toN}，剩餘 ${Number(rec.residual || 0).toFixed(2)} eV 轉為動能。`;
-    }
-    if (rec.type === 'emission') {
-      return `自發躍遷：n=${rec.fromN} → n=${rec.toN}，發射 ${nm} nm（${PHYS.bandOf(rec.wavelength)}）。`;
-    }
-    if (rec.reason === 'auto-excite') {
-      return `演示激發：n=${rec.fromN} → n=${rec.toN}。`;
-    }
-    return `吸收 ${rec.dE.toFixed(2)} eV 光子：n=${rec.fromN} → n=${rec.toN}。`;
-  }
-
-  function finishTransition() {
+  function finishJump(a) {
     if (!state.anim) return;
-    const a = state.anim;
     state.anim = null;
     state.currentN = a.toN;
     state.angle = a.angle1 % TAU;
+    updateRingStyles();
     if (a.resolve) a.resolve(a.rec);
-    state.canvasDirtyUntil = nowMs() + 1200;
-    updateHeader();
-    updateOrbitButtons();
-    updateRingStyles();
-    updateReadouts();
-    updateEnergyHint();
-    drawLevels();
-    drawSpectrum();
-  }
-
-  async function handleOrbitPick(n) {
-    cancelAuto();
-    if (!state.ready) return null;
-    if (state.anim) return null;
-    return jumpTo(n, { reason: 'click' });
-  }
-
-  function setExciteMode(mode, opts = {}) {
-    if (mode !== 'photon' && mode !== 'collision') return;
-    state.excite = mode;
-    updateExciteButtons();
-    updateInputs();
-    if (!opts.silent) {
-      setStatus(mode === 'photon'
-        ? '吸收光子：能量必須恰等於某個能階差，否則光子不被吸收。'
-        : '碰撞激發：電子動能大於等於能階差即可激發，多餘能量轉為動能。', 'info');
-    }
-  }
-
-  function setSpectrumMode(mode, opts = {}) {
-    if (mode !== 'emission' && mode !== 'absorption') return;
-    state.spectrumMode = mode;
-    updateSpectrumButtons();
-    drawSpectrum();
     state.canvasDirtyUntil = nowMs() + 900;
-    if (!opts.silent) {
-      setStatus(mode === 'emission'
-        ? '發射光譜：激發後的原子放出特定波長，形成亮線。'
-        : '吸收光譜：連續白光通過氣體，特定波長被吸收，形成暗線。', 'info');
-    }
+    state.levelsDirtyUntil = nowMs() + 1900;
+    drawEnergyLevels();
   }
 
-  function parseEnergyInput() {
-    if (!UI.energyInput.value.trim()) return null;
-    const v = Number(UI.energyInput.value);
-    if (!Number.isFinite(v)) return null;
-    return clamp(v, 0.5, 30);
-  }
-
-  function setEnergyValue(v, opts = {}) {
-    const val = clamp(Number(v) || 0.5, 0.5, 30);
-    if (state.excite === 'photon') state.photonEnergy = val;
-    else state.collisionEnergy = val;
-    if (opts.syncInput) UI.energyInput.value = val.toFixed(2);
-    UI.energySlider.value = String(val);
-    updateSliderFill();
-    updateEnergyHint();
-  }
-
-  function fire() {
-    cancelAuto();
-    if (!state.ready || state.anim) return null;
-    if (state.excite === 'photon') {
-      const hit = PHYS.matchPhoton(state.element, state.currentN, state.photonEnergy);
-      if (hit) {
-        return jumpTo(hit.to, {
-          reason: 'photon', optical: true,
-          statusText: `能量命中 ΔE = ${hit.dE.toFixed(2)} eV：吸收光子，n=${state.currentN} → n=${hit.to}。`
-        });
-      }
-      const near = PHYS.nearestPhoton(state.element, state.currentN, state.photonEnergy);
-      if (state.currentN >= PHYS.levelCount(state.element)) {
-        setStatus('電子已在最高能階，無法再吸收光子。', 'error');
-      } else {
-        spawnReject();
-        setStatus(`不吸收：${state.photonEnergy.toFixed(2)} eV 與任何能階差都不符${near ? `（最接近 ${near.dE.toFixed(2)} eV）` : ''}。`, 'error');
-        flashAt(electronGroup.position, '#ff9d92', 38);
-      }
-      state.canvasDirtyUntil = nowMs() + 1600;
-      drawLevels();
-      drawSpectrum();
-      return null;
-    }
-
-    const hit = PHYS.matchCollision(state.element, state.currentN, state.collisionEnergy);
-    if (hit) {
-      return jumpTo(hit.to, {
-        reason: 'collision', optical: false,
-        kinetic: state.collisionEnergy, residual: hit.residual,
-        statusText: `碰撞激發：K=${state.collisionEnergy.toFixed(2)} eV，n=${state.currentN} → n=${hit.to}，剩餘 ${hit.residual.toFixed(2)} eV 為動能。`
-      });
-    }
-    const near = PHYS.nearestPhoton(state.element, state.currentN, state.collisionEnergy);
-    flashAt(electronGroup.position, '#ff9d92', 38);
-    setStatus(state.currentN >= PHYS.levelCount(state.element)
-      ? '電子已在最高能階，碰撞無法再激發。'
-      : `動能不足：n=${state.currentN}→n=${near ? near.to : state.currentN + 1} 需要 ${near ? near.dE.toFixed(2) : '—'} eV。`, 'error');
-    return null;
-  }
-
-  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-  async function autoCascade() {
-    if (state.anim) return;
-    if (state.auto) {
-      cancelAuto();
-      setStatus('已停止自動躍遷演示。', 'info');
-      return;
-    }
-    if (!state.ready) return;
-    cancelAuto();
-    const token = ++state.autoToken;
-    state.auto = true;
-    updateAutoButton();
-    const N = PHYS.levelCount(state.element);
-
-    if (state.currentN === 1) {
-      setStatus(`自動躍遷演示：先激發電子到 n=${N}…`, 'info');
-      await jumpTo(N, { reason: 'auto-excite', optical: false, quiet: true, fromAuto: true, duration: 820 });
-      if (token !== state.autoToken) return;
-      await wait(420);
-    }
-
-    while (state.currentN > 1 && token === state.autoToken) {
-      const fromN = state.currentN;
-      const toN = fromN - 1;
-      const p = jumpTo(toN, { reason: 'auto', optical: true, quiet: true, fromAuto: true, duration: 640 });
-      if (!p) break;
-      const rec = await p;
-      if (token !== state.autoToken) return;
-      if (rec) {
-        setStatus(`自動躍遷：n=${fromN} → n=${toN}，發射 ${PHYS.formatNm(rec.wavelength)} nm（${PHYS.bandOf(rec.wavelength)}）。`, 'success');
-      }
-      await wait(520);
-    }
-
-    if (token === state.autoToken) {
-      state.auto = false;
-      updateAutoButton();
-      setStatus('自動躍遷完成：電子回到基態 n=1。', 'success');
-    }
-  }
-
-  function resetSimulation(opts = {}) {
-    cancelAuto();
-    if (state.anim) {
-      const a = state.anim;
-      state.anim = null;
-      if (a.resolve) a.resolve(null);
-    }
-    state.currentN = 1;
-    state.angle = 0.55;
-    state.history = [];
-    state.recent = null;
-    state.lastPhoton = null;
-    state.hoverN = null;
-    clearTransientEffects();
-    electronGroup.position.copy(pointOnRing(1, state.angle));
-    trailCount = 0;
-    trailGeo.setDrawRange(0, 0);
-    updateHeader();
-    updateReadouts();
-    updateOrbitButtons();
-    updateRingStyles();
-    updateEnergyHint();
-    updateTransitionChip(null);
-    drawLevels();
-    drawSpectrum();
-    if (!opts.silent) {
-      const el = PHYS.ELEMENTS[state.element];
-      setStatus(`${el.name}原子已重設：電子回到 n=1，${el.note}。`, 'info');
-    }
-    state.canvasDirtyUntil = nowMs() + 900;
-  }
-
-  function setElement(key, opts = {}) {
+  // ── UI: element / spectrum mode ───────────────────────────────────────────
+  function setElement(key) {
     if (!PHYS.ELEMENTS[key]) return;
-    cancelAuto();
     if (state.anim) {
       const a = state.anim;
       state.anim = null;
@@ -3740,29 +2924,40 @@ window.__BOHR_PHYS__ = PHYS;
     state.angle = 0.55;
     state.history = [];
     state.recent = null;
-    state.lastPhoton = null;
     state.hoverN = null;
-    const el = PHYS.ELEMENTS[key];
-    state.photonEnergy = el.defaultPhoton;
-    state.collisionEnergy = el.defaultCollision;
     clearTransientEffects();
     rebuildNucleus();
     rebuildOrbits();
-    buildOrbitButtons();
-    refreshAllUI();
+    for (const b of elementSeg.querySelectorAll('button')) {
+      const active = b.dataset.element === key;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
     resetView();
     trailCount = 0;
     trailGeo.setDrawRange(0, 0);
     electronGroup.position.copy(pointOnRing(1, state.angle));
-    drawLevels();
+    state.canvasDirtyUntil = nowMs() + 1200;
+    state.levelsDirtyUntil = nowMs() + 2200;
     drawSpectrum();
-    state.canvasDirtyUntil = nowMs() + 1600;
-    if (!opts.silent) {
-      setStatus(`${el.name}原子：電子位於 n=1，${el.note}。`, 'info');
-    }
+    drawEnergyLevels();
   }
 
-  // ── canvas: energy level diagram ──────────────────────────────────────────
+  function setSpectrumMode(mode) {
+    if (mode !== 'emission' && mode !== 'absorption') return;
+    state.spectrumMode = mode;
+    for (const b of spectrumSeg.querySelectorAll('button')) {
+      const active = b.dataset.spectrum === mode;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+    state.canvasDirtyUntil = nowMs() + 700;
+    state.levelsDirtyUntil = nowMs() + 1800;
+    drawSpectrum();
+    drawEnergyLevels();
+  }
+
+  // ── spectrum drawing ──────────────────────────────────────────────────────
   function fitCanvas(canvas) {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const rect = canvas.getBoundingClientRect();
@@ -3779,461 +2974,364 @@ window.__BOHR_PHYS__ = PHYS;
     return { ctx, w, h };
   }
 
-  function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
-  function easeInOutCubic(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
-
-  function drawArrow(ctx, x, y1, y2, color, progress, width) {
-    const yy = y1 + (y2 - y1) * progress;
-    const dir = y2 >= y1 ? 1 : -1;
-    ctx.save();
-    ctx.strokeStyle = color;
-    ctx.fillStyle = color;
-    ctx.lineWidth = width;
-    ctx.lineCap = 'round';
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 10;
-    ctx.beginPath();
-    ctx.moveTo(x, y1);
-    ctx.lineTo(x, yy);
-    ctx.stroke();
-    const ah = 6.2;
-    ctx.beginPath();
-    ctx.moveTo(x, yy);
-    ctx.lineTo(x - ah, yy - dir * ah * 1.5);
-    ctx.lineTo(x + ah, yy - dir * ah * 1.5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawLevels() {
-    const canvas = levelsCanvas;
-    const { ctx, w, h } = fitCanvas(canvas);
-    if (w < 80 || h < 80) return;
-    ctx.clearRect(0, 0, w, h);
-
-    const el = PHYS.ELEMENTS[state.element];
-    const N = el.levels.length;
-    const compact = w < 368;
-    const large = w >= 380 && h >= 170;
-    const tight = h < 150;
-    const padL = compact ? 43 : 57;
-    const padR = compact ? 93 : 121;
-    const x0 = padL;
-    const x1 = Math.max(x0 + 46, w - padR);
-    const top = tight ? 34 : compact ? 48 : 56;
-    const bottom = h - (tight ? 16 : compact ? 25 : 31);
-    if (bottom - top < 30) return;
-
-    const yOf = (n) => bottom - ((n - 1) / (N - 1)) * (bottom - top);
-    const now = nowMs();
-
-    // Ionization line.
-    const ionY = top - 17;
-    ctx.save();
-    ctx.setLineDash([4, 6]);
-    ctx.strokeStyle = 'rgba(120,185,230,.25)';
-    ctx.lineWidth = 1.3;
-    ctx.beginPath();
-    ctx.moveTo(x0, ionY);
-    ctx.lineTo(x1, ionY);
-    ctx.stroke();
-    ctx.restore();
-    ctx.font = `700 ${large ? 14 : compact ? 12.5 : 13.5}px ${FONT_STACK}`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(150,190,220,.62)';
-    ctx.fillText('E = 0（游離）', x0, top - 28);
-
-    // Level lines.
-    for (let n = 1; n <= N; n += 1) {
-      const y = yOf(n);
-      const active = n === state.currentN;
-      const color = '#' + LEVEL_COLORS[(n - 1) % LEVEL_COLORS.length].toString(16).padStart(6, '0');
-      ctx.save();
-      ctx.lineWidth = active ? 3.0 : 2.0;
-      ctx.strokeStyle = active ? '#ffe1a0' : hexAlpha(color, 0.68);
-      ctx.shadowColor = active ? 'rgba(255,196,107,.55)' : 'rgba(80,180,225,.15)';
-      ctx.shadowBlur = active ? 14 : 3;
-      ctx.beginPath();
-      ctx.moveTo(x0, y);
-      ctx.lineTo(x1, y);
-      ctx.stroke();
-      ctx.restore();
-
-      ctx.font = `800 ${large ? 18 : compact ? 12.5 : 15}px ${FONT_STACK}`;
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = active ? '#ffffff' : '#91abc9';
-      ctx.fillText(`n=${n}`, x0 - 10, y + 0.5);
-
-      ctx.font = `700 ${large ? 16 : compact ? 12.5 : 14}px ${FONT_STACK}`;
-      ctx.textAlign = 'left';
-      ctx.fillStyle = active ? '#fff2d4' : '#d4e7fa';
-      ctx.fillText(`${PHYS.formatEv(el.levels[n - 1])} eV`, x1 + 9, y + 0.5);
-
-      if (active) {
-        ctx.save();
-        ctx.fillStyle = '#9ff5ff';
-        ctx.shadowColor = '#5ce4ff';
-        ctx.shadowBlur = 14;
-        ctx.beginPath();
-        ctx.arc(x0 + 21, y, 4.2, 0, TAU);
-        ctx.fill();
-        ctx.restore();
-        ctx.font = `800 ${large ? 14 : compact ? 12.5 : 13}px ${FONT_STACK}`;
-        ctx.fillStyle = '#a9f6ff';
-        ctx.textAlign = 'left';
-        if (!tight) ctx.fillText('e⁻', x0 + 30, y - 9);
-      }
+  function xOfWavelength(nm, w) {
+    // 紫外 10%、可見光 76%、紅外 14%；小光譜仍能清楚分開可見譜線。
+    const u = 0.10, v = 0.86;
+    if (nm <= 380) {
+      return (Math.log(clamp(nm, 90, 380) / 90) / Math.log(380 / 90)) * u * w;
     }
-
-    // Transition arrows (last three events).
-    const recs = state.history.slice(-3);
-    for (let i = 0; i < recs.length; i += 1) {
-      const rec = recs[i];
-      const active = state.anim && state.anim.rec === rec;
-      const last = i === recs.length - 1;
-      const age = now - rec.t;
-      let alpha = last ? 1 : 0.30;
-      if (last && !active && age > 5200) alpha = 0.56;
-      const x = x0 + (x1 - x0) * (0.50 + (i - (recs.length - 1) / 2) * 0.105);
-      const y1 = yOf(rec.fromN);
-      const y2 = yOf(rec.toN);
-      let progress = 1;
-      if (active) {
-        progress = easeOutCubic(clamp((now - state.anim.start) / state.anim.duration, 0, 1));
-      }
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      drawArrow(ctx, x, y1, y2, rec.color, progress, active ? 2.8 : 1.8);
-      ctx.restore();
-
-      if (last && !tight) {
-        const midY = (y1 + y2) / 2;
-        const label = `ΔE ${rec.dE.toFixed(2)} eV`;
-        ctx.save();
-        ctx.font = `800 ${large ? 14 : compact ? 12.5 : 13.5}px ${FONT_STACK}`;
-        const tw = ctx.measureText(label).width;
-        const bw = tw + 15;
-        let bx = x + 9;
-        if (bx + bw > x1 - 3) bx = x - 9 - bw;
-        bx = clamp(bx, x0 + 3, x1 - bw - 3);
-        const by = clamp(midY - 12, top - 8, bottom - 25);
-        roundRect(ctx, bx, by, bw, 24, 8);
-        ctx.fillStyle = 'rgba(3,10,22,.90)';
-        ctx.fill();
-        ctx.strokeStyle = hexAlpha(rec.color, 0.42);
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.fillStyle = rec.color;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label, bx + bw / 2, by + 12.5);
-        ctx.restore();
-      }
+    if (nm <= 750) {
+      return (u + ((nm - 380) / (750 - 380)) * (v - u)) * w;
     }
+    const t = Math.log(clamp(nm, 750, 2200) / 750) / Math.log(2200 / 750);
+    return (v + t * (1 - v)) * w;
   }
 
-  function hexAlpha(hex, alpha) {
-    const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ''));
-    if (!m) return `rgba(120,180,220,${alpha})`;
-    const n = parseInt(m[1], 16);
-    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
-  }
-
-  // ── canvas: spectrum ──────────────────────────────────────────────────────
   function drawSpectrum() {
-    const canvas = spectrumCanvas;
-    const { ctx, w, h } = fitCanvas(canvas);
-    if (w < 100 || h < 30) return;
+    const { ctx, w, h } = fitCanvas(spectrumCanvas);
+    if (w < 40 || h < 24) return;
     ctx.clearRect(0, 0, w, h);
 
-    const compact = w < 640;
-    const big = w >= 1000;
-    const tight = h < 72;
-    const x0 = compact ? 10 : 16;
-    const x1 = w - (compact ? 10 : 16);
-    const y0 = tight ? 11 : compact ? 20 : 25;
-    const y1 = h - (tight ? 10 : compact ? 18 : 25);
-    if (y1 - y0 < 18) return;
-
-    const L0 = 90;
-    const L1 = 2200;
-    const log0 = Math.log10(L0);
-    const log1 = Math.log10(L1);
-    const xOf = (nm) => x0 + (Math.log10(clamp(nm, L0, L1)) - log0) / (log1 - log0) * (x1 - x0);
-    const xUV = xOf(380);
-    const xVis = xOf(750);
+    const xUV = 0.10 * w;
+    const xVis = 0.86 * w;
+    const now = nowMs();
     const mode = state.spectrumMode;
-    const font = FONT_STACK;
 
     ctx.save();
-    roundRect(ctx, x0, y0, x1 - x0, y1 - y0, 7);
+    roundRect(ctx, 0.5, 0.5, w - 1, h - 1, 8);
     ctx.clip();
-    ctx.fillStyle = 'rgba(2,7,15,.82)';
-    ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
 
-    // UV zone
-    const uvGrad = ctx.createLinearGradient(x0, 0, xUV, 0);
-    uvGrad.addColorStop(0, 'rgba(31,18,72,.88)');
-    uvGrad.addColorStop(0.7, 'rgba(44,26,94,.72)');
-    uvGrad.addColorStop(1, 'rgba(64,37,118,.52)');
-    ctx.fillStyle = uvGrad;
-    ctx.fillRect(x0, y0, xUV - x0, y1 - y0);
-
-    // Visible rainbow
-    const rainbow = ctx.createLinearGradient(xUV, 0, xVis, 0);
-    const stops = 18;
-    for (let i = 0; i <= stops; i += 1) {
-      const nm = 380 + (i / stops) * (750 - 380);
-      const c = PHYS.wavelengthRGB(nm);
-      rainbow.addColorStop(i / stops, `rgb(${c.r},${c.g},${c.b})`);
-    }
-    ctx.globalAlpha = mode === 'absorption' ? 1 : 0.48;
-    ctx.fillStyle = rainbow;
-    ctx.fillRect(xUV, y0, xVis - xUV, y1 - y0);
-    ctx.globalAlpha = 1;
-
-    // IR zone
-    const irGrad = ctx.createLinearGradient(xVis, 0, x1, 0);
-    irGrad.addColorStop(0, 'rgba(133,29,29,.52)');
-    irGrad.addColorStop(1, 'rgba(41,10,14,.86)');
-    ctx.fillStyle = irGrad;
-    ctx.fillRect(xVis, y0, x1 - xVis, y1 - y0);
-
-    // Top sheen
-    const sheen = ctx.createLinearGradient(0, y0, 0, y1);
-    sheen.addColorStop(0, 'rgba(255,255,255,.14)');
-    sheen.addColorStop(0.5, 'rgba(255,255,255,0)');
-    sheen.addColorStop(1, 'rgba(0,0,0,.28)');
-    ctx.fillStyle = sheen;
-    ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
-
-    // Boundary lines
-    ctx.strokeStyle = 'rgba(230,250,255,.24)';
-    ctx.lineWidth = 1;
-    for (const x of [xUV, xVis]) {
-      ctx.beginPath();
-      ctx.moveTo(x, y0);
-      ctx.lineTo(x, y1);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // Border
-    ctx.save();
-    roundRect(ctx, x0, y0, x1 - x0, y1 - y0, 7);
-    ctx.strokeStyle = 'rgba(126,197,255,.22)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.restore();
-
-    // Band labels
-    if (!tight) {
-      ctx.font = `800 ${big ? 14 : compact ? 12.5 : 13.5}px ${font}`;
-      ctx.textBaseline = 'middle';
-      ctx.textAlign = 'left';
-      ctx.fillStyle = 'rgba(186,164,255,.85)';
-      ctx.fillText('紫外', x0 + 3, y0 - 9);
-      ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(220,247,255,.85)';
-      ctx.fillText('可見光', (xUV + xVis) / 2, y0 - 9);
-      ctx.textAlign = 'right';
-      ctx.fillStyle = 'rgba(255,161,145,.82)';
-      ctx.fillText('紅外', x1 - 3, y0 - 9);
-    }
-
-    // All possible lines.
-    const list = PHYS.transitions(state.element).filter((t) => t.wavelength >= L0 && t.wavelength <= L1);
     if (mode === 'absorption') {
+      // 全彩連續光譜：紫外、可見光、紅外
+      const uv = ctx.createLinearGradient(0, 0, xUV, 0);
+      uv.addColorStop(0, '#160c34');
+      uv.addColorStop(0.62, '#2b1660');
+      uv.addColorStop(1, '#4b21a0');
+      ctx.fillStyle = uv;
+      ctx.fillRect(0, 0, xUV, h);
+
+      const rainbow = ctx.createLinearGradient(xUV, 0, xVis, 0);
+      const stops = 18;
+      for (let i = 0; i <= stops; i += 1) {
+        const nm = 380 + (i / stops) * (750 - 380);
+        const c = PHYS.wavelengthRGB(nm);
+        rainbow.addColorStop(i / stops, `rgb(${c.r},${c.g},${c.b})`);
+      }
+      ctx.fillStyle = rainbow;
+      ctx.fillRect(xUV - 0.5, 0, xVis - xUV + 1, h);
+
+      const ir = ctx.createLinearGradient(xVis, 0, w, 0);
+      ir.addColorStop(0, '#671b25');
+      ir.addColorStop(0.55, '#481016');
+      ir.addColorStop(1, '#21080d');
+      ctx.fillStyle = ir;
+      ctx.fillRect(xVis, 0, w - xVis, h);
+
+      const gloss = ctx.createLinearGradient(0, 0, 0, h);
+      gloss.addColorStop(0, 'rgba(255,255,255,.14)');
+      gloss.addColorStop(0.55, 'rgba(255,255,255,0)');
+      gloss.addColorStop(1, 'rgba(0,0,0,.25)');
+      ctx.fillStyle = gloss;
+      ctx.fillRect(0, 0, w, h);
+    } else {
+      // 發射光譜：純黑底，只留譜線
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, w, h);
+    }
+    ctx.restore();
+
+    const list = PHYS.transitions(state.element).filter((t) => t.wavelength >= 90 && t.wavelength <= 2200);
+    const recent = state.recent;
+    const fresh = recent && now - recent.t < 1100;
+
+    for (const t of list) {
+      const x = xOfWavelength(t.wavelength, w);
+      const isRecent = recent && Math.abs(recent.wavelength - t.wavelength) < 0.02;
+      const baseWidth = t.visible ? 2.4 : 1.35;
       ctx.save();
-      for (const t of list) {
-        const x = xOf(t.wavelength);
-        ctx.strokeStyle = 'rgba(0,2,7,.82)';
-        ctx.lineWidth = t.visible ? 2.6 : 1.25;
+      if (mode === 'absorption') {
+        ctx.strokeStyle = 'rgba(0,0,0,.92)';
+        ctx.lineWidth = isRecent && fresh ? 4.4 : baseWidth + 0.3;
         ctx.beginPath();
-        ctx.moveTo(x, y0 + 1);
-        ctx.lineTo(x, y1 - 1);
+        ctx.moveTo(x, 1);
+        ctx.lineTo(x, h - 1);
         ctx.stroke();
-        if (t.visible) {
-          ctx.strokeStyle = 'rgba(255,255,255,.09)';
+        if (isRecent && fresh) {
+          ctx.strokeStyle = 'rgba(230,248,255,.30)';
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.moveTo(x + 1.4, y0 + 1);
-          ctx.lineTo(x + 1.4, y1 - 1);
+          ctx.moveTo(x + 2.2, 1);
+          ctx.lineTo(x + 2.2, h - 1);
           ctx.stroke();
         }
-      }
-      ctx.restore();
-    } else {
-      ctx.save();
-      for (const t of list) {
-        const x = xOf(t.wavelength);
-        ctx.strokeStyle = hexAlpha(t.color, t.visible ? 0.64 : 0.16);
-        ctx.lineWidth = t.visible ? 2.4 : 1.15;
-        ctx.beginPath();
-        ctx.moveTo(x, y0 + 1);
-        ctx.lineTo(x, y1 - 1);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    // Event lines matching the current spectrum mode.
-    const events = state.history.filter((r) => r.optical && r.wavelength >= L0 && r.wavelength <= L1);
-    for (const rec of events) {
-      const isEmission = rec.type === 'emission';
-      if ((mode === 'emission') !== isEmission) continue;
-      const x = xOf(rec.wavelength);
-      const age = nowMs() - rec.t;
-      const fresh = age < 950;
-      ctx.save();
-      if (isEmission) {
-        ctx.strokeStyle = rec.color;
-        ctx.lineWidth = fresh ? 3.7 : 2.7;
-        ctx.shadowColor = rec.color;
-        ctx.shadowBlur = fresh ? 16 : 8;
-        ctx.beginPath();
-        ctx.moveTo(x, y0 + 2);
-        ctx.lineTo(x, y1 - 2);
-        ctx.stroke();
-        ctx.fillStyle = rec.color;
-        ctx.beginPath();
-        ctx.arc(x, y0 + 5, fresh ? 3.2 : 2.4, 0, TAU);
-        ctx.fill();
       } else {
-        ctx.strokeStyle = 'rgba(0,2,7,.92)';
-        ctx.lineWidth = fresh ? 4.0 : 3.2;
+        ctx.strokeStyle = t.color;
+        ctx.lineWidth = isRecent && fresh ? 4.4 : baseWidth;
+        ctx.shadowColor = t.color;
+        ctx.shadowBlur = isRecent && fresh ? 14 : 4;
         ctx.beginPath();
-        ctx.moveTo(x, y0 + 1);
-        ctx.lineTo(x, y1 - 1);
-        ctx.stroke();
-        ctx.strokeStyle = 'rgba(210,246,255,.20)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x + 2.2, y0 + 1);
-        ctx.lineTo(x + 2.2, y1 - 1);
+        ctx.moveTo(x, 2);
+        ctx.lineTo(x, h - 2);
         ctx.stroke();
       }
       ctx.restore();
     }
 
-    // Active photon marker.
-    const rec = state.recent;
-    if (rec && rec.optical && rec.wavelength >= L0 && rec.wavelength <= L1) {
-      const x = xOf(rec.wavelength);
-      const fresh = nowMs() - rec.t < 1300;
+    // 邊框
+    ctx.save();
+    roundRect(ctx, 0.5, 0.5, w - 1, h - 1, 8);
+    ctx.strokeStyle = mode === 'absorption' ? 'rgba(200,235,255,.22)' : 'rgba(205,224,238,.28)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // ── 能階圖 ────────────────────────────────────────────────────────────────
+  const ENERGY_FONT = (px, weight) => `${weight || 800} ${px}px ${FONT_STACK}`;
+
+  function energyColorAt(n, N) {
+    const t = N > 1 ? (n - 1) / (N - 1) : 0;
+    const c = new THREE.Color(0x5ce4ff).lerp(new THREE.Color(0xb45cff), t);
+    return `#${c.getHexString()}`;
+  }
+
+  function drawEnergyLevels() {
+    const levelsCanvas = $('#levels');
+    if (!levelsCanvas || levelsCanvas.offsetParent === null) return;
+    const { ctx, w, h } = fitCanvas(levelsCanvas);
+    if (w < 120 || h < 120) return;
+    ctx.clearRect(0, 0, w, h);
+
+    const N = PHYS.levelCount(state.element);
+    const els = PHYS.ELEMENTS[state.element];
+    const mobile = w < 330;
+
+    // 卡片底色
+    const bg = ctx.createLinearGradient(0, 0, w, h);
+    bg.addColorStop(0, 'rgba(6,16,31,.92)');
+    bg.addColorStop(1, 'rgba(2,7,15,.94)');
+    ctx.fillStyle = bg;
+    roundRect(ctx, 0.5, 0.5, w - 1, h - 1, 8);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(122,190,255,.20)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // 區塊高度
+    const pad = 12;
+    const footH = Math.round(Math.min(74, Math.max(58, h * 0.26)));
+    const headH = Math.round(Math.min(32, Math.max(24, h * 0.11)));
+    const top = pad + headH;
+    const plotBottom = h - footH - 8;
+    const rowGap = (plotBottom - top) / N;
+    const rowH = Math.min(rowGap * 0.52, 20);
+    const vGap = Math.round(clamp(w * 0.036, 10, 28));
+    const lineX0 = pad + Math.round(mobile ? 46 : 62);
+    const lineX1 = w - pad - Math.round(mobile ? 58 : 86);
+
+    // 標題列
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.font = ENERGY_FONT(Math.round(clamp(w * 0.062, 14, 20)), 900);
+    ctx.fillStyle = '#eaf8ff';
+    ctx.fillText('能階圖', pad, pad + headH / 2 - 1);
+
+    const badge = `${els.symbol || ''} `.trim() || '';
+    const badgeText = `${badge} ${els.name || ''}`.trim();
+    ctx.font = ENERGY_FONT(Math.round(clamp(w * 0.05, 12, 16)), 900);
+    const bw = ctx.measureText(badgeText).width + 18;
+    const bh = Math.round(clamp(h * 0.047, 20, 26));
+    roundRect(ctx, w - pad - bw, pad + headH / 2 - bh / 2, bw, bh, bh / 2);
+    ctx.fillStyle = 'rgba(37,134,176,.32)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(92,228,255,.42)';
+    ctx.stroke();
+    ctx.fillStyle = '#dff6ff';
+    ctx.textAlign = 'center';
+    ctx.fillText(badgeText, w - pad - bw / 2, pad + headH / 2);
+
+    // 游離線 E = 0
+    const yIon = top;
+    ctx.save();
+    ctx.setLineDash([4, 5]);
+    ctx.strokeStyle = 'rgba(150,200,235,.34)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(lineX0, yIon + 0.5);
+    ctx.lineTo(lineX1, yIon + 0.5);
+    ctx.stroke();
+    ctx.restore();
+    ctx.font = ENERGY_FONT(Math.round(clamp(w * 0.042, 11, 14)), 700);
+    ctx.fillStyle = 'rgba(160,204,232,.82)';
+    ctx.textAlign = 'left';
+    const ionText = '游離  E = 0';
+    const ionW = ctx.measureText(ionText).width;
+    ctx.textAlign = 'left';
+    ctx.fillText(ionText, Math.max(lineX0 + 2, lineX1 - ionW), yIon - 8);
+    ctx.textAlign = 'right';
+
+    // 各能階
+    const currentN = state.currentN;
+    const recent = state.recent;
+    const now = nowMs();
+    const fresh = recent && now - recent.t < 1600;
+    const involved = fresh ? [recent.fromN, recent.toN] : [];
+    for (let n = N; n >= 1; n -= 1) {
+      const y = top + 10 + (N - n + 0.5) * ((plotBottom - top - 10) / N);
+      const isCur = n === currentN;
+      const isInv = involved.includes(n);
+      const color = energyColorAt(n, N);
+
+      ctx.font = ENERGY_FONT(Math.round(clamp(w * 0.05, 12, 15.5)), 900);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = isCur ? '#ffd98c' : 'rgba(198,226,246,.92)';
+      ctx.fillText(`n=${n}`, lineX0 - 8, y);
+
       ctx.save();
-      ctx.strokeStyle = rec.type === 'absorption' ? 'rgba(255,255,255,.74)' : hexAlpha(rec.color, 0.9);
-      ctx.lineWidth = 1.2;
-      ctx.setLineDash([3, 4]);
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = isCur ? '#ffffff' : color;
+      ctx.lineWidth = isCur ? Math.max(3, rowH * 0.22) : Math.max(2, rowH * 0.15);
+      ctx.globalAlpha = isCur || isInv ? 1 : 0.82;
+      if (isCur) {
+        ctx.shadowColor = 'rgba(255,255,255,.85)';
+        ctx.shadowBlur = 12;
+      }
       ctx.beginPath();
-      ctx.moveTo(x, y0 - 1);
-      ctx.lineTo(x, y1 + 4);
+      ctx.moveTo(lineX0, y);
+      ctx.lineTo(lineX1, y);
       ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.fillStyle = rec.type === 'absorption' ? '#ffffff' : rec.color;
-      ctx.beginPath();
-      ctx.moveTo(x, y0 - 5);
-      ctx.lineTo(x - 4.5, y0 - 11);
-      ctx.lineTo(x + 4.5, y0 - 11);
-      ctx.closePath();
-      ctx.fill();
-
-      const text = `${PHYS.formatNm(rec.wavelength)} nm`;
-      ctx.font = `800 ${big ? 15 : compact ? 12.5 : 14}px ${font}`;
-      const tw = ctx.measureText(text).width;
-      let tx = x + 7;
-      let align = 'left';
-      if (tx + tw > x1 - 4) {
-        tx = x - 7;
-        align = 'right';
-      }
-      ctx.textAlign = align;
-      ctx.textBaseline = 'middle';
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(2,7,15,.88)';
-      ctx.strokeText(text, tx, y0 + 13);
-      ctx.fillStyle = fresh ? '#ffffff' : '#d7f3ff';
-      ctx.fillText(text, tx, y0 + 13);
       ctx.restore();
+
+      if (isCur) {
+        ctx.save();
+        ctx.fillStyle = '#e9fbff';
+        ctx.shadowColor = 'rgba(120,235,255,.95)';
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.arc(lineX0 + 10, y, Math.max(3, rowH * 0.22), 0, TAU);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.font = ENERGY_FONT(Math.round(clamp(w * 0.044, 11.5, 15)), 800);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = isCur ? '#ffffff' : 'rgba(206,232,248,.90)';
+      ctx.fillText(PHYS.formatEv(els.levels[n - 1]) + ' eV', w - pad, y);
     }
 
-    // Wavelength ticks.
-    if (!tight) {
-      const ticks = compact ? [100, 300, 500, 1000, 2000] : [100, 200, 300, 400, 500, 700, 1000, 1500, 2000];
+    // ↓ 躍遷資訊列
+    const fy = h - footH - 4;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(122,190,255,.20)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad, fy + 0.5);
+    ctx.lineTo(w - pad, fy + 0.5);
+    ctx.stroke();
+    ctx.restore();
+
+    const cols = ['ΔE', '波長 λ', '光譜帶'];
+    const cw = (w - pad * 2) / 3;
+    const labelY = fy + Math.round(footH * 0.33);
+    const valueY = fy + Math.round(footH * 0.72);
+    ctx.textAlign = 'center';
+    ctx.font = ENERGY_FONT(Math.round(clamp(w * 0.042, 11, 14)), 700);
+    ctx.fillStyle = 'rgba(148,190,220,.92)';
+    for (let i = 0; i < 3; i += 1) {
+      ctx.fillText(cols[i], pad + cw * (i + 0.5), labelY);
+    }
+
+    const rec = fresh ? recent : null;
+    const bandOf = (nm) => (nm < 380 ? '紫外光' : nm <= 750 ? '可見光' : '紅外光');
+    const values = rec
+      ? [
+        `${PHYS.formatEv(rec.dE).replace('−', '')} eV`,
+        `${rec.wavelength < 1000 ? rec.wavelength.toFixed(1) : Math.round(rec.wavelength)} nm`,
+        rec.band || bandOf(rec.wavelength)
+      ]
+      : ['—', '—', '—'];
+    const valueColor = rec
+      ? [state.spectrumMode === 'absorption' ? '#ffe0a3' : '#a8f0ff', rec.color, '#eaf8ff']
+      : ['rgba(198,220,238,.75)', 'rgba(198,220,238,.75)', 'rgba(198,220,238,.75)'];
+    ctx.font = ENERGY_FONT(Math.round(clamp(w * 0.052, 12, 16)), 900);
+    for (let i = 0; i < 3; i += 1) {
+      ctx.fillStyle = valueColor[i];
+      ctx.fillText(values[i], pad + cw * (i + 0.5), valueY);
+    }
+
+    for (let i = 1; i < 3; i += 1) {
       ctx.save();
-      ctx.font = `700 ${big ? 14 : 12.5}px ${font}`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillStyle = 'rgba(129,157,187,.82)';
-      for (const nm of ticks) {
-        const x = xOf(nm);
-        ctx.strokeStyle = 'rgba(129,157,187,.34)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x, y1);
-        ctx.lineTo(x, y1 + 3);
-        ctx.stroke();
-        ctx.fillText(String(nm), x, y1 + 6);
-      }
+      ctx.strokeStyle = 'rgba(122,190,255,.16)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(pad + cw * i + 0.5, fy + 8);
+      ctx.lineTo(pad + cw * i + 0.5, h - pad);
+      ctx.stroke();
       ctx.restore();
     }
   }
 
   // ── animation loop ────────────────────────────────────────────────────────
   let lastFrame = nowMs();
-  let startTime = nowMs();
+  const startTime = nowMs();
 
   function updateNucleus(dt) {
     nucleusGroup.rotation.y += dt * 0.22;
     nucleusGroup.rotation.x = Math.sin((nowMs() - startTime) * 0.00022) * 0.08;
     electronRing.rotation.z += dt * 1.15;
     electronRing.rotation.y += dt * 0.62;
-    stageGlow.material.opacity = 0.10 + Math.sin((nowMs() - startTime) * 0.0013) * 0.018;
+  }
+
+  function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
   }
 
   function updateElectron(now, dt) {
     if (state.anim) {
       const a = state.anim;
-      const t = clamp((now - a.start) / a.duration, 0, 1);
-      const ease = easeInOutCubic(t);
-      const start = pointOnRing(a.fromN, a.angle0);
-      const end = pointOnRing(a.toN, a.angle1);
-      const pos = start.clone().lerp(end, ease);
-      const lift = Math.sin(Math.PI * t) * (34 + Math.abs(a.toN - a.fromN) * 4);
-      pos.y += lift;
-      electronGroup.position.copy(pos);
-
-      if (!a.fired) {
-        const rec = a.rec;
-        if (rec.optical) {
-          if (rec.type === 'emission' && t >= 0.48) {
-            a.fired = true;
-            const p = electronGroup.position.clone();
-            const dir = p.clone().normalize();
-            dir.y += 0.14;
-            dir.normalize();
-            const startP = p.clone();
-            const endP = p.clone().addScaledVector(dir, 360);
-            spawnPhoton('emission', startP, endP, rec.color, { scale: 4.4, glow: 80, dur: 1150 });
-          } else if (rec.type === 'absorption' && t >= 0.03) {
-            a.fired = true;
-            const endP = pointOnRing(a.toN, a.angle1);
-            const dir = endP.clone().normalize();
-            dir.y += 0.10;
-            dir.normalize();
-            const startP = endP.clone().addScaledVector(dir, 540);
-            spawnPhoton('absorption', startP, endP, rec.color, { scale: 4.4, glow: 80, dur: 700 });
+      if (a.type === 'absorption') {
+        // 先讓光子撞上停在原球殼上的電子。
+        if (now < a.impactAt) {
+          electronGroup.position.copy(pointOnRing(a.fromN, a.angle0));
+        } else {
+          if (!a.jumpStart) {
+            a.jumpStart = now;
+            recordPhotonEvent(a);
           }
-        } else if (t >= 0.08) {
-          a.fired = true;
-          flashAt(electronGroup.position, rec.reason === 'collision' ? '#ffc46b' : '#9bc9ff', 64);
+          const t = clamp((now - a.jumpStart) / a.jumpDur, 0, 1);
+          const ease = easeInOutCubic(t);
+          const start = pointOnRing(a.fromN, a.angle0);
+          const end = pointOnRing(a.toN, a.angle1);
+          const pos = start.clone().lerp(end, ease);
+          pos.y += Math.sin(Math.PI * t) * (34 + Math.abs(a.toN - a.fromN) * 4);
+          electronGroup.position.copy(pos);
+          if (t >= 1) finishJump(a);
         }
+      } else {
+        // 電子一跳動就同時射出光子（不再等跳完）。
+        if (!a.jumpStart) {
+          a.jumpStart = now;
+          recordPhotonEvent(a);
+          const p = pointOnRing(a.fromN, a.angle0);
+          const dir = p.clone().normalize();
+          dir.y += 0.14;
+          dir.normalize();
+          spawnPhoton('emission', p, p.clone().addScaledVector(dir, 360), a.rec.color, {
+            scale: 5.0, glow: 92, dur: 750
+          });
+        }
+        const t = clamp((now - a.jumpStart) / a.jumpDur, 0, 1);
+        const ease = easeInOutCubic(t);
+        const start = pointOnRing(a.fromN, a.angle0);
+        const end = pointOnRing(a.toN, a.angle1);
+        const pos = start.clone().lerp(end, ease);
+        pos.y += Math.sin(Math.PI * t) * (34 + Math.abs(a.toN - a.fromN) * 4);
+        electronGroup.position.copy(pos);
+        if (t >= 1) finishJump(a);
       }
-
-      if (t >= 1) finishTransition();
     } else {
       if (!reducedMotion) {
         const speed = 0.66 / Math.pow(state.currentN, 1.14);
@@ -4241,9 +3339,13 @@ window.__BOHR_PHYS__ = PHYS;
       }
       electronGroup.position.copy(pointOnRing(state.currentN, state.angle));
     }
-
     electronLight.position.copy(electronGroup.position);
     pushTrail(electronGroup.position);
+  }
+
+  function smoothstep(a, b, x) {
+    const t = clamp((x - a) / (b - a), 0, 1);
+    return t * t * (3 - 2 * t);
   }
 
   function updatePhotons(now) {
@@ -4252,20 +3354,18 @@ window.__BOHR_PHYS__ = PHYS;
       const t = clamp((now - p.t0) / p.dur, 0, 1);
       const ease = easeInOutCubic(t);
       p.mesh.position.lerpVectors(p.start, p.end, ease);
-      p.mesh.rotateX((reducedMotion ? 0 : 0.045) + 0.012);
+      p.mesh.rotateX(reducedMotion ? 0 : 0.024);
       p.glow.position.copy(p.mesh.position);
       let alpha = 1;
       if (p.type === 'emission') alpha = 1 - smoothstep(0.72, 1, t);
-      else if (p.type === 'absorption') alpha = 1 - smoothstep(0.84, 1, t);
-      else alpha = 1 - smoothstep(0.80, 1, t);
+      else alpha = 1 - smoothstep(0.84, 1, t);
       p.mat.opacity = 0.95 * alpha;
       p.glowMat.opacity = 0.68 * alpha;
-      p.glow.scale.setScalar((p.type === 'reject' ? 62 : 80) * (0.82 + 0.28 * Math.sin(t * Math.PI)));
-
+      p.glow.scale.setScalar(80 * (0.82 + 0.28 * Math.sin(t * Math.PI)));
       if (t >= 1) {
-        if (!p.flashed && (p.type === 'absorption' || p.type === 'reject')) {
+        if (!p.flashed && p.type === 'absorption') {
           p.flashed = true;
-          flashAt(p.end, p.type === 'reject' ? '#ff8f87' : p.color, p.type === 'reject' ? 42 : 66);
+          flashAt(p.end, p.color, 66);
         }
         scene.remove(p.mesh);
         scene.remove(p.glow);
@@ -4276,17 +3376,11 @@ window.__BOHR_PHYS__ = PHYS;
     }
   }
 
-  function smoothstep(a, b, x) {
-    const t = clamp((x - a) / (b - a), 0, 1);
-    return t * t * (3 - 2 * t);
-  }
-
   function updateFlashes(now) {
     for (let i = state.flashes.length - 1; i >= 0; i -= 1) {
       const f = state.flashes[i];
       const t = clamp((now - f.t0) / f.dur, 0, 1);
-      const scale = f.size * (0.30 + t * 1.30);
-      f.sprite.scale.setScalar(scale);
+      f.sprite.scale.setScalar(f.size * (0.30 + t * 1.30));
       f.mat.opacity = 0.9 * Math.pow(1 - t, 1.6);
       if (t >= 1) {
         scene.remove(f.sprite);
@@ -4301,92 +3395,54 @@ window.__BOHR_PHYS__ = PHYS;
     const now = nowMs();
     const dt = Math.min(0.05, (now - lastFrame) / 1000);
     lastFrame = now;
-
     updateNucleus(dt);
     updateElectron(now, dt);
     updatePhotons(now);
     updateFlashes(now);
     starGroup.rotation.y += dt * 0.004;
     if (controls && controls.update && !rightDrag) controls.update();
-    if (now < state.canvasDirtyUntil) {
-      drawLevels();
-      drawSpectrum();
-    }
+    updateShellLabels();
+    if (now < state.canvasDirtyUntil) drawSpectrum();
+    if (now < state.levelsDirtyUntil) drawEnergyLevels();
+    window.__ATOM_FRAME_JS_MS__ = nowMs() - now;
     renderer.render(scene, camera);
   }
 
   // ── resize ────────────────────────────────────────────────────────────────
   let resizeRaf = 0;
   function resizeNow() {
-    const w = Math.max(1, stage.clientWidth);
-    const h = Math.max(1, stage.clientHeight);
+    const w = Math.max(1, window.innerWidth);
+    const h = Math.max(1, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    applyLayoutMetrics();
     if (!state.viewDirty) resetView();
-    drawLevels();
     drawSpectrum();
+    drawEnergyLevels();
   }
-
   function scheduleResize() {
     cancelAnimationFrame(resizeRaf);
     resizeRaf = requestAnimationFrame(resizeNow);
   }
-
   window.addEventListener('resize', scheduleResize, { passive: true });
   if (window.ResizeObserver) {
     const ro = new ResizeObserver(scheduleResize);
-    ro.observe(stage);
-    ro.observe(levelsCanvas.parentElement);
-    ro.observe(spectrumCanvas.parentElement);
+    ro.observe(document.documentElement);
   }
 
   // ── events ────────────────────────────────────────────────────────────────
-  UI.elementSeg.addEventListener('click', (e) => {
+  elementSeg.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-element]');
     if (b) setElement(b.dataset.element);
   });
-
-  UI.exciteSeg.addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-excite]');
-    if (b) setExciteMode(b.dataset.excite);
-  });
-
-  UI.spectrumSeg.addEventListener('click', (e) => {
+  spectrumSeg.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-spectrum]');
     if (b) setSpectrumMode(b.dataset.spectrum);
   });
-
-  UI.fireBtn.addEventListener('click', () => fire());
-
-  UI.autoBtn.addEventListener('click', () => { autoCascade(); });
-
-  UI.resetSimBtn.addEventListener('click', () => resetSimulation());
-
-  UI.energyInput.addEventListener('input', () => {
-    const v = parseEnergyInput();
-    if (v === null) return;
-    if (state.excite === 'photon') state.photonEnergy = v;
-    else state.collisionEnergy = v;
-    UI.energySlider.value = String(v);
-    updateSliderFill();
-    updateEnergyHint();
-  });
-
-  UI.energyInput.addEventListener('blur', () => {
-    const v = parseEnergyInput();
-    if (v !== null) setEnergyValue(v, { syncInput: true });
-  });
-
-  UI.energySlider.addEventListener('input', () => {
-    const v = Number(UI.energySlider.value);
-    setEnergyValue(v, { syncInput: true });
-  });
-
-  UI.resetViewBtn.addEventListener('click', () => resetView());
-
-  UI.fsBtn.addEventListener('click', () => {
+  resetViewBtn.addEventListener('click', resetView);
+  fsBtn.addEventListener('click', () => {
     const root = document.documentElement;
     if (document.fullscreenElement) {
       (document.exitFullscreen || document.webkitExitFullscreen || function () {}).call(document);
@@ -4394,26 +3450,16 @@ window.__BOHR_PHYS__ = PHYS;
       (root.requestFullscreen || root.webkitRequestFullscreen || function () {}).call(root);
     }
   });
-
   document.addEventListener('fullscreenchange', () => {
     const active = Boolean(document.fullscreenElement);
-    UI.fsBtn.setAttribute('aria-label', active ? '結束全螢幕' : '全螢幕');
-    UI.fsBtn.setAttribute('title', active ? '結束全螢幕' : '全螢幕');
+    fsBtn.setAttribute('aria-label', active ? '結束全螢幕' : '全螢幕');
+    fsBtn.setAttribute('title', active ? '結束全螢幕' : '全螢幕');
   });
-
   document.addEventListener('keydown', (e) => {
     if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
-    if (e.key === 'Escape') {
-      if (state.auto) { cancelAuto(); setStatus('已停止自動躍遷演示。', 'info'); }
-      return;
-    }
     if (/^[1-6]$/.test(e.key)) {
       const n = Number(e.key);
-      if (n <= PHYS.levelCount(state.element)) handleOrbitPick(n);
-    }
-    if (e.code === 'Space') {
-      e.preventDefault();
-      fire();
+      if (n <= PHYS.levelCount(state.element)) jumpTo(n);
     }
   });
 
@@ -4428,23 +3474,18 @@ window.__BOHR_PHYS__ = PHYS;
         currentN: state.currentN,
         levelCount: el.levels.length,
         energy: PHYS.levelEnergy(state.element, state.currentN),
-        excite: state.excite,
         spectrumMode: state.spectrumMode,
-        photonEnergy: state.photonEnergy,
-        collisionEnergy: state.collisionEnergy,
         recent: state.recent ? { ...state.recent } : null,
-        lastPhoton: state.lastPhoton ? { ...state.lastPhoton } : null,
         history: state.history.map((r) => ({ ...r })),
-        visibleLines: lines.filter((t) => t.visible).map((t) => ({ ...t })),
         allLines: lines,
-        animating: Boolean(state.anim),
-        auto: state.auto,
-        ringStyles: ringObjs.map((r) => ({
+        visibleLines: lines.filter((t) => t.visible).map((t) => ({ ...t })),
+        shellStyles: ringObjs.map((r) => ({
           n: r.n,
-          color: '#' + r.baseMat.color.getHexString(),
-          opacity: Number(r.baseMat.opacity.toFixed(3)),
-          labelColor: '#' + r.labelMat.color.getHexString()
+          color: '#' + r.rimMat.uniforms.uColor.value.getHexString(),
+          rimOpacity: Number(r.rimMat.uniforms.uOpacity.value.toFixed(3)),
+          gridOpacity: Number(r.gridMat.opacity.toFixed(3))
         })),
+        animating: Boolean(state.anim),
         camera: {
           position: camera.position.toArray(),
           target: controls.target.toArray(),
@@ -4453,60 +3494,100 @@ window.__BOHR_PHYS__ = PHYS;
       };
     },
     setElement,
-    setLevel(n, opts = {}) { return jumpTo(n, { reason: 'click', ...opts }); },
-    handleOrbitPick,
-    setExciteMode,
+    setLevel(n) { return jumpTo(n); },
     setSpectrumMode,
-    setPhotonEnergy(v) { state.photonEnergy = clamp(Number(v), 0.5, 30); updateInputs(); },
-    setCollisionEnergy(v) { state.collisionEnergy = clamp(Number(v), 0.5, 30); updateInputs(); },
-    firePhoton(v) {
-      setExciteMode('photon', { silent: true });
-      if (Number.isFinite(Number(v))) setEnergyValue(Number(v), { syncInput: true });
-      return fire();
-    },
-    collide(v) {
-      setExciteMode('collision', { silent: true });
-      if (Number.isFinite(Number(v))) setEnergyValue(Number(v), { syncInput: true });
-      return fire();
-    },
-    autoCascade,
-    reset() { resetSimulation(); },
     resetView,
     getScreenBox() {
       const r = glCanvas.getBoundingClientRect();
       return { x: r.x, y: r.y, width: r.width, height: r.height };
     },
     getPanelRect() {
-      const r = document.querySelector('.side').getBoundingClientRect();
-      return { x: r.x, y: r.y, width: r.width, height: r.height };
-    },
-    getLevelCanvasRect() {
-      const r = levelsCanvas.getBoundingClientRect();
+      const r = hud.getBoundingClientRect();
       return { x: r.x, y: r.y, width: r.width, height: r.height };
     },
     getSpectrumRect() {
       const r = spectrumCanvas.getBoundingClientRect();
       return { x: r.x, y: r.y, width: r.width, height: r.height };
     },
+    getLevelsRect() {
+      const el = document.getElementById('levels');
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    },
+    getLayout() {
+      return { bottomReserve: layout.bottomReserve, homeTargetY: HOME.target.y };
+    },
     getNucleusCount() { return nucleusParts.children.filter((o) => o.isMesh).length; },
-    getPhotonCount() { return state.photons.length; }
+    getPhotonCount() { return state.photons.length; },
+    getPhotonDebug() {
+      camera.updateMatrixWorld();
+      return state.photons.map((p) => {
+        const v = p.mesh.position.clone().project(camera);
+        return {
+          type: p.type,
+          t: Number(((nowMs() - p.t0) / p.dur).toFixed(2)),
+          pos: p.mesh.position.toArray().map((x) => Number(x.toFixed(1))),
+          screen: [
+            Math.round((v.x * 0.5 + 0.5) * window.innerWidth),
+            Math.round((-v.y * 0.5 + 0.5) * window.innerHeight),
+            Number(v.z.toFixed(2))
+          ],
+          scale: p.mesh.scale.x,
+          visible: p.mesh.visible,
+          parent: p.mesh.parent ? p.mesh.parent.type : null,
+          opacity: Number(p.mat.opacity.toFixed(2)),
+          glowScale: p.glow.scale.x,
+          glowVisible: p.glow.visible,
+          glowParent: p.glow.parent ? p.glow.parent.type : null
+        };
+      });
+    },
+    getOrbitScreenBounds(n) {
+      const r = ringObjs[Math.round(n) - 1];
+      if (!r) return null;
+      camera.updateMatrixWorld();
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      for (let i = 0; i < 36; i += 1) {
+        const p = pointOnRing(r.n, (i / 36) * TAU).project(camera);
+        const x = (p.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-p.y * 0.5 + 0.5) * window.innerHeight;
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+      return {
+        n: r.n,
+        minX: Number(minX.toFixed(1)), maxX: Number(maxX.toFixed(1)),
+        minY: Number(minY.toFixed(1)), maxY: Number(maxY.toFixed(1))
+      };
+    }
   };
 
   // ── boot ──────────────────────────────────────────────────────────────────
   try {
     rebuildNucleus();
     rebuildOrbits();
-    buildOrbitButtons();
-    refreshAllUI();
+    state.element = 'hydrogen';
+    for (const b of elementSeg.querySelectorAll('button')) {
+      const active = b.dataset.element === 'hydrogen';
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+    for (const b of spectrumSeg.querySelectorAll('button')) {
+      const active = b.dataset.spectrum === 'emission';
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+    resetView();
     electronGroup.position.copy(pointOnRing(1, state.angle));
     resizeNow();
-    setElement('hydrogen', { silent: true });
-    resizeNow();
+    drawSpectrum();
     renderer.render(scene, camera);
     state.ready = true;
     window.__APP_READY__ = true;
-    setTimeout(() => loading.classList.add('hide'), 240);
-    setStatus('氫原子：電子位於 n=1，E₁ = −13.60 eV。點擊軌道或輸入能量開始。', 'info');
+    setTimeout(() => loading.classList.add('hide'), 220);
     requestAnimationFrame(animate);
   } catch (err) {
     console.error(err);

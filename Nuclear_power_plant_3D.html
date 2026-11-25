@@ -174,10 +174,11 @@ button { cursor: pointer; }
 
 /* 3D labels */
 #labels, #leaders { position: absolute; inset: 0; pointer-events: none; }
+#labels { display: contents; }
 #leaders { width: 100%; height: 100%; overflow: visible; }
-#labels { z-index: 6; }
 .pin {
   position: absolute;
+  z-index: 6;
   left: 0;
   top: 0;
   pointer-events: auto;
@@ -695,9 +696,11 @@ input[type="range"]::-moz-range-thumb {
   z-index: 100;
   display: grid;
   align-items: center;
+  pointer-events: none;
   background: #04080e;
   transition: opacity 0.5s, visibility 0.5s;
 }
+#intro .start-btn { pointer-events: auto; }
 #intro.hide { opacity: 0; visibility: hidden; pointer-events: none; }
 #intro .intro-bg {
   position: absolute;
@@ -1075,7 +1078,9 @@ input[type="range"]::-moz-range-thumb {
       <button type="button" role="tab" data-mode="turbine" aria-selected="false">氣體渦輪機</button>
     </nav>
     <div class="top-tools">
-      <button class="icon-btn" id="helpBtn" type="button" aria-label="運作原理與操作說明" title="運作原理">?</button>
+      <button class="icon-btn" id="homeBtn" type="button" aria-label="回到初始視角" title="回到初始視角">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.34-5.66M4 12V5.5M4 12h6.5"/></svg>
+      </button>
       <button class="icon-btn" id="fsBtn" type="button" aria-label="全螢幕" aria-pressed="false" title="全螢幕">
         <svg class="fs-expand" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
       </button>
@@ -1102,11 +1107,6 @@ input[type="range"]::-moz-range-thumb {
     <div id="hoverTag" aria-hidden="true"></div>
     <div id="toast" role="status" aria-live="polite"></div>
     <div id="stageHint">拖曳旋轉視角 · 滾輪縮放 · 點模型進入內部</div>
-    <div id="zoomCtl" aria-label="視角縮放">
-      <button type="button" id="zoomIn" aria-label="放大">＋</button>
-      <button type="button" id="zoomOut" aria-label="縮小">－</button>
-      <button type="button" id="zoomReset" aria-label="重設視角">⟲</button>
-    </div>
 
     <div id="loading">
       <div class="spinner" aria-hidden="true"></div>
@@ -6064,6 +6064,7 @@ THREE.GLTFLoader = GLTFLoader;
   cam.yaw = VIEWS.overview.yaw;
   cam.pitch = VIEWS.overview.pitch;
   var camTween = null;
+  var cameraTarget = new THREE.Vector3();
   var introCam = false;
 
   function stageSize() {
@@ -6095,6 +6096,23 @@ THREE.GLTFLoader = GLTFLoader;
       camera.lookAt(cam.target);
     }
   }
+  function resetView() {
+    var v = VIEWS[S.mode];
+    camTween = null;
+    cam.target.copy(v.target);
+    cam.yaw = v.yaw;
+    cam.pitch = v.pitch;
+    cam.dist = fitDistance(v);
+    cam.zoom = 1;
+    camera.position.copy(cam.target).add(new THREE.Vector3(
+      Math.sin(cam.yaw) * Math.cos(cam.pitch),
+      Math.sin(cam.pitch),
+      Math.cos(cam.yaw) * Math.cos(cam.pitch)
+    ).multiplyScalar(cam.dist));
+    cameraTarget.set(cam.target.x, cam.target.y, cam.target.z);
+    camera.lookAt(cameraTarget);
+  }
+
   function setViewInstant(mode) {
     var v = VIEWS[mode];
     cam.target.copy(v.target);
@@ -7181,7 +7199,9 @@ THREE.GLTFLoader = GLTFLoader;
   /* ================================================================ picking */
   var raycaster = new THREE.Raycaster();
   var pointerNdc = new THREE.Vector2();
-  var drag = { active: false, id: -1, x: 0, y: 0, moved: 0 };
+  var drag = { active: false, id: -1, x: 0, y: 0, moved: 0, button: 0 };
+  var pointers = new Map();
+  var pinch = null;
 
   function raycasterFromEvent(e) {
     var rect = stageEl.getBoundingClientRect();
@@ -7241,16 +7261,59 @@ THREE.GLTFLoader = GLTFLoader;
   }
 
   function onPointerDown(e) {
-    if (e.button !== undefined && e.button !== 0) return;
+    if (S.intro) {
+      introEl.classList.add('hide');
+      S.intro = false;
+      setTimeout(function () { introEl.style.display = 'none'; }, 20);
+      resize();
+      camTween = null;
+    }
+    if (e.button !== undefined && e.button !== 0 && e.button !== 2) return;
     if (e.target !== renderer.domElement) return;
-    drag.active = true;
+    if (e.pointerType !== 'mouse') {
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size === 2) {
+        var pair = [];
+        pointers.forEach(function (p) { pair.push(p); });
+        pinch = {
+          startDist: Math.max(1, Math.hypot(pair[0].x - pair[1].x, pair[0].y - pair[1].y)),
+          startZoom: cam.zoom,
+          midX: (pair[0].x + pair[1].x) / 2,
+          midY: (pair[0].y + pair[1].y) / 2
+        };
+        drag.active = false;
+        camTween = null;
+      }
+    }
+    drag.active = e.pointerType === 'mouse' ? true : pointers.size < 2;
+    drag.mouse = e.pointerType === 'mouse';
     drag.id = e.pointerId;
+    drag.button = e.button || 0;
     drag.x = e.clientX; drag.y = e.clientY; drag.moved = 0;
     try { renderer.domElement.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
     hoverEl.classList.remove('show');
   }
   function onPointerMove(e) {
-    if (drag.active && e.pointerId === drag.id) {
+    if (pointers.has(e.pointerId)) {
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size === 2 && pinch) {
+        var pair = [];
+        pointers.forEach(function (p) { pair.push(p); });
+        var dist = Math.max(1, Math.hypot(pair[0].x - pair[1].x, pair[0].y - pair[1].y));
+        cam.zoom = clamp(pinch.startZoom * (pinch.startDist / dist), 0.52, 2.1);
+        var mx = (pair[0].x + pair[1].x) / 2;
+        var my = (pair[0].y + pair[1].y) / 2;
+        var scale = (cam.dist * cam.zoom) / Math.max(220, Math.min(stageSize().w, stageSize().h)) * 0.9;
+        var right = new THREE.Vector3(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw));
+        var up = new THREE.Vector3(-Math.sin(cam.yaw) * Math.sin(cam.pitch), Math.cos(cam.pitch), -Math.cos(cam.yaw) * Math.sin(cam.pitch));
+        cam.target.addScaledVector(right, -(mx - pinch.midX) * scale);
+        cam.target.addScaledVector(up, (my - pinch.midY) * scale);
+        pinch.midX = mx; pinch.midY = my;
+        e.preventDefault();
+        return;
+      }
+    }
+    if (drag.active && (drag.mouse || e.pointerId === drag.id)) {
       var dx = e.clientX - drag.x;
       var dy = e.clientY - drag.y;
       drag.x = e.clientX; drag.y = e.clientY;
@@ -7291,10 +7354,13 @@ THREE.GLTFLoader = GLTFLoader;
   }
   var lastHover = 0;
   function onPointerUp(e) {
-    if (!drag.active || e.pointerId !== drag.id) return;
+    if (pointers.has(e.pointerId)) pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinch = null;
+    if (!drag.active) return;
+    if (!drag.mouse && e.pointerId !== drag.id) return;
     drag.active = false;
     try { renderer.domElement.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-    if (drag.moved > 9) return;
+    if (drag.moved > 9 || drag.button === 2) return;
     var hit = pickAt(e);
     if (!hit) return;
     var hitName = effectiveName(hit);
@@ -7314,6 +7380,12 @@ THREE.GLTFLoader = GLTFLoader;
   renderer.domElement.addEventListener('pointerdown', onPointerDown);
   window.addEventListener('pointermove', onPointerMove);
   window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', function (e) {
+    pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinch = null;
+    if (e.pointerId === drag.id) drag.active = false;
+  });
+  renderer.domElement.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   stageEl.addEventListener('wheel', function (e) {
     e.preventDefault();
     if (camTween) camTween = null;
@@ -7362,9 +7434,9 @@ THREE.GLTFLoader = GLTFLoader;
     HUD.rodRange.value = String(Math.round(S.rod * 100));
     HUD.rodVal.textContent = String(Math.round(S.rod * 100));
   });
-  $('zoomIn').addEventListener('click', function () { cam.zoom = clamp(cam.zoom * 0.86, 0.52, 2.1); camTween = null; });
-  $('zoomOut').addEventListener('click', function () { cam.zoom = clamp(cam.zoom * 1.16, 0.52, 2.1); camTween = null; });
-  $('zoomReset').addEventListener('click', function () { cam.zoom = 1; tweenToView(S.mode, 0.6); });
+  $('homeBtn').addEventListener('click', function () {
+    resetView();
+  });
   $('fsBtn').addEventListener('click', function () {
     if (!document.fullscreenElement) {
       var p = appEl.requestFullscreen && appEl.requestFullscreen();
@@ -8065,10 +8137,6 @@ THREE.GLTFLoader = GLTFLoader;
 
   // help dialog
   var helpDlg = $('helpDlg');
-  $('helpBtn').addEventListener('click', function () {
-    if (helpDlg.showModal) helpDlg.showModal();
-    else helpDlg.setAttribute('open', '');
-  });
   $('helpClose').addEventListener('click', function () { helpDlg.close ? helpDlg.close() : helpDlg.removeAttribute('open'); });
   helpDlg.addEventListener('click', function (e) { if (e.target === helpDlg && helpDlg.close) helpDlg.close(); });
   helpDlg.addEventListener('close', function () { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
@@ -8265,6 +8333,9 @@ THREE.GLTFLoader = GLTFLoader;
       return {
         pos: camera.position.toArray().map(function (v) { return Math.round(v * 10) / 10; }),
         target: cam.target.toArray().map(function (v) { return Math.round(v * 10) / 10; }),
+        yaw: cam.yaw,
+        pitch: cam.pitch,
+        zoom: cam.zoom,
         dist: Math.round(cam.dist * cam.zoom * 10) / 10,
         fov: camera.fov,
         aspect: Math.round(camera.aspect * 1000) / 1000

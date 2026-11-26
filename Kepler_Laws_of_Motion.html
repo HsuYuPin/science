@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>克卜勒行星運動三大定律</title>
+<style>
+  :root{
+    --bg:#04070f;
+    --txt:#eef4ff;
+    --dim:#9fb0cf;
+    --line:rgba(148,178,255,.16);
+    --blue:#60a5fa;
+    --pink:#f472b6;
+    --gold:#fbbf24;
+    --mint:#34d399;
+    --panel-fs:16px;
+    --font:"Microsoft JhengHei","Noto Sans TC","PingFang TC","Heiti TC",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:var(--bg);color:var(--txt);font-family:var(--font);
+    overflow:hidden;-webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #scene{position:fixed;inset:0;display:block;width:100%;height:100%}
+
+  /* ------------------------------------------------ control panel (top-left) */
+  #panel{
+    position:fixed;left:max(14px,1.4vw);top:max(14px,1.8vh);
+    width:clamp(330px,28.5vw,410px);
+    max-height:calc(100vh - 28px);
+    overflow-y:auto;overscroll-behavior:contain;
+    z-index:10;padding:13px 16px 12px;border-radius:18px;
+    background:linear-gradient(180deg,rgba(13,22,42,.93),rgba(7,13,26,.9));
+    border:1px solid rgba(148,178,255,.18);
+    box-shadow:0 22px 70px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.06);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    font-size:var(--panel-fs);
+    scrollbar-width:thin;scrollbar-color:rgba(125,211,252,.35) transparent;
+  }
+  #panel::-webkit-scrollbar{width:6px}
+  #panel::-webkit-scrollbar-thumb{background:rgba(125,211,252,.3);border-radius:3px}
+
+  .panel-title{
+    display:flex;align-items:center;gap:8px;
+    font-size:1.08em;font-weight:800;letter-spacing:.06em;color:#f4f8ff;
+  }
+  .panel-title .orbit-mark{
+    position:relative;width:18px;height:18px;flex:none;border-radius:50%;
+    border:2px solid rgba(251,191,36,.85);
+    box-shadow:0 0 12px rgba(251,191,36,.35);
+  }
+  .panel-title .orbit-mark::before{
+    content:"";position:absolute;inset:5px;border-radius:50%;background:#fbbf24;
+    box-shadow:0 0 8px #fbbf24;
+  }
+  .panel-title .orbit-mark::after{
+    content:"";position:absolute;width:5px;height:5px;border-radius:50%;
+    right:-4px;top:1px;background:#7dd3fc;box-shadow:0 0 6px #7dd3fc;
+  }
+
+  .tabs{
+    display:flex;gap:5px;margin:9px 0;padding:4px;
+    background:rgba(255,255,255,.035);border:1px solid rgba(148,178,255,.12);border-radius:12px;
+  }
+  .tab{
+    flex:1;display:flex;align-items:center;justify-content:center;gap:5px;
+    padding:7px 2px;border:0;border-radius:9px;background:transparent;
+    color:var(--dim);font-family:inherit;font-size:.86em;font-weight:700;
+    cursor:pointer;white-space:nowrap;transition:background .18s,color .18s,box-shadow .18s;
+  }
+  .tab .num{
+    display:grid;place-items:center;width:17px;height:17px;flex:none;border-radius:50%;
+    background:rgba(148,178,255,.14);font-size:.76em;color:#c7d6f5;transition:background .18s,color .18s;
+  }
+  .tab.active{
+    color:#ecf6ff;
+    background:linear-gradient(135deg,rgba(56,189,248,.22),rgba(129,140,248,.28));
+    box-shadow:inset 0 0 0 1px rgba(125,211,252,.36);
+  }
+  .tab.active .num{background:#38bdf8;color:#04121f}
+  .tab:focus-visible{outline:2px solid #7dd3fc;outline-offset:2px}
+
+  .pane{display:none}
+  .pane.active{display:block;animation:paneIn .22s ease-out}
+  @keyframes paneIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+
+  .ctrl{margin-top:7px}
+  .ctrl.tight{margin-top:5px}
+  .ctrl .head{
+    display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+    font-size:.82em;color:var(--dim);
+  }
+  .ctrl .head b{color:#f2f7ff;font-size:1.02em;font-weight:700;font-variant-numeric:tabular-nums}
+  .pblock.a .ctrl .head b{color:#bfdbfe}
+  .pblock.b .ctrl .head b{color:#fbcfe8}
+
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;display:block;width:100%;height:18px;
+    margin:2px 0 0;padding:0;background:transparent;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:6px;border-radius:3px;
+    background:linear-gradient(90deg,#38bdf8 0 var(--p,50%),rgba(255,255,255,.13) var(--p,50%) 100%);
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:16px;height:16px;margin-top:-5px;border-radius:50%;
+    background:#eaf7ff;border:3px solid #0ea5e9;
+    box-shadow:0 0 12px rgba(56,189,248,.7);
+  }
+  input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:rgba(255,255,255,.13)}
+  input[type=range]::-moz-range-progress{height:6px;border-radius:3px;background:#38bdf8}
+  input[type=range]::-moz-range-thumb{
+    width:14px;height:14px;border-radius:50%;background:#eaf7ff;border:3px solid #0ea5e9;
+  }
+  input[type=range]:focus-visible{outline:2px solid rgba(125,211,252,.8);outline-offset:4px;border-radius:6px}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:8px}
+  .stats.two{grid-template-columns:repeat(2,1fr)}
+  .stat{
+    padding:5px 8px 6px;border-radius:10px;
+    background:rgba(255,255,255,.04);border:1px solid rgba(148,178,255,.13);
+  }
+  .stat span{display:block;font-size:.7em;color:var(--dim);letter-spacing:.02em;white-space:nowrap}
+  .stat b{display:block;margin-top:2px;font-size:1em;font-variant-numeric:tabular-nums;color:#f2f7ff;white-space:nowrap}
+
+  .playbtn{
+    width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
+    margin-top:2px;padding:10px 12px;border-radius:12px;
+    border:1px solid rgba(125,211,252,.42);
+    background:linear-gradient(135deg,rgba(56,189,248,.22),rgba(129,140,248,.24));
+    color:#e7f5ff;font-family:inherit;font-size:1em;font-weight:800;letter-spacing:.05em;
+    cursor:pointer;transition:transform .12s,background .18s,box-shadow .18s;
+    box-shadow:0 6px 22px rgba(14,165,233,.16);
+  }
+  .playbtn:hover{background:linear-gradient(135deg,rgba(56,189,248,.32),rgba(129,140,248,.34))}
+  .playbtn:active{transform:scale(.98)}
+  .playbtn.paused{
+    border-color:rgba(251,191,36,.5);
+    background:linear-gradient(135deg,rgba(251,191,36,.2),rgba(244,114,182,.18));
+    box-shadow:0 6px 22px rgba(251,191,36,.14);
+  }
+  .playbtn svg{width:18px;height:18px;flex:none}
+
+  .meter{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:.76em;color:var(--dim)}
+  .meter .lbl{white-space:nowrap}
+  .meter .bar{flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
+  .meter .bar i{
+    display:block;height:100%;width:8%;border-radius:4px;
+    background:linear-gradient(90deg,#38bdf8,#c084fc,#f472b6);
+    transition:width .16s linear;
+  }
+  .meter b{min-width:64px;text-align:right;color:#f2f7ff;font-variant-numeric:tabular-nums;font-size:1em}
+
+  .note{
+    margin-top:7px;padding-left:8px;border-left:2px solid rgba(125,211,252,.42);
+    font-size:.78em;line-height:1.45;color:var(--dim);
+  }
+  .note b{color:#eaf4ff;font-variant-numeric:tabular-nums}
+
+  .pblock{
+    margin-top:6px;padding:8px 9px 9px;border-radius:12px;
+    background:rgba(255,255,255,.028);border:1px solid rgba(148,178,255,.12);
+  }
+  .pblock.a{border-left:3px solid rgba(96,165,250,.85)}
+  .pblock.b{border-left:3px solid rgba(244,114,182,.85)}
+  .pblock.c{border-left:3px solid rgba(52,211,153,.85)}
+  .phead{display:flex;align-items:center;gap:7px;font-size:.95em;font-weight:800;letter-spacing:.04em;line-height:1.15}
+  .pvals{margin-left:auto;font-size:.98em;font-weight:700;letter-spacing:0;color:var(--dim);white-space:nowrap}
+  .pvals b{color:#eef5ff;font-weight:700;font-variant-numeric:tabular-nums}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
+  .dot.a{background:var(--blue);box-shadow:0 0 9px var(--blue)}
+  .dot.b{background:var(--pink);box-shadow:0 0 9px var(--pink)}
+  .dot.c{background:var(--mint);box-shadow:0 0 9px var(--mint)}
+  .duo{display:grid;grid-template-columns:1fr 1fr;column-gap:18px;margin-top:6px}
+  .duo .ctrl{margin-top:0}
+  .duo .ctrl .head{font-size:.78em}
+  .mini{display:flex;gap:14px;margin-top:5px;font-size:.75em;color:var(--dim);font-variant-numeric:tabular-nums}
+  .mini b{color:#eef5ff;font-weight:700}
+
+  .foot{
+    margin-top:7px;padding:6px 10px;border-radius:10px;text-align:center;
+    background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.24);
+    color:#ffe9b0;font-size:.8em;letter-spacing:.02em;line-height:1.5;
+  }
+  .foot b{color:#fff3c4;font-variant-numeric:tabular-nums}
+
+  /* ------------------------------------------------ icon buttons (top-right) */
+  #tools{
+    position:fixed;top:max(14px,env(safe-area-inset-top));right:max(14px,1.4vw);
+    z-index:20;display:flex;gap:10px;
+  }
+  .iconbtn{
+    width:48px;height:48px;border-radius:50%;display:grid;place-items:center;
+    background:rgba(10,18,36,.72);border:1px solid rgba(148,178,255,.25);
+    color:#dbeafe;cursor:pointer;
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    box-shadow:0 8px 24px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.07);
+    transition:background .18s,border-color .18s,transform .12s;
+  }
+  .iconbtn:hover{background:rgba(30,58,138,.62);border-color:rgba(125,211,252,.65)}
+  .iconbtn:active{transform:scale(.94)}
+  .iconbtn:focus-visible{outline:2px solid #7dd3fc;outline-offset:3px}
+  .iconbtn svg{width:22px;height:22px}
+
+  #toast{
+    position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);
+    padding:8px 16px;border-radius:999px;background:rgba(15,28,52,.94);
+    border:1px solid rgba(125,211,252,.35);color:#e6f6ff;font-size:14px;font-weight:700;
+    opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:30;
+    box-shadow:0 10px 30px rgba(0,0,0,.4);
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+
+  /* ------------------------------------------------ responsive */
+  @media (min-width:1700px){
+    :root{--panel-fs:19.5px}
+  }
+  @media (min-width:1100px) and (max-width:1699px){
+    :root{--panel-fs:17.5px}
+  }
+  @media (max-width:900px) and (orientation:portrait), (max-width:599px){
+    #panel{
+      left:12px;right:12px;top:calc(60px + env(safe-area-inset-top));
+      width:auto;max-height:46vh;padding:11px 12px 12px;border-radius:15px;
+      font-size:14.5px;
+    }
+    #tools{top:max(10px,env(safe-area-inset-top));right:10px;gap:8px}
+    .iconbtn{width:42px;height:42px}
+    .iconbtn svg{width:19px;height:19px}
+    .panel-title{font-size:1.02em}
+    .tabs{margin:9px 0}
+    .tab{font-size:.82em;gap:4px}
+    .tab .num{width:15px;height:15px;font-size:.72em}
+    .stat{padding:5px 7px 6px}
+    .stat span{font-size:.66em}
+    .playbtn{padding:9px 10px}
+    .pblock{padding:7px 9px 8px}
+  }
+  @media (min-width:600px) and (max-width:900px) and (orientation:portrait){
+    #panel{font-size:16px}
+  }
+  @media (max-height:540px) and (min-width:760px){
+    #panel{
+      width:330px;max-height:calc(100vh - 16px);
+      left:14px;top:8px;padding:10px 12px 10px;font-size:13px;
+    }
+    #tools{top:8px;right:8px}
+    .iconbtn{width:40px;height:40px}
+    .iconbtn svg{width:19px;height:19px}
+    .tabs{margin:7px 0}
+    .tab{padding:6px 2px}
+    .pblock{padding:6px 8px 7px;margin-top:7px}
+    .ctrl.tight{margin-top:4px}
+    .foot{margin-top:7px;padding:6px 8px}
+  }
+</style>
+</head>
+<body>
+<canvas id="scene" aria-label="克卜勒行星運動定律動畫"></canvas>
+
+<aside id="panel" aria-label="控制面板">
+  <div class="panel-title"><span class="orbit-mark"></span>克卜勒行星運動定律</div>
+
+  <div class="tabs" role="tablist" aria-label="三大定律">
+    <button class="tab active" role="tab" aria-selected="true" data-tab="1"><span class="num">1</span>橢圓定律</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="2"><span class="num">2</span>等面積</button>
+    <button class="tab" role="tab" aria-selected="false" data-tab="3"><span class="num">3</span>週期定律</button>
+  </div>
+
+  <!-- ------------------------------------------------ law 1 -->
+  <section class="pane active" role="tabpanel" data-pane="1">
+    <div class="ctrl">
+      <div class="head"><span>近日點距離</span><b id="l1-rp-v">0.45 AU</b></div>
+      <input id="l1-rp" type="range" min="0.35" max="0.85" step="0.01" value="0.45" aria-label="近日點距離">
+    </div>
+    <div class="ctrl">
+      <div class="head"><span>遠日點距離</span><b id="l1-ra-v">1.55 AU</b></div>
+      <input id="l1-ra" type="range" min="1.00" max="1.80" step="0.01" value="1.55" aria-label="遠日點距離">
+    </div>
+    <div class="stats">
+      <div class="stat"><span>半長軸 a</span><b id="l1-a">1.00 AU</b></div>
+      <div class="stat"><span>離心率 e</span><b id="l1-e">0.55</b></div>
+      <div class="stat"><span>半短軸 b</span><b id="l1-b">0.84 AU</b></div>
+    </div>
+    <div class="note">太陽固定在<b>左焦點</b>，拉動滑桿改變橢圓。</div>
+  </section>
+
+  <!-- ------------------------------------------------ law 2 -->
+  <section class="pane" role="tabpanel" data-pane="2">
+    <button class="playbtn" id="playbtn" aria-label="暫停">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>
+      <span>暫停</span>
+    </button>
+    <div class="stats two">
+      <div class="stat"><span>時間間隔 Δt</span><b>0.12 T</b></div>
+      <div class="stat"><span>掃過面積 ΔA</span><b id="l2-da">0.41 AU²</b></div>
+    </div>
+    <div class="meter" aria-label="行星速率">
+      <span class="lbl">速率</span>
+      <div class="bar"><i id="speedbar"></i></div>
+      <b id="speedval">1.0× 平均</b>
+    </div>
+    <div class="note" id="l2-note">按「暫停」，比較兩塊掃過的面積。</div>
+  </section>
+
+  <!-- ------------------------------------------------ law 3 -->
+  <section class="pane" role="tabpanel" data-pane="3">
+    <div class="pblock a">
+      <div class="phead"><span class="dot a"></span>行星 A
+        <span class="pvals">a <b id="p3a-a">0.90 AU</b>　T <b id="p3a-T">0.85 年</b></span>
+      </div>
+      <div class="duo">
+        <div class="ctrl tight">
+          <div class="head"><span>近日點</span><b id="p3a-rp-v">0.50 AU</b></div>
+          <input id="p3a-rp" type="range" min="0.40" max="2.40" step="0.01" value="0.50" aria-label="行星A近日點">
+        </div>
+        <div class="ctrl tight">
+          <div class="head"><span>遠日點</span><b id="p3a-ra-v">1.30 AU</b></div>
+          <input id="p3a-ra" type="range" min="0.90" max="3.40" step="0.01" value="1.30" aria-label="行星A遠日點">
+        </div>
+      </div>
+    </div>
+
+    <div class="pblock b">
+      <div class="phead"><span class="dot b"></span>行星 B
+        <span class="pvals">a <b id="p3b-a">1.80 AU</b>　T <b id="p3b-T">2.42 年</b></span>
+      </div>
+      <div class="duo">
+        <div class="ctrl tight">
+          <div class="head"><span>近日點</span><b id="p3b-rp-v">1.40 AU</b></div>
+          <input id="p3b-rp" type="range" min="0.40" max="2.40" step="0.01" value="1.40" aria-label="行星B近日點">
+        </div>
+        <div class="ctrl tight">
+          <div class="head"><span>遠日點</span><b id="p3b-ra-v">2.20 AU</b></div>
+          <input id="p3b-ra" type="range" min="0.90" max="3.40" step="0.01" value="2.20" aria-label="行星B遠日點">
+        </div>
+      </div>
+    </div>
+
+    <div class="pblock c">
+      <div class="phead"><span class="dot c"></span>行星 C
+        <span class="pvals">a <b id="p3c-a">2.75 AU</b>　T <b id="p3c-T">4.56 年</b></span>
+      </div>
+      <div class="duo">
+        <div class="ctrl tight">
+          <div class="head"><span>近日點</span><b id="p3c-rp-v">2.30 AU</b></div>
+          <input id="p3c-rp" type="range" min="0.40" max="2.40" step="0.01" value="2.30" aria-label="行星C近日點">
+        </div>
+        <div class="ctrl tight">
+          <div class="head"><span>遠日點</span><b id="p3c-ra-v">3.20 AU</b></div>
+          <input id="p3c-ra" type="range" min="0.90" max="3.40" step="0.01" value="3.20" aria-label="行星C遠日點">
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">T² / a³ = <b id="p3-k">1.000</b>　三行星相同</div>
+  </section>
+</aside>
+
+<div id="tools">
+  <button class="iconbtn" id="btn-fs" aria-label="全螢幕" title="全螢幕">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9"/><path d="M20 9V5.5A1.5 1.5 0 0 0 18.5 4H15"/>
+      <path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20H9"/><path d="M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15"/>
+    </svg>
+  </button>
+  <button class="iconbtn" id="btn-reset" aria-label="重置初始值" title="重置初始值">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M20 11.2A8 8 0 1 0 18.2 17"/><path d="M20 4.5V11h-6.4"/>
+    </svg>
+  </button>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* ============================================================ constants */
+  const TAU = Math.PI * 2;
+  const FONT = '"Microsoft JhengHei","Noto Sans TC","PingFang TC","Heiti TC",system-ui,sans-serif';
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+  const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  const fmt = (v, d = 2) => Number(v).toFixed(d);
+
+  const DEFAULTS = {
+    l1: { rp: 0.45, ra: 1.55, M: 0.85 },
+    l2: { rp: 0.55, ra: 1.65, M: 0.55, playing: true },
+    l3: {
+      A: { rp: 0.50, ra: 1.30, M: 0.55 },
+      B: { rp: 1.40, ra: 2.20, M: 2.35 },
+      C: { rp: 2.30, ra: 3.20, M: 4.20 }
+    }
+  };
+
+  const state = {
+    tab: 1,
+    l1: { ...DEFAULTS.l1 },
+    l2: { ...DEFAULTS.l2 },
+    l3: { A: { ...DEFAULTS.l3.A }, B: { ...DEFAULTS.l3.B }, C: { ...DEFAULTS.l3.C } }
+  };
+
+  const L1_BBOX = { x0: -1.02, x1: 1.92, y0: -0.95, y1: 0.95 };
+  const L2_BBOX = { x0: -0.72, x1: 1.84, y0: -1.10, y1: 1.10 };
+  // b = sqrt(rp*ra) 最大可到 sqrt(2.4*3.4) ≈ 2.86，垂直方向留到 ±3.0
+  const L3_BBOX = { x0: -2.55, x1: 3.50, y0: -3.00, y1: 3.00 };
+
+  const L2_T = 9.0;          // 動畫秒數（第二定律轉一圈）
+  const L2_DM = 0.12 * TAU;  // 暫停時比較的時間間隔
+  const L3_YEAR = 2.8;       // 1 年 = 2.8 秒（動畫）
+
+  /* ============================================================ canvas */
+  const canvas = $('#scene');
+  const ctx = canvas.getContext('2d');
+  const panel = $('#panel');
+  let W = 0, H = 0, DPR = 1, FS = 20, FSC = 24;
+  let stars = [];
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function seedStars() {
+    const rnd = mulberry32(20261126);
+    stars = [];
+    for (let i = 0; i < 170; i += 1) {
+      stars.push({
+        x: rnd(), y: rnd(),
+        r: 0.3 + rnd() * 1.5,
+        a: 0.12 + rnd() * 0.5,
+        f: 0.2 + rnd() * 0.9,
+        p: rnd() * TAU
+      });
+    }
+  }
+
+  function isMobileLayout() {
+    return (W < 900 && H >= W * 0.95) || W < 600;
+  }
+
+  function updateTypeScale() {
+    const mobile = isMobileLayout();
+    const short = !mobile && H < 560;
+    FS = mobile ? clamp(W * 0.03, 13, 20) : clamp(W * 0.0192, short ? 16 : 22, 34);
+    FSC = mobile ? clamp(W * 0.032, 13, 22) : clamp(W * 0.0195, short ? 16 : 22, 33);
+  }
+
+  function resizeCanvas() {
+    W = window.innerWidth;
+    H = window.innerHeight;
+    DPR = Math.min(window.devicePixelRatio || 1, 2.5);
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    updateTypeScale();
+  }
+
+  /* ============================================================ orbital math */
+  function geom(rp, ra) {
+    const a = (rp + ra) / 2;
+    const e = (ra - rp) / (ra + rp);
+    const b = a * Math.sqrt(Math.max(0, 1 - e * e));
+    return { rp, ra, a, e, b, c: a * e, T: Math.pow(a, 1.5) };
+  }
+
+  function solveE(M, e) {
+    M = ((M % TAU) + TAU) % TAU;
+    let E = M + e * Math.sin(M);
+    for (let i = 0; i < 8; i += 1) {
+      const d = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+      E -= d;
+      if (Math.abs(d) < 1e-11) break;
+    }
+    return E;
+  }
+
+  // focus at (0,0); perihelion on the left (-rp), aphelion on the right (+ra)
+  function orbitPos(g, M) {
+    const E = solveE(M, g.e);
+    return {
+      x: -(g.a * (Math.cos(E) - g.e)),
+      y: -g.b * Math.sin(E),
+      E
+    };
+  }
+
+  function sectorArea(g, M0, dM, steps = 480) {
+    let sum = 0;
+    let prev = orbitPos(g, M0);
+    for (let i = 1; i <= steps; i += 1) {
+      const p = orbitPos(g, M0 + dM * i / steps);
+      sum += prev.x * p.y - p.x * prev.y;
+      prev = p;
+    }
+    return Math.abs(sum) / 2;
+  }
+
+  /* ============================================================ layout/view */
+  function availRect() {
+    const pr = panel.getBoundingClientRect();
+    if (isMobileLayout()) {
+      const y0 = Math.min(pr.bottom + 8, H - 150);
+      return { x0: 12, y0, x1: W - 12, y1: H - 38, w: W - 24, h: H - 38 - y0 };
+    }
+    const x0 = pr.right + 26;
+    const y0 = 84;
+    const x1 = W - 34;
+    const y1 = H - 52;
+    return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0 };
+  }
+
+  function makeView(avail, bbox) {
+    const bw = bbox.x1 - bbox.x0;
+    const bh = bbox.y1 - bbox.y0;
+    const s = Math.min(avail.w / bw, avail.h / bh) * 0.94;
+    const acx = (avail.x0 + avail.x1) / 2;
+    const acy = (avail.y0 + avail.y1) / 2;
+    const bcx = (bbox.x0 + bbox.x1) / 2;
+    const bcy = (bbox.y0 + bbox.y1) / 2;
+    return {
+      scale: s,
+      px: (x) => acx + (x - bcx) * s,
+      py: (y) => acy + (y - bcy) * s,
+      w: (x, y) => ({ x: acx + (x - bcx) * s, y: acy + (y - bcy) * s }),
+      avail, bbox
+    };
+  }
+
+  /* ============================================================ drawing helpers */
+  function text(str, x, y, opt = {}) {
+    const {
+      size = FS, color = '#e9f1ff', weight = 700, align = 'left',
+      baseline = 'middle', alpha = 1, stroke = true
+    } = opt;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.font = `${weight} ${size}px ${FONT}`;
+    ctx.textAlign = align;
+    ctx.textBaseline = baseline;
+    ctx.lineJoin = 'round';
+    if (stroke) {
+      ctx.lineWidth = Math.max(3, size * 0.17);
+      ctx.strokeStyle = 'rgba(3,7,16,.9)';
+      ctx.strokeText(str, x, y);
+    }
+    ctx.fillStyle = color;
+    ctx.fillText(str, x, y);
+    ctx.restore();
+  }
+
+  function line(x1, y1, x2, y2) {
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+  }
+
+  function roundRectPath(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  function sunRadius() {
+    return clamp(Math.min(W, H) * 0.028, 13, 30);
+  }
+
+  function planetRadius(g, v) {
+    return clamp(g.a * v.scale * 0.045, 7, 18);
+  }
+
+  /* ============================================================ background */
+  function drawBackground(t) {
+    const g = ctx.createLinearGradient(0, 0, W * 0.35, H);
+    g.addColorStop(0, '#050a17');
+    g.addColorStop(0.5, '#071127');
+    g.addColorStop(1, '#03050c');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    let rg = ctx.createRadialGradient(W * 0.22, H * 0.16, 0, W * 0.22, H * 0.16, Math.max(W, H) * 0.65);
+    rg.addColorStop(0, 'rgba(37,78,160,.16)');
+    rg.addColorStop(0.55, 'rgba(24,44,92,.05)');
+    rg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = rg;
+    ctx.fillRect(0, 0, W, H);
+
+    rg = ctx.createRadialGradient(W * 0.9, H * 0.92, 0, W * 0.9, H * 0.92, Math.max(W, H) * 0.5);
+    rg.addColorStop(0, 'rgba(88,42,110,.12)');
+    rg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = rg;
+    ctx.fillRect(0, 0, W, H);
+
+    for (const s of stars) {
+      const a = s.a * (0.62 + 0.38 * Math.sin(t * s.f + s.p));
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#d7e8ff';
+      ctx.beginPath();
+      ctx.arc(s.x * W, s.y * H, s.r, 0, TAU);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ============================================================ shared parts */
+  function drawOrbit(v, g, color, opt = {}) {
+    const { fill = 'rgba(56,120,255,.05)', width = 2.3, alpha = 1, dash = null } = opt;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    ctx.ellipse(v.px(g.c), v.py(0), g.a * v.scale, g.b * v.scale, 0, 0, TAU);
+    if (fill) {
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    if (dash) ctx.setLineDash(dash);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawTrail(v, g, M, span, rgb, baseWidth) {
+    const n = 20;
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (let i = 0; i < n; i += 1) {
+      const k0 = (i / n) * span;
+      const k1 = ((i + 1) / n) * span;
+      const p0 = orbitPos(g, M - span + k0);
+      const p1 = orbitPos(g, M - span + k1);
+      const a = 0.03 + 0.5 * Math.pow((i + 1) / n, 1.6);
+      ctx.strokeStyle = `rgba(${rgb},${a.toFixed(3)})`;
+      ctx.lineWidth = baseWidth * (0.35 + 0.65 * (i + 1) / n);
+      ctx.beginPath();
+      ctx.moveTo(v.px(p0.x), v.py(p0.y));
+      ctx.lineTo(v.px(p1.x), v.py(p1.y));
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawSun(v, x, y, t, label) {
+    const p = v.w(x, y);
+    const R = sunRadius();
+    const pulse = 1 + 0.018 * Math.sin(t * 1.5);
+
+    let gr = ctx.createRadialGradient(p.x, p.y, R * 0.3, p.x, p.y, R * 5.6);
+    gr.addColorStop(0, 'rgba(255,214,120,.5)');
+    gr.addColorStop(0.3, 'rgba(251,191,36,.18)');
+    gr.addColorStop(1, 'rgba(251,191,36,0)');
+    ctx.fillStyle = gr;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, R * 5.6, 0, TAU);
+    ctx.fill();
+
+    gr = ctx.createRadialGradient(p.x - R * 0.3, p.y - R * 0.35, R * 0.1, p.x, p.y, R);
+    gr.addColorStop(0, '#fffdf0');
+    gr.addColorStop(0.45, '#ffe28a');
+    gr.addColorStop(1, '#f59e0b');
+    ctx.fillStyle = gr;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, R * pulse, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,239,180,.55)';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    if (label) {
+      text(label, p.x, p.y + R + FS * 0.82, {
+        size: Math.max(12, FS * 0.8), color: '#ffe08a', align: 'center', weight: 800
+      });
+    }
+  }
+
+  function drawPlanet(x, y, R, rgb) {
+    let gr = ctx.createRadialGradient(x, y, R * 0.2, x, y, R * 3.1);
+    gr.addColorStop(0, `rgba(${rgb},.55)`);
+    gr.addColorStop(0.45, `rgba(${rgb},.16)`);
+    gr.addColorStop(1, `rgba(${rgb},0)`);
+    ctx.fillStyle = gr;
+    ctx.beginPath();
+    ctx.arc(x, y, R * 3.1, 0, TAU);
+    ctx.fill();
+
+    gr = ctx.createRadialGradient(x - R * 0.32, y - R * 0.36, R * 0.08, x, y, R);
+    gr.addColorStop(0, '#ffffff');
+    gr.addColorStop(0.32, `rgba(${rgb},1)`);
+    gr.addColorStop(1, `rgba(${rgb},.72)`);
+    ctx.fillStyle = gr;
+    ctx.beginPath();
+    ctx.arc(x, y, R, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(${rgb},.95)`;
+    ctx.lineWidth = 1.1;
+    ctx.stroke();
+  }
+
+  function drawMarker(v, x, y, color, r = 4.5) {
+    const p = v.w(x, y);
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(3,7,16,.65)';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+  }
+
+  /* ============================================================ law 1 */
+  function drawLaw1(avail, t) {
+    const g = geom(state.l1.rp, state.l1.ra);
+    const v = makeView(avail, L1_BBOX);
+    const M = state.l1.M;
+    const simple = isMobileLayout() || FS < 20;
+    const compactLabels = (g.ra + g.rp) * v.scale < 380;
+
+    drawOrbit(v, g, 'rgba(125,211,252,.72)', {
+      fill: 'rgba(59,130,246,.055)', width: 2.4
+    });
+
+    // major axis
+    ctx.save();
+    ctx.setLineDash([5, 9]);
+    ctx.strokeStyle = 'rgba(148,178,255,.24)';
+    ctx.lineWidth = 1.4;
+    line(v.px(-g.rp), v.py(0), v.px(g.ra), v.py(0));
+    ctx.restore();
+
+    // empty focus (desktop only; hide it when it sits almost on the sun)
+    if (!simple && 2 * g.c * v.scale > FS * 4.5) {
+      const ef = v.w(2 * g.c, 0);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(203,213,225,.5)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(ef.x, ef.y, 4.5, 0, TAU);
+      ctx.stroke();
+      ctx.restore();
+      text('另一焦點', ef.x, ef.y + FS * 0.82, {
+        size: Math.max(10, FS * 0.5), color: 'rgba(203,213,225,.66)', align: 'center', weight: 600
+      });
+    }
+
+    // planet + radius
+    const p = orbitPos(g, M);
+    const sp = v.w(p.x, p.y);
+    drawTrail(v, g, M, 0.065 * TAU, '96,165,250', 4.2);
+
+    const sun = v.w(0, 0);
+    ctx.save();
+    ctx.setLineDash([4, 7]);
+    ctx.strokeStyle = 'rgba(226,232,240,.3)';
+    ctx.lineWidth = 1.6;
+    line(sun.x, sun.y, sp.x, sp.y);
+    ctx.restore();
+
+    drawSun(v, 0, 0, t, '太陽（左焦點）');
+
+    const R = planetRadius(g, v);
+    drawPlanet(sp.x, sp.y, R, '96,165,250');
+
+    const dist = Math.hypot(p.x, p.y);
+    const mx = (sun.x + sp.x) / 2;
+    const my = (sun.y + sp.y) / 2;
+    const dx = sp.x - sun.x;
+    const dy = sp.y - sun.y;
+    const len = Math.hypot(dx, dy) || 1;
+    if (!simple) {
+      text(`r = ${fmt(dist)} AU`, mx - dy / len * FS * 0.65, my + dx / len * FS * 0.65, {
+        size: Math.max(11, FS * 0.56), color: 'rgba(226,236,255,.82)', align: 'center', weight: 700
+      });
+    }
+
+    // perihelion / aphelion
+    drawMarker(v, -g.rp, 0, '#93c5fd', 5);
+    drawMarker(v, g.ra, 0, '#c7d2fe', 5);
+    const pp = v.w(-g.rp, 0);
+    const ap = v.w(g.ra, 0);
+    text(compactLabels ? '近日點' : `近日點 ${fmt(g.rp)} AU`, pp.x + FS * 0.22, pp.y - FS * 1.15, {
+      size: FS, color: '#bfdbfe', align: 'left', weight: 800
+    });
+    text(compactLabels ? '遠日點' : `遠日點 ${fmt(g.ra)} AU`, ap.x - FS * 0.22, ap.y - FS * 1.15, {
+      size: FS, color: '#c7d2fe', align: 'right', weight: 800
+    });
+
+    // a bracket (centre -> aphelion) below the axis
+    if (!simple) {
+      const cx = v.w(g.c, 0).x;
+      const by = v.py(0) + FS * 2.3;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(148,178,255,.42)';
+      ctx.lineWidth = 1.4;
+      line(cx, by, ap.x, by);
+      line(cx, by - 4, cx, by + 4);
+      line(ap.x, by - 4, ap.x, by + 4);
+      ctx.restore();
+      text(`a = ${fmt(g.a)} AU`, (cx + ap.x) / 2, by + FS * 0.72, {
+        size: Math.max(11, FS * 0.6), color: 'rgba(199,210,254,.9)', align: 'center', weight: 700
+      });
+    }
+  }
+
+  /* ============================================================ law 2 */
+  function sectorPath(v, g, M0, dM, steps = 46) {
+    const s0 = v.w(0, 0);
+    ctx.beginPath();
+    ctx.moveTo(s0.x, s0.y);
+    for (let i = 0; i <= steps; i += 1) {
+      const p = orbitPos(g, M0 + dM * i / steps);
+      const sp = v.w(p.x, p.y);
+      ctx.lineTo(sp.x, sp.y);
+    }
+    ctx.closePath();
+  }
+
+  function drawSector(v, g, M0, dM, fill, stroke, hatchColor) {
+    sectorPath(v, g, M0, dM);
+    ctx.fillStyle = fill;
+    ctx.fill();
+
+    if (hatchColor) {
+      ctx.save();
+      sectorPath(v, g, M0, dM);
+      ctx.clip();
+      ctx.strokeStyle = hatchColor;
+      ctx.lineWidth = 1.1;
+      for (let x = -H; x < W + H; x += 13) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + H, H);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    sectorPath(v, g, M0, dM);
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = 1.9;
+    ctx.stroke();
+  }
+
+  function drawLaw2(avail, t) {
+    const g = geom(state.l2.rp, state.l2.ra);
+    const v = makeView(avail, L2_BBOX);
+    const M = state.l2.M;
+    const paused = !state.l2.playing;
+
+    // orbit fill first
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(v.px(g.c), v.py(0), g.a * v.scale, g.b * v.scale, 0, 0, TAU);
+    ctx.fillStyle = 'rgba(59,130,246,.045)';
+    ctx.fill();
+    ctx.restore();
+
+    if (paused) {
+      drawSector(v, g, 0, L2_DM,
+        'rgba(96,165,250,.28)', 'rgba(147,197,253,.95)', 'rgba(191,219,254,.35)');
+      drawSector(v, g, M, L2_DM,
+        'rgba(244,114,182,.26)', 'rgba(249,168,212,.95)', null);
+    }
+
+    drawOrbit(v, g, 'rgba(125,211,252,.68)', { fill: null, width: 2.2 });
+
+    ctx.save();
+    ctx.setLineDash([5, 9]);
+    ctx.strokeStyle = 'rgba(148,178,255,.2)';
+    ctx.lineWidth = 1.3;
+    line(v.px(-g.rp), v.py(0), v.px(g.ra), v.py(0));
+    ctx.restore();
+
+    const p = orbitPos(g, M);
+    const sp = v.w(p.x, p.y);
+    drawTrail(v, g, M, 0.09 * TAU, '96,165,250', 4.4);
+
+    drawSun(v, 0, 0, t, '太陽');
+
+    const R = planetRadius(g, v);
+    drawPlanet(sp.x, sp.y, R, '96,165,250');
+
+    text('行星', sp.x + FS * 0.55, sp.y - R - FS * 0.66, {
+      size: Math.max(12, FS * 0.56), color: '#bfdbfe', align: 'left', weight: 700
+    });
+
+    if (paused) drawAreaLegend(v, g);
+  }
+
+  function drawAreaLegend(v, g) {
+    const dA = 0.5 * g.a * g.b * L2_DM;
+    const avail = v.avail;
+    const w = clamp(avail.w * 0.3, 246, 340);
+    const pad = Math.max(11, FS * 0.5);
+    const hSize = Math.max(11, FS * 0.6);
+    const rSize = Math.max(13, FS * 0.86);
+    const fSize = Math.max(13, FS * 0.78);
+    const rowH = rSize * 1.62;
+    const h = pad * 2 + hSize * 1.5 + rowH * 2 + fSize * 1.7;
+    const x = avail.x0 + 4;
+    const y = Math.max(avail.y0 + 4, 84);
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,.4)';
+    ctx.shadowBlur = 18;
+    ctx.shadowOffsetY = 6;
+    roundRectPath(x, y, w, h, 14);
+    ctx.fillStyle = 'rgba(9,17,34,.9)';
+    ctx.fill();
+    ctx.restore();
+
+    roundRectPath(x, y, w, h, 14);
+    ctx.strokeStyle = 'rgba(148,178,255,.24)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    const left = x + pad;
+    const right = x + w - pad;
+    let cy = y + pad + hSize * 0.55;
+
+    text('Δt = 0.12 T 內掃過', left, cy, {
+      size: hSize, color: '#9fb0cf', align: 'left', weight: 700, stroke: false
+    });
+    cy += hSize * 0.95 + rowH * 0.55;
+
+    const rows = [
+      { rgb: '96,165,250', label: '近日點', value: dA },
+      { rgb: '244,114,182', label: '目前位置', value: dA }
+    ];
+    for (const row of rows) {
+      ctx.fillStyle = `rgb(${row.rgb})`;
+      ctx.beginPath();
+      ctx.arc(left + 4.5, cy, 4.5, 0, TAU);
+      ctx.fill();
+      text(row.label, left + 16, cy, {
+        size: rSize, color: '#e8f1ff', align: 'left', weight: 700, stroke: false
+      });
+      text(`${fmt(row.value)} AU²`, right, cy, {
+        size: rSize, color: '#ffffff', align: 'right', weight: 800, stroke: false
+      });
+      cy += rowH;
+    }
+
+    text('兩面積相等', x + w / 2, y + h - pad * 0.72, {
+      size: fSize, color: '#fbbf24', align: 'center', weight: 800, stroke: false
+    });
+  }
+
+  /* ============================================================ law 3 */
+  const COL3 = {
+    A: { rgb: '96,165,250', stroke: 'rgba(96,165,250,.62)', fill: 'rgba(59,130,246,.05)', label: '#bfdbfe' },
+    B: { rgb: '244,114,182', stroke: 'rgba(244,114,182,.58)', fill: 'rgba(244,114,182,.04)', label: '#fbcfe8' },
+    C: { rgb: '52,211,153', stroke: 'rgba(52,211,153,.58)', fill: 'rgba(16,185,129,.045)', label: '#a7f3d0' }
+  };
+
+  function drawLaw3(avail, t) {
+    const gs = {
+      A: geom(state.l3.A.rp, state.l3.A.ra),
+      B: geom(state.l3.B.rp, state.l3.B.ra),
+      C: geom(state.l3.C.rp, state.l3.C.ra)
+    };
+    const v = makeView(avail, L3_BBOX);
+    const order = ['C', 'B', 'A'];
+
+    for (const k of order) {
+      drawOrbit(v, gs[k], COL3[k].stroke, { fill: COL3[k].fill, width: 2.1 });
+    }
+
+    ctx.save();
+    ctx.setLineDash([5, 9]);
+    ctx.strokeStyle = 'rgba(148,178,255,.13)';
+    ctx.lineWidth = 1.2;
+    for (const k of order) {
+      line(v.px(-gs[k].rp), v.py(0), v.px(gs[k].ra), v.py(0));
+    }
+    ctx.restore();
+
+    drawSun(v, 0, 0, t, '太陽');
+
+    const at = {};
+    for (const k of order) {
+      const p = orbitPos(gs[k], state.l3[k].M);
+      at[k] = v.w(p.x, p.y);
+      drawTrail(v, gs[k], state.l3[k].M, 0.07 * TAU, COL3[k].rgb, 3.8);
+    }
+
+    for (const k of order) {
+      const sp = at[k];
+      drawPlanet(sp.x, sp.y, planetRadius(gs[k], v), COL3[k].rgb);
+      planetTag(v, sp, k, COL3[k].label);
+    }
+  }
+
+  function planetTag(v, sp, name, color) {
+    const avail = v.avail;
+    const compact = W < 600 || FS < 17;
+    const nameTxt = compact ? name : `行星 ${name}`;
+    const size = compact ? Math.max(13, FS * 0.95) : Math.max(12, FS * 0.85);
+    const off = compact ? FS * 0.55 : FS * 0.8;
+    let align = 'left';
+    let x = sp.x + off;
+
+    ctx.save();
+    ctx.font = `800 ${size}px ${FONT}`;
+    const nameW = ctx.measureText(nameTxt).width;
+    ctx.restore();
+
+    if (x + nameW > avail.x1 - 10) {
+      align = 'right';
+      x = sp.x - off;
+    }
+    if (x - nameW < avail.x0 + 6) {
+      align = 'left';
+      x = sp.x + off;
+    }
+    text(nameTxt, x, sp.y - FS * 0.8, { size, color, align, weight: 800 });
+  }
+
+  /* ============================================================ captions */
+  function captionText() {
+    const mobile = isMobileLayout();
+    if (state.tab === 1) {
+      return mobile ? '太陽在左焦點，改變距離改變橢圓' : '太陽在左焦點；改變近日點、遠日點距離，橢圓也跟著改變';
+    }
+    if (state.tab === 2) {
+      if (!state.l2.playing) return mobile ? '兩塊面積相等' : '暫停比較：相同時間掃過的面積相等（等面積定律）';
+      return mobile ? '近日點快、遠日點慢' : '近日點較快、遠日點較慢；相等時間掃過相等面積';
+    }
+    return mobile ? 'T² ∝ a³：a 愈大 T 愈長' : 'T² ∝ a³：a 愈大，T 愈長；三行星 T²/a³ 同值';
+  }
+
+  function drawCaption(avail) {
+    const msg = captionText();
+    let size = FSC;
+    const maxW = Math.min(avail.w - 24, W - 44);
+    ctx.save();
+    ctx.font = `800 ${size}px ${FONT}`;
+    const tw = ctx.measureText(msg).width;
+    ctx.restore();
+    if (tw > maxW && maxW > 60) size = Math.max(12, size * maxW / tw);
+    const x = (avail.x0 + avail.x1) / 2;
+    const y = isMobileLayout() ? H - 16 : H - 20;
+    text(msg, x, y, {
+      size, color: 'rgba(230,240,255,.94)', align: 'center', weight: 800, baseline: 'alphabetic'
+    });
+  }
+
+  /* ============================================================ main draw */
+  function draw(t) {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    drawBackground(t);
+
+    const avail = availRect();
+    if (avail.w < 80 || avail.h < 80) {
+      drawCaption(avail);
+      return;
+    }
+
+    if (state.tab === 1) drawLaw1(avail, t);
+    else if (state.tab === 2) drawLaw2(avail, t);
+    else drawLaw3(avail, t);
+
+    drawCaption(avail);
+  }
+
+  /* ============================================================ animation */
+  function l1Period(g) {
+    return 6.2 * Math.pow(g.a / 1.1, 1.5);
+  }
+
+  let meterFrame = 0;
+  function updateMeter() {
+    const g = geom(state.l2.rp, state.l2.ra);
+    const p = orbitPos(g, state.l2.M);
+    const r = Math.hypot(p.x, p.y);
+    const ratio = Math.sqrt(Math.max(0.05, 2 * g.a / r - 1));
+    const el = $('#speedbar');
+    const val = $('#speedval');
+    if (el) el.style.width = `${(clamp(ratio / 1.85, 0.05, 1) * 100).toFixed(1)}%`;
+    if (val) val.textContent = `${ratio.toFixed(1)}× 平均`;
+  }
+
+  function step(dt) {
+    if (state.tab === 1) {
+      const g = geom(state.l1.rp, state.l1.ra);
+      state.l1.M = (state.l1.M + TAU * dt / l1Period(g)) % TAU;
+    } else if (state.tab === 2) {
+      if (state.l2.playing) {
+        state.l2.M = (state.l2.M + TAU * dt / L2_T) % TAU;
+      }
+      meterFrame += 1;
+      if (meterFrame % 3 === 0) updateMeter();
+    } else {
+      for (const k of ['A', 'B', 'C']) {
+        const g = geom(state.l3[k].rp, state.l3[k].ra);
+        state.l3[k].M = (state.l3[k].M + TAU * dt / (g.T * L3_YEAR)) % TAU;
+      }
+    }
+  }
+
+  let lastT = performance.now();
+  let ready = false;
+
+  function frame(now) {
+    const dt = clamp((now - lastT) / 1000, 0, 0.05);
+    lastT = now;
+    step(dt);
+    draw(now / 1000);
+    if (!ready) {
+      ready = true;
+      window.__APP_READY__ = true;
+    }
+    requestAnimationFrame(frame);
+  }
+
+  /* ============================================================ panel sync */
+  function paintRange(el) {
+    const min = parseFloat(el.min);
+    const max = parseFloat(el.max);
+    const val = parseFloat(el.value);
+    const p = max > min ? (val - min) / (max - min) * 100 : 50;
+    el.style.setProperty('--p', p.toFixed(1) + '%');
+  }
+
+  function setRange(id, value) {
+    const el = $(id);
+    if (!el) return;
+    el.value = String(value);
+    paintRange(el);
+  }
+
+  function syncLaw1() {
+    const g = geom(state.l1.rp, state.l1.ra);
+    setRange('#l1-rp', state.l1.rp);
+    setRange('#l1-ra', state.l1.ra);
+    $('#l1-rp-v').textContent = `${fmt(g.rp)} AU`;
+    $('#l1-ra-v').textContent = `${fmt(g.ra)} AU`;
+    $('#l1-a').textContent = `${fmt(g.a)} AU`;
+    $('#l1-e').textContent = fmt(g.e);
+    $('#l1-b').textContent = `${fmt(g.b)} AU`;
+  }
+
+  function syncLaw2() {
+    const g = geom(state.l2.rp, state.l2.ra);
+    const dA = 0.5 * g.a * g.b * L2_DM;
+    $('#l2-da').textContent = `${fmt(dA)} AU²`;
+
+    const btn = $('#playbtn');
+    const paused = !state.l2.playing;
+    btn.classList.toggle('paused', paused);
+    btn.setAttribute('aria-label', paused ? '繼續播放' : '暫停');
+    btn.innerHTML = paused
+      ? '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.6v12.8a1 1 0 0 0 1.53.85l10.2-6.4a1 1 0 0 0 0-1.7L9.53 4.75A1 1 0 0 0 8 5.6z"/></svg><span>繼續播放</span>'
+      : '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg><span>暫停</span>';
+
+    const note = $('#l2-note');
+    note.innerHTML = paused
+      ? `兩塊面積相等：<b>ΔA = ${fmt(dA)} AU²</b>`
+      : '按「暫停」，比較兩塊掃過的面積。';
+    updateMeter();
+  }
+
+  function syncLaw3() {
+    const ks = [];
+    for (const k of ['A', 'B', 'C']) {
+      const id = k.toLowerCase();
+      const g = geom(state.l3[k].rp, state.l3[k].ra);
+      setRange(`#p3${id}-rp`, state.l3[k].rp);
+      setRange(`#p3${id}-ra`, state.l3[k].ra);
+      $(`#p3${id}-rp-v`).textContent = `${fmt(g.rp)} AU`;
+      $(`#p3${id}-ra-v`).textContent = `${fmt(g.ra)} AU`;
+      $(`#p3${id}-a`).textContent = `${fmt(g.a)} AU`;
+      $(`#p3${id}-T`).textContent = `${fmt(g.T)} 年`;
+      ks.push(g.T * g.T / (g.a * g.a * g.a));
+    }
+    $('#p3-k').textContent = fmt(ks.reduce((s, v) => s + v, 0) / ks.length, 3);
+  }
+
+  function syncAll() {
+    syncLaw1();
+    syncLaw2();
+    syncLaw3();
+  }
+
+  /* ============================================================ ui events */
+  function setTab(n) {
+    state.tab = n;
+    $$('.tab').forEach((b) => {
+      const on = Number(b.dataset.tab) === n;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    $$('.pane').forEach((p) => p.classList.toggle('active', Number(p.dataset.pane) === n));
+    if (n === 2) updateMeter();
+    lastT = performance.now();
+  }
+
+  $('#l1-rp').addEventListener('input', (e) => {
+    state.l1.rp = Math.round(parseFloat(e.target.value) * 100) / 100;
+    syncLaw1();
+  });
+  $('#l1-ra').addEventListener('input', (e) => {
+    state.l1.ra = Math.round(parseFloat(e.target.value) * 100) / 100;
+    syncLaw1();
+  });
+
+  $('#playbtn').addEventListener('click', () => {
+    state.l2.playing = !state.l2.playing;
+    syncLaw2();
+  });
+
+  function onLaw3(which, key, raw) {
+    const o = state.l3[which];
+    o[key] = Math.round(raw * 100) / 100;
+    if (o.ra < o.rp + 0.1) {
+      if (key === 'rp') o.ra = Math.min(3.4, Math.round((o.rp + 0.1) * 100) / 100);
+      else o.rp = Math.max(0.4, Math.round((o.ra - 0.1) * 100) / 100);
+    }
+    syncLaw3();
+  }
+
+  ['a', 'b', 'c'].forEach((which) => {
+    $(`#p3${which}-rp`).addEventListener('input', (e) => onLaw3(which.toUpperCase(), 'rp', parseFloat(e.target.value)));
+    $(`#p3${which}-ra`).addEventListener('input', (e) => onLaw3(which.toUpperCase(), 'ra', parseFloat(e.target.value)));
+  });
+
+  $$('.tab').forEach((b) => b.addEventListener('click', () => setTab(Number(b.dataset.tab))));
+
+  /* ============================================================ fullscreen / reset */
+  const SVG_FS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9"/><path d="M20 9V5.5A1.5 1.5 0 0 0 18.5 4H15"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20H9"/><path d="M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15"/></svg>';
+  const SVG_EXIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5H4"/><path d="M15 4v5h5"/><path d="M9 20v-5H4"/><path d="M15 20v-5h5"/></svg>';
+
+  let toastTimer = 0;
+  function toast(msg) {
+    const el = $('#toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 1600);
+  }
+
+  const fsBtn = $('#btn-fs');
+  fsBtn.addEventListener('click', async () => {
+    try {
+      if (!document.fullscreenElement) {
+        if (!document.documentElement.requestFullscreen) {
+          toast('此瀏覽器不支援全螢幕');
+          return;
+        }
+        await document.documentElement.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      toast('無法切換全螢幕');
+    }
+  });
+
+  document.addEventListener('fullscreenchange', () => {
+    const on = Boolean(document.fullscreenElement);
+    fsBtn.innerHTML = on ? SVG_EXIT : SVG_FS;
+    fsBtn.setAttribute('aria-label', on ? '結束全螢幕' : '全螢幕');
+    fsBtn.title = on ? '結束全螢幕' : '全螢幕';
+    resizeCanvas();
+  });
+
+  function resetAll() {
+    state.l1 = { ...DEFAULTS.l1 };
+    state.l2 = { ...DEFAULTS.l2 };
+    state.l3 = {
+      A: { ...DEFAULTS.l3.A },
+      B: { ...DEFAULTS.l3.B },
+      C: { ...DEFAULTS.l3.C }
+    };
+    setTab(1);
+    syncAll();
+    toast('已重置為初始值');
+  }
+
+  $('#btn-reset').addEventListener('click', resetAll);
+
+  /* ============================================================ test hooks */
+  window.__KEPLER__ = {
+    getState() {
+      const g1 = geom(state.l1.rp, state.l1.ra);
+      const g2 = geom(state.l2.rp, state.l2.ra);
+      const gA = geom(state.l3.A.rp, state.l3.A.ra);
+      const gB = geom(state.l3.B.rp, state.l3.B.ra);
+      const gC = geom(state.l3.C.rp, state.l3.C.ra);
+      const areaExact = 0.5 * g2.a * g2.b * L2_DM;
+      return {
+        tab: state.tab,
+        fs: FS,
+        panelFont: parseFloat(getComputedStyle(panel).fontSize),
+        l1: { rp: state.l1.rp, ra: state.l1.ra, a: g1.a, e: g1.e, b: g1.b, M: state.l1.M },
+        l2: {
+          rp: state.l2.rp, ra: state.l2.ra, a: g2.a, e: g2.e, b: g2.b,
+          playing: state.l2.playing, M: state.l2.M,
+          dM: L2_DM,
+          areaPeri: sectorArea(g2, 0, L2_DM),
+          areaNow: sectorArea(g2, state.l2.M, L2_DM),
+          areaExact
+        },
+        l3: {
+          A: { rp: gA.rp, ra: gA.ra, a: gA.a, e: gA.e, T: gA.T, M: state.l3.A.M },
+          B: { rp: gB.rp, ra: gB.ra, a: gB.a, e: gB.e, T: gB.T, M: state.l3.B.M },
+          C: { rp: gC.rp, ra: gC.ra, a: gC.a, e: gC.e, T: gC.T, M: state.l3.C.M },
+          kA: gA.T * gA.T / (gA.a ** 3),
+          kB: gB.T * gB.T / (gB.a ** 3),
+          kC: gC.T * gC.T / (gC.a ** 3)
+        }
+      };
+    },
+    setTab(n) { setTab(clamp(Number(n), 1, 3)); },
+    pause() { state.l2.playing = false; syncLaw2(); },
+    resume() { state.l2.playing = true; syncLaw2(); },
+    setLaw1(rp, ra) {
+      state.l1.rp = clamp(Math.round(rp * 100) / 100, 0.35, 0.85);
+      state.l1.ra = clamp(Math.round(ra * 100) / 100, 1.0, 1.8);
+      syncLaw1();
+    },
+    setLaw3(which, rp, ra) {
+      const up = String(which).toUpperCase();
+      const k = up === 'B' ? 'B' : up === 'C' ? 'C' : 'A';
+      const nrp = clamp(Math.round(rp * 100) / 100, 0.4, 2.4);
+      let nra = clamp(Math.round(ra * 100) / 100, 0.9, 3.4);
+      if (nra < nrp + 0.1) nra = Math.min(3.4, Math.round((nrp + 0.1) * 100) / 100);
+      state.l3[k].rp = nrp;
+      state.l3[k].ra = nra;
+      syncLaw3();
+    },
+    reset: resetAll,
+    layout() {
+      const pr = panel.getBoundingClientRect();
+      const av = availRect();
+      return {
+        w: W, h: H, fs: FS, fsc: FSC, mobile: isMobileLayout(),
+        panel: { left: pr.left, top: pr.top, right: pr.right, bottom: pr.bottom, width: pr.width, height: pr.height },
+        avail: av,
+        docScrollW: document.documentElement.scrollWidth,
+        docClientW: document.documentElement.clientWidth
+      };
+    },
+    screen() {
+      const av = availRect();
+      let v;
+      if (state.tab === 1) v = makeView(av, L1_BBOX);
+      else if (state.tab === 2) v = makeView(av, L2_BBOX);
+      else v = makeView(av, L3_BBOX);
+      return {
+        sun: v.w(0, 0),
+        avail: av,
+        scale: v.scale
+      };
+    }
+  };
+
+  /* ============================================================ boot */
+  seedStars();
+  resizeCanvas();
+  syncAll();
+  setTab(1);
+  window.addEventListener('resize', () => {
+    resizeCanvas();
+    lastT = performance.now();
+  });
+  document.addEventListener('visibilitychange', () => {
+    lastT = performance.now();
+  });
+
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

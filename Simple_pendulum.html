@@ -318,7 +318,7 @@
 <div class="app" id="app">
   <div class="stage" id="stage">
     <canvas id="scene" aria-label="單擺 3D 場景，可拖動擺錘" tabindex="0"></canvas>
-    <div class="tag" id="tagTheta" aria-hidden="true"><b>θ</b><span id="tagThetaVal">32.0°</span></div>
+    <div class="tag" id="tagTheta" aria-hidden="true"><b>θ</b><span id="tagThetaVal">5.0°</span></div>
     <div class="tag" id="tagLen" aria-hidden="true"><b>L</b><span id="tagLenVal">0.90 m</span></div>
     <div class="hint" id="hint">拖動擺錘到某個角度，放手就開始擺動</div>
   </div>
@@ -353,7 +353,7 @@
 
   <aside class="panel" id="panel" aria-label="單擺控制台">
     <div class="readouts">
-      <div class="ro"><span class="k">角度 θ</span><span class="v"><span id="valTheta">32.0</span><i>°</i></span></div>
+      <div class="ro"><span class="k">角度 θ</span><span class="v"><span id="valTheta">5.0</span><i>°</i></span></div>
       <div class="ro"><span class="k">週期 T</span><span class="v"><span id="valPeriod">—</span><i id="periodUnit" hidden>s</i></span></div>
       <div class="ro"><span class="k">理論 T₀</span><span class="v"><span id="valTheory">1.903</span><i>s</i></span></div>
       <div class="ro"><span class="k">速率 v</span><span class="v"><span id="valSpeed">0.00</span><i>m/s</i></span></div>
@@ -605,7 +605,7 @@ function(t,e){"object"==typeof exports&&"undefined"!=typeof module?e(exports):"f
   var tagLenW = 84;
 
   /* ------------------------------------------------------------- physics */
-  var START_ANGLE = (32 * Math.PI) / 180;
+  var START_ANGLE = (5 * Math.PI) / 180;
   var PIVOT_CLEARANCE = 1.15;
   var FIXED_STEP = 1 / 240;
   var state = P.createState({ L: 0.9, g: P.G_EARTH, theta: START_ANGLE });
